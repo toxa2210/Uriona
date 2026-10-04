@@ -11,6 +11,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:seed": "tsx prisma/seed.ts",
+    "crm:promote-admin": "tsx prisma/promote-admin.ts",
     "prisma:studio": "prisma studio"
   },
   "dependencies": {

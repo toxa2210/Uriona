@@ -68,6 +68,22 @@ export class PaymentsService {
         data: { status: "PAID" }
       });
 
+      await tx.financeEntry.createMany({
+        data: [{
+          type: "INCOME",
+          source: "PAYMENT",
+          category: "Оплата заказа",
+          description: `Оплата заказа ${payment.orderId}`,
+          amountMinor: payment.amountMinor,
+          currency: payment.currency,
+          occurredAt: new Date(),
+          referenceId: payment.id,
+          paymentId: payment.id,
+          orderId: payment.orderId
+        }],
+        skipDuplicates: true
+      });
+
       return updated;
     });
   }
@@ -81,6 +97,24 @@ export class PaymentsService {
         where: { id: payment.id },
         data: { status: "REFUNDED" }
       });
+
+      if (payment.status === "PAID") {
+        await tx.financeEntry.createMany({
+          data: [{
+            type: "EXPENSE",
+            source: "REFUND",
+            category: "Возврат оплаты",
+            description: `Возврат оплаты по заказу ${payment.orderId}`,
+            amountMinor: payment.amountMinor,
+            currency: payment.currency,
+            occurredAt: new Date(),
+            referenceId: payment.id,
+            paymentId: payment.id,
+            orderId: payment.orderId
+          }],
+          skipDuplicates: true
+        });
+      }
 
       await tx.order.updateMany({
         where: { id: payment.orderId, status: { in: ["AWAITING_PAYMENT", "PAID"] } },
