@@ -25,7 +25,7 @@ import {
 import { getApp, getApps, initializeApp } from "@firebase/app";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 
-const API_URL = (import.meta.env.VITE_API_URL ?? "http://localhost:8000/api/v1").replace(/\/$/, "");
+const API_URL = (import.meta.env.VITE_API_URL ?? "https://uriona-api.onrender.com/api/v1").replace(/\/$/, "");
 const SESSION_KEY = "uriona.crm.session";
 type User = { id: string; name?: string | null; email?: string | null; role: string };
 type Page = "overview" | "orders" | "customers" | "finance";

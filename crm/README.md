@@ -10,7 +10,7 @@ Standalone staff-facing CRM application. It uses the store's existing backend an
    npm --prefix crm install
    ```
 
-2. Copy `crm/.env.example` to `crm/.env.local` and set the Firebase web app values. For local development, `VITE_API_URL` selects the backend for the Vite proxy (for example `http://localhost:8000/api/v1` or the deployed API URL).
+2. Copy `crm/.env.example` to `crm/.env.local` and set the Firebase web app values. By default, the app uses the deployed backend. Set `VITE_API_URL=http://localhost:8000/api/v1` only when running the backend locally.
 3. Start the backend and its PostgreSQL database.
 4. Start the CRM from the repository root:
 
