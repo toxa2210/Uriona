@@ -12,6 +12,22 @@ type AliExpressTokenResponse = {
   refresh_expires_in?: number | string;
 };
 
+export type AliExpressFreightOption = {
+  code: string;
+  company: string;
+  feeUzsMinor: number;
+  feeFormat: string;
+  currency: string;
+  minDeliveryDays?: string;
+  maxDeliveryDays?: string;
+  tracking?: boolean;
+};
+
+export type MarketplaceSkuQuote = {
+  title: string;
+  unitPriceMinor: number;
+};
+
 @Injectable()
 export class AliexpressService {
   private readonly gateway: string;
@@ -453,5 +469,142 @@ export class AliexpressService {
 
   affiliateOrderDetail(params: Record<string, unknown>) {
     return this.call("aliexpress.affiliate.order.get", params);
+  }
+
+  /**
+   * Exchange rate used to convert marketplace prices into UZS tiyin.
+   * Configured via env; never hardcoded in code or frontend (TZ 16-18).
+   */
+  private uzsPerUsd(): number {
+    const raw = this.config.get<string>("USD_TO_UZS_RATE");
+    const rate = raw ? Number(raw) : NaN;
+    if (!Number.isFinite(rate) || rate <= 0) {
+      throw new ServiceUnavailableException({
+        code: "CURRENCY_RATE_NOT_CONFIGURED",
+        message: "USD_TO_UZS_RATE is not configured on the backend"
+      });
+    }
+    return rate;
+  }
+
+  private usdToUzsMinor(amount: number): number {
+    return Math.round(amount * this.uzsPerUsd() * 100);
+  }
+
+  private static dig(value: unknown, path: string[]): unknown {
+    let current: unknown = value;
+    for (const key of path) {
+      if (!current || typeof current !== "object") return undefined;
+      current = (current as Record<string, unknown>)[key];
+    }
+    return current;
+  }
+
+  private static asArray(value: unknown): Record<string, unknown>[] {
+    if (Array.isArray(value)) return value as Record<string, unknown>[];
+    if (value && typeof value === "object") {
+      // AliExpress often wraps lists as { item: [...] }
+      for (const nested of Object.values(value as Record<string, unknown>)) {
+        if (Array.isArray(nested)) return nested as Record<string, unknown>[];
+      }
+    }
+    return [];
+  }
+
+  /**
+   * Resolves the current price of a specific SKU of a marketplace product.
+   * Prices are always re-fetched at order time so a stale cart price is rejected (TZ 23).
+   */
+  async marketplaceSkuForOrder(productId: string, skuId: string, quantity: number): Promise<MarketplaceSkuQuote> {
+    const data = await this.productDetails(productId, {
+      ship_to_country: "UZ",
+      target_currency: "USD",
+      target_language: "ru_RU"
+    });
+    const result = AliexpressService.dig(data, ["aliexpress_ds_product_get_response", "result"]) as Record<string, unknown> | undefined;
+    if (!result) {
+      throw new ServiceUnavailableException({ code: "MARKETPLACE_PRODUCT_UNAVAILABLE", message: "Marketplace product details are unavailable" });
+    }
+
+    const skus = AliexpressService.asArray(
+      AliexpressService.dig(result, ["ae_item_sku_info_dtos", "ae_item_sku_info_d_t_o"])
+        ?? AliexpressService.dig(result, ["ae_item_sku_info_dtos"])
+    );
+    const sku = skus.find((entry) => String(entry.sku_id ?? entry.id ?? "") === skuId);
+    if (!sku) {
+      throw new BadRequestException({ code: "MARKETPLACE_SKU_NOT_FOUND", message: "Selected variant is no longer available" });
+    }
+
+    const rawPrice = Number(sku.sku_price ?? sku.offer_sale_price ?? sku.price ?? NaN);
+    if (!Number.isFinite(rawPrice) || rawPrice <= 0) {
+      throw new ServiceUnavailableException({ code: "MARKETPLACE_PRICE_UNAVAILABLE", message: "Marketplace price is unavailable" });
+    }
+
+    // SKU price is per unit; the order stores the unit price, quantity is applied by OrdersService.
+    void quantity;
+    const title = String(
+      AliexpressService.dig(result, ["ae_item_base_info_dto", "subject"])
+        ?? result.subject
+        ?? ""
+    );
+    return { title, unitPriceMinor: this.usdToUzsMinor(rawPrice) };
+  }
+
+  /**
+   * Returns the currently available freight options for a marketplace item,
+   * with fees converted to UZS tiyin by the backend.
+   */
+  async freightOptions(params: {
+    productId: string;
+    selectedSkuId: string;
+    quantity: string;
+    shipToCountry: string;
+    currency: string;
+    language: string;
+    locale: string;
+  }): Promise<AliExpressFreightOption[]> {
+    if (!/^\d+$/.test(params.productId)) throw new BadRequestException("productId must be numeric");
+    if (!/^\d+$/.test(params.selectedSkuId)) throw new BadRequestException("selectedSkuId must be numeric");
+
+    // Freight query is priced in USD and converted to UZS server-side.
+    const data = await this.call("aliexpress.ds.freight.query", {
+      product_id: params.productId,
+      selected_sku_id: params.selectedSkuId,
+      quantity: params.quantity,
+      ship_to_country: params.shipToCountry,
+      target_currency: "USD",
+      target_language: params.language,
+      locale: params.locale
+    }, true);
+
+    const result = AliexpressService.dig(data, ["aliexpress_ds_freight_query_response", "result"]) as Record<string, unknown> | undefined;
+    if (!result) {
+      throw new ServiceUnavailableException({ code: "FREIGHT_UNAVAILABLE", message: "Delivery options are unavailable" });
+    }
+
+    const options = AliexpressService.asArray(
+      AliexpressService.dig(result, ["delivery_options", "delivery_option_d_t_o"])
+        ?? AliexpressService.dig(result, ["delivery_options"])
+        ?? AliexpressService.dig(result, ["aeop_freight_result_list"])
+    );
+
+    return options
+      .map((option): AliExpressFreightOption | undefined => {
+        const code = String(option.code ?? option.service_name ?? "");
+        const feeRaw = Number(option.freight_amount ?? option.shipping_fee_amount ?? option.price ?? NaN);
+        if (!code || !Number.isFinite(feeRaw) || feeRaw < 0) return undefined;
+        const feeUzsMinor = this.usdToUzsMinor(feeRaw);
+        return {
+          code,
+          company: String(option.company ?? option.logistics_company ?? option.service_name ?? code),
+          feeUzsMinor,
+          feeFormat: `${(feeUzsMinor / 100).toLocaleString("ru-RU")} сум`,
+          currency: "UZS",
+          minDeliveryDays: option.min_delivery_days !== undefined ? String(option.min_delivery_days) : undefined,
+          maxDeliveryDays: option.max_delivery_days !== undefined ? String(option.max_delivery_days) : undefined,
+          tracking: option.tracking === undefined ? undefined : Boolean(option.tracking)
+        };
+      })
+      .filter((option): option is AliExpressFreightOption => Boolean(option));
   }
 }
