@@ -1,5 +1,5 @@
-import { BadRequestException, ConflictException, Injectable, ServiceUnavailableException, UnauthorizedException } from "@nestjs/common";
-import { createHash, randomBytes } from "node:crypto";
+import { BadRequestException, ConflictException, HttpException, HttpStatus, Injectable, ServiceUnavailableException, UnauthorizedException } from "@nestjs/common";
+import { createHash, randomBytes, randomInt } from "node:crypto";
 import { getAuth } from "firebase-admin/auth";
 import { getApps, initializeApp } from "firebase-admin/app";
 import type { User } from "@prisma/client";
@@ -16,13 +16,44 @@ export class AuthService {
   constructor(private readonly prisma: PrismaService) {}
 
   async requestOtp(phone: string) {
-    const normalized = phone.replace(/\s+/g, "");
+    const normalized = phone.replace(/[\s-]+/g, "");
     if (!/^\+?[0-9]{9,15}$/.test(normalized)) throw new BadRequestException("Invalid phone number");
-    const code = process.env.APP_ENV === "production" ? undefined : "123456";
-    const actual = code ?? String(Math.floor(100000 + Math.random() * 900000));
+
+    // Phone rate limit: max 5 OTP requests per hour per phone.
+    const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const recentCount = await this.prisma.otpChallenge.count({
+      where: { phone: normalized, createdAt: { gte: hourAgo } }
+    });
+    if (recentCount >= 5) {
+      throw new HttpException(
+        { code: "OTP_RATE_LIMITED", message: "Слишком много запросов кода. Попробуйте позже." },
+        HttpStatus.TOO_MANY_REQUESTS
+      );
+    }
+
+    // Cooldown: at most one new OTP per 60 seconds per phone.
+    const latest = await this.prisma.otpChallenge.findFirst({
+      where: { phone: normalized },
+      orderBy: { createdAt: "desc" }
+    });
+    const cooldownSeconds = 60;
+    if (latest && Date.now() - latest.createdAt.getTime() < cooldownSeconds * 1000) {
+      const retryAfterSeconds = Math.ceil((cooldownSeconds * 1000 - (Date.now() - latest.createdAt.getTime())) / 1000);
+      throw new HttpException(
+        { code: "OTP_COOLDOWN", message: `Повторная отправка возможна через ${retryAfterSeconds} сек.`, retryAfterSeconds },
+        HttpStatus.TOO_MANY_REQUESTS
+      );
+    }
+
+    // Fixed dev OTP is allowed only outside production (TZ §7).
+    const isProduction = process.env.APP_ENV === "production";
+    const code = isProduction ? undefined : "123456";
+    const actual = code ?? String(randomInt(100000, 1000000));
     await this.prisma.otpChallenge.updateMany({ where: { phone: normalized, consumedAt: null }, data: { consumedAt: new Date() } });
     await this.prisma.otpChallenge.create({ data: { phone: normalized, codeHash: hash(actual), expiresAt: new Date(Date.now() + 5 * 60 * 1000) } });
-    return { accepted: true, expiresInSeconds: 300, devCode: process.env.APP_ENV === "production" ? undefined : actual };
+
+    // TODO(integration): send `actual` via SMS provider (Eskiz/PlayMobile). Never log the code.
+    return { accepted: true, expiresInSeconds: 300, cooldownSeconds, devCode: isProduction ? undefined : actual };
   }
 
   async validateSession(raw: string) {
@@ -33,6 +64,11 @@ export class AuthService {
 
   async getProfile(token: string) {
     return this.validateSession(token);
+  }
+
+  async logout(raw: string) {
+    await this.prisma.session.deleteMany({ where: { tokenHash: hash(raw) } });
+    return { success: true };
   }
 
   async authenticateFirebase(idToken: string): Promise<SessionResult> {
