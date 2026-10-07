@@ -11,7 +11,6 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:seed": "tsx prisma/seed.ts",
-    "crm:promote-admin": "tsx prisma/promote-admin.ts",
     "prisma:studio": "prisma studio"
   },
   "dependencies": {
@@ -24,8 +23,7 @@
     "class-validator": "^0.14.1",
     "firebase-admin": "^14.5.0",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1",
-    "sharp": "^0.35.5"
+    "rxjs": "^7.8.1"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.0",

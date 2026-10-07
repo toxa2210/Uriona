@@ -3,29 +3,37 @@ import { useWindowVirtualizer } from "@tanstack/react-virtual";
 
 type VirtualProductGridProps<T> = {
   items: T[];
-  columns: 2 | 3 | 4;
+  columns: 2 | 3 | 4 | 5 | 6;
   className?: string;
   getKey: (item: T) => string;
   renderItem: (item: T, index: number) => ReactNode;
 };
 
-function useEffectiveColumns(columns: 2 | 3 | 4): number {
+function getAvailableColumns(): number {
+  if (window.matchMedia("(max-width: 620px)").matches) return 2;
+  if (window.matchMedia("(max-width: 980px)").matches) return 3;
+  if (window.matchMedia("(max-width: 1200px)").matches) return 5;
+  return 6;
+}
+
+function useEffectiveColumns(columns: 2 | 3 | 4 | 5 | 6): number {
   const [effectiveColumns, setEffectiveColumns] = useState(() =>
-    typeof window !== "undefined" && window.matchMedia("(max-width: 620px)").matches
-      ? Math.min(columns, 2)
-      : typeof window !== "undefined" && window.matchMedia("(max-width: 980px)").matches
-        ? Math.min(columns, 2)
-        : columns,
+    typeof window === "undefined" ? columns : Math.min(columns, getAvailableColumns()),
   );
 
   useEffect(() => {
     const updateColumns = () => {
-      const available = window.matchMedia("(max-width: 980px)").matches ? 2 : 4;
-      setEffectiveColumns(Math.min(columns, available));
+      setEffectiveColumns(Math.min(columns, getAvailableColumns()));
     };
+    const breakpoints = ["(max-width: 620px)", "(max-width: 980px)", "(max-width: 1200px)"]
+      .map((query) => window.matchMedia(query));
     updateColumns();
+    breakpoints.forEach((breakpoint) => breakpoint.addEventListener("change", updateColumns));
     window.addEventListener("resize", updateColumns);
-    return () => window.removeEventListener("resize", updateColumns);
+    return () => {
+      breakpoints.forEach((breakpoint) => breakpoint.removeEventListener("change", updateColumns));
+      window.removeEventListener("resize", updateColumns);
+    };
   }, [columns]);
 
   return effectiveColumns;
@@ -52,7 +60,7 @@ export function VirtualProductGrid<T>({
   }, [items.length, effectiveColumns]);
   const virtualizer = useWindowVirtualizer({
     count: rowCount,
-    estimateSize: () => 440,
+    estimateSize: () => 380,
     overscan: 3,
     gap: 14,
     scrollMargin,
@@ -66,7 +74,7 @@ export function VirtualProductGrid<T>({
     <div
       ref={containerRef}
       className={`virtual-product-grid ${className}`}
-      style={{ height: Math.max(0, virtualizer.getTotalSize() - scrollMargin) }}
+      style={{ height: virtualizer.getTotalSize() }}
     >
       {virtualizer.getVirtualItems().map((row) => (
         <div

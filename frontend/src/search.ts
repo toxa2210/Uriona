@@ -3,7 +3,7 @@ import type { ApiCategory, ApiProduct } from "./api";
 const STOP_WORDS = new Set([
   "а", "без", "бы", "в", "во", "для", "до", "же", "за", "и", "из", "или", "к", "как", "ли",
   "на", "над", "не", "ни", "но", "о", "об", "от", "по", "под", "при", "про", "с", "со", "у",
-  "что", "это", "the", "a", "an", "and", "or", "for", "from", "in", "into", "is", "of", "on",
+  "что", "это", "устройство", "the", "a", "an", "and", "or", "for", "from", "in", "into", "is", "of", "on",
   "s", "to", "with", "uchun", "bilan", "dan", "ga", "ni", "ning", "va", "yoki", "bu", "shu", "ham",
 ]);
 
@@ -76,6 +76,30 @@ const SYNONYMS: Record<string, string> = {
   "smartphones": "телефон",
   "mobile": "телефон",
   "telefon": "телефон",
+  "айфон": "iphone",
+  "iphone": "iphone",
+  "айфона": "iphone",
+  "чехол": "case",
+  "чехлы": "case",
+  "чехла": "case",
+  "чехле": "case",
+  "чехлов": "case",
+  "чехлом": "case",
+  "чехлах": "case",
+  "chexol": "case",
+  "gilof": "case",
+  "g'ilof": "case",
+  "наушники": "headphones",
+  "наушник": "headphones",
+  "quloqchin": "headphones",
+  "quloqchinlar": "headphones",
+  "зарядка": "charger",
+  "зарядное": "charger",
+  "zaryadlovchi": "charger",
+  "zaryad": "charger",
+  "повербанк": "powerbank",
+  "повербанки": "powerbank",
+  "powerbank": "powerbank",
   "платье": "платье",
   "платья": "платье",
   "платьев": "платье",
@@ -250,6 +274,29 @@ const MARKETPLACE_QUERY_TERMS: Record<string, string> = {
   смартфоны: "smartphone",
   телефон: "phone",
   телефоны: "phone",
+  айфон: "iphone",
+  айфона: "iphone",
+  чехол: "phone case",
+  чехлы: "phone case",
+  чехла: "phone case",
+  чехле: "phone case",
+  чехлов: "phone case",
+  чехлом: "phone case",
+  чехлах: "phone case",
+  chexol: "phone case",
+  gilof: "phone case",
+  "g'ilof": "phone case",
+  наушники: "headphones",
+  наушник: "headphones",
+  quloqchin: "headphones",
+  quloqchinlar: "headphones",
+  зарядка: "charger",
+  зарядное: "charger",
+  zaryadlovchi: "charger",
+  zaryad: "charger",
+  повербанк: "power bank",
+  повербанки: "power bank",
+  powerbank: "power bank",
   mobile: "phone",
   mobiles: "phone",
   phone: "phone",
@@ -347,8 +394,10 @@ function editDistanceAtMostTwo(first: string, second: string): number {
 }
 
 function tokensMatch(queryToken: string, fieldToken: string): boolean {
-  if (queryToken === fieldToken || queryToken.startsWith(fieldToken) || fieldToken.startsWith(queryToken)) return true;
-  return Math.min(queryToken.length, fieldToken.length) >= 5 && editDistanceAtMostTwo(queryToken, fieldToken) <= 2;
+  if (queryToken === fieldToken) return true;
+  if (Math.min(queryToken.length, fieldToken.length) >= 3
+    && (queryToken.startsWith(fieldToken) || fieldToken.startsWith(queryToken))) return true;
+  return Math.min(queryToken.length, fieldToken.length) >= 6 && editDistanceAtMostTwo(queryToken, fieldToken) <= 1;
 }
 
 function categorySearchText(product: ApiProduct, categories: ApiCategory[]): string {
@@ -380,6 +429,7 @@ export function scoreProductSearch(
   product: ApiProduct,
   query: string,
   categories: ApiCategory[] = [],
+  allowPartialMatches = false,
 ): ProductSearchMatch | null {
   const queryTokens = [...new Set(tokenizeSearchText(query))];
   if (!queryTokens.length) return query.trim() ? null : { product, score: 0, matchedTokens: 0 };
@@ -396,21 +446,33 @@ export function scoreProductSearch(
   let matchedTokens = 0;
   for (const queryToken of queryTokens) {
     let tokenScore = 0;
-    for (const field of fields) {
-      if (field.tokens.some((fieldToken) => tokensMatch(queryToken, fieldToken))) {
+    let matchedTitle = false;
+    for (const [fieldIndex, field] of fields.entries()) {
+      const matches = field.tokens.some((fieldToken) => allowPartialMatches && fieldIndex === 0
+        ? queryToken === fieldToken
+          || (Math.min(queryToken.length, fieldToken.length) >= 3
+            && (queryToken.startsWith(fieldToken) || fieldToken.startsWith(queryToken)))
+          || (Math.min(queryToken.length, fieldToken.length) >= 6 && editDistanceAtMostTwo(queryToken, fieldToken) <= 1)
+        : tokensMatch(queryToken, fieldToken));
+      if (fieldIndex === 0 && matches) matchedTitle = true;
+      if (matches) {
         tokenScore = Math.max(tokenScore, field.weight);
       }
     }
+    if (allowPartialMatches && !matchedTitle) tokenScore = 0;
     if (tokenScore) {
       matchedTokens += 1;
       score += tokenScore;
+      if (allowPartialMatches) score += Math.min(queryToken.length, 12) / 10;
     }
   }
 
-  const requiredMatches = queryTokens.length <= 2 ? queryTokens.length : Math.ceil(queryTokens.length * 0.75);
+  const requiredMatches = allowPartialMatches
+    ? 1
+    : queryTokens.length <= 2 ? queryTokens.length : Math.ceil(queryTokens.length * 0.75);
   if (matchedTokens < requiredMatches || product.inStock === false) return null;
   if (product.inStock === true) score += 0.25;
-  score += Math.min(Math.log10(productPopularity(product) + 1), 5) / 100;
+  if (!allowPartialMatches) score += Math.min(Math.log10(productPopularity(product) + 1), 5) / 100;
 
   return { product, score, matchedTokens };
 }
@@ -420,6 +482,18 @@ export function searchProducts(products: ApiProduct[], query: string, categories
     .map((product, index) => ({ match: scoreProductSearch(product, query, categories), index }))
     .filter((entry): entry is { match: ProductSearchMatch; index: number } => entry.match !== null)
     .sort((first, second) => second.match.score - first.match.score || first.index - second.index)
+    .map(({ match }) => match.product);
+}
+
+export function searchSimilarProducts(products: ApiProduct[], query: string, categories: ApiCategory[] = []): ApiProduct[] {
+  return products
+    .map((product, index) => ({ match: scoreProductSearch(product, query, categories, true), index }))
+    .filter((entry): entry is { match: ProductSearchMatch; index: number } => entry.match !== null)
+    .sort((first, second) =>
+      second.match.matchedTokens - first.match.matchedTokens
+      || second.match.score - first.match.score
+      || first.index - second.index
+    )
     .map(({ match }) => match.product);
 }
 

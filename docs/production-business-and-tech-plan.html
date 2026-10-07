@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101a2b">
+  <title>Uriona — бизнес- и технический план запуска</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1220;
+      --surface: #121d30;
+      --surface-2: #17253b;
+      --line: rgba(173, 197, 230, .15);
+      --text: #edf4ff;
+      --muted: #a8b8d0;
+      --cyan: #60e1e8;
+      --blue: #82aaff;
+      --green: #79e2b2;
+      --yellow: #ffd27a;
+      --red: #ff929c;
+      --radius: 20px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(ellipse at 85% -5%, rgba(75, 118, 219, .18), transparent 36rem),
+        radial-gradient(ellipse at -10% 24%, rgba(53, 199, 198, .08), transparent 32rem),
+        var(--bg);
+      color: var(--text);
+      font: 15px/1.65 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    button, input { font: inherit; }
+    .wrap { width: min(1120px, calc(100% - 40px)); margin: 0 auto; }
+    .topbar {
+      position: sticky; top: 0; z-index: 5;
+      border-bottom: 1px solid var(--line);
+      background: rgba(11, 18, 32, .86);
+      backdrop-filter: blur(16px);
+    }
+    .topbar-inner { display: flex; align-items: center; justify-content: space-between; min-height: 62px; gap: 20px; }
+    .brand { color: var(--text); font-weight: 800; letter-spacing: .04em; }
+    .brand span { color: var(--cyan); }
+    nav { display: flex; gap: 18px; overflow-x: auto; white-space: nowrap; }
+    nav a { color: var(--muted); font-size: 13px; }
+    .hero { padding: 68px 0 34px; }
+    .eyebrow { color: var(--cyan); font-weight: 750; font-size: 12px; text-transform: uppercase; letter-spacing: .15em; }
+    h1 { max-width: 850px; margin: 13px 0 16px; font-size: clamp(35px, 6vw, 64px); line-height: 1.04; letter-spacing: -.045em; }
+    .lead { max-width: 780px; color: var(--muted); font-size: 18px; }
+    .hero-meta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+    .pill, .tag {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 6px 11px; border: 1px solid var(--line); border-radius: 999px;
+      color: var(--muted); background: rgba(255,255,255,.025); font-size: 12px;
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--yellow); }
+    .banner {
+      display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: start;
+      margin: 20px 0 34px; padding: 21px 23px; border-radius: var(--radius);
+      border: 1px solid rgba(255, 210, 122, .32);
+      background: linear-gradient(110deg, rgba(255,210,122,.1), rgba(255,210,122,.025));
+    }
+    .banner-icon { font-size: 22px; }
+    .banner strong { display: block; margin-bottom: 4px; color: var(--yellow); }
+    .banner p { margin: 0; color: var(--muted); }
+    section { padding: 28px 0; scroll-margin-top: 76px; }
+    .section-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+    h2 { margin: 0; font-size: clamp(24px, 3vw, 34px); letter-spacing: -.025em; }
+    h3 { margin: 0 0 8px; font-size: 18px; }
+    .section-sub { margin: 5px 0 0; color: var(--muted); }
+    .grid { display: grid; gap: 14px; }
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .grid-2 { grid-template-columns: repeat(2, 1fr); }
+    .card {
+      padding: 21px; border: 1px solid var(--line); border-radius: var(--radius);
+      background: linear-gradient(145deg, rgba(23,37,59,.92), rgba(18,29,48,.92));
+    }
+    .card p { margin: 6px 0 0; color: var(--muted); }
+    .metric { font-size: 28px; font-weight: 800; letter-spacing: -.04em; }
+    .metric-label { color: var(--muted); font-size: 13px; }
+    .status { margin-bottom: 12px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; }
+    .status.red { color: var(--red); }
+    .status.yellow { color: var(--yellow); }
+    .status.green { color: var(--green); }
+    .status.blue { color: var(--blue); }
+    .list { display: grid; gap: 10px; padding: 0; margin: 14px 0 0; list-style: none; }
+    .list li { position: relative; padding-left: 22px; color: var(--muted); }
+    .list li::before { content: "›"; position: absolute; left: 3px; color: var(--cyan); font-weight: 800; }
+    .steps { display: grid; gap: 10px; padding-left: 21px; margin: 14px 0 0; color: var(--muted); }
+    .phase {
+      display: grid; grid-template-columns: 72px 1fr; gap: 17px;
+      padding: 20px 0; border-top: 1px solid var(--line);
+    }
+    .phase-number { color: var(--cyan); font-size: 26px; font-weight: 850; }
+    .phase-title { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .phase-title h3 { margin: 0; }
+    .phase p { margin: 7px 0 0; color: var(--muted); }
+    .phase ul { display: grid; gap: 8px; margin: 12px 0 0; padding-left: 20px; color: var(--muted); }
+    .checklist { display: grid; gap: 9px; margin-top: 15px; }
+    .check {
+      display: grid; grid-template-columns: 20px 1fr; gap: 11px; align-items: start;
+      padding: 12px 13px; border: 1px solid var(--line); border-radius: 13px;
+      background: rgba(255,255,255,.02); color: var(--muted);
+    }
+    .check input { margin-top: 5px; accent-color: var(--cyan); }
+    .check:has(input:checked) { border-color: rgba(121,226,178,.32); color: var(--text); }
+    .check strong { display: block; color: var(--text); font-size: 14px; }
+    .check small { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
+    .progress-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 15px 0 8px; color: var(--muted); font-size: 12px; }
+    .progress { height: 7px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,.09); }
+    .progress span { display: block; width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--cyan), var(--green)); transition: width .2s ease; }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+    table { width: 100%; min-width: 700px; border-collapse: collapse; background: rgba(18,29,48,.8); }
+    th, td { padding: 14px 16px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .09em; }
+    td { color: var(--muted); }
+    td:first-child { color: var(--text); font-weight: 700; }
+    tr:last-child td { border-bottom: 0; }
+    .decision { border-left: 3px solid var(--blue); }
+    .refs { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+    .refs a { padding: 7px 10px; border-radius: 9px; background: rgba(96,225,232,.07); font-size: 12px; }
+    .footer { margin-top: 35px; padding: 28px 0 42px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+    .reset { border: 1px solid var(--line); border-radius: 9px; padding: 7px 10px; background: transparent; color: var(--muted); cursor: pointer; }
+    @media (max-width: 760px) {
+      .wrap { width: min(100% - 28px, 600px); }
+      .topbar-inner { align-items: flex-start; flex-direction: column; padding: 12px 0; gap: 8px; }
+      nav { width: 100%; }
+      .hero { padding-top: 42px; }
+      .grid-3, .grid-2 { grid-template-columns: 1fr; }
+      .banner { grid-template-columns: 1fr; gap: 5px; }
+      .phase { grid-template-columns: 42px 1fr; gap: 9px; }
+    }
+    @media print {
+      :root { color-scheme: light; --bg: white; --surface: white; --surface-2: white; --text: #172033; --muted: #455267; --line: #d6deea; --cyan: #087e88; --blue: #315ca8; --green: #167449; --yellow: #966100; --red: #a42b39; }
+      body { background: white; color: var(--text); }
+      .topbar { position: static; background: white; }
+      nav, .reset { display: none; }
+      .card, table { background: white; }
+      .banner { background: #fff8e9; }
+      a { color: #075d68; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a class="brand" href="#top">URIONA<span>.</span> PLAN</a>
+      <nav aria-label="Навигация по плану">
+        <a href="#status">Статус</a>
+        <a href="#domain-app">Домен и МП</a>
+        <a href="#business">Бизнес</a>
+        <a href="#roadmap">Этапы</a>
+        <a href="#technical">Техника</a>
+        <a href="#release">Релиз</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top" class="wrap">
+    <div class="hero">
+      <div class="eyebrow">План запуска · версия 1.0</div>
+      <h1>От работающего каталога — к безопасным первым продажам</h1>
+      <p class="lead">Практический бизнес- и технический план Uriona: что решить, что сделать в продукте и backend, как проверить доставку и когда открывать оплату реальным покупателям.</p>
+      <div class="hero-meta">
+        <span class="pill"><span class="dot"></span> Рекомендация: пока не открывать реальный checkout</span>
+        <span class="pill">Снимок аудита: 5 октября 2026</span>
+        <span class="pill">Цель: ограниченный пилот в Узбекистане</span>
+      </div>
+    </div>
+
+    <div class="banner">
+      <div class="banner-icon">⚠</div>
+      <div>
+        <strong>Ключевой вывод</strong>
+        <p>Сборки frontend и CRM проходят, но пользовательский путь покупки пока не завершён: заказ создаётся в статусе ожидания оплаты, при этом покупательский запуск платежа не предоставлен. Сначала выберите модель исполнения и один платёжный способ, проведите тестовые сделки, затем открывайте продажи. Cainiao не должен быть условием старта, если подтверждена и отрепетирована ручная доставка.</p>
+      </div>
+    </div>
+
+    <section id="status">
+      <div class="section-head">
+        <div>
+          <h2>Где мы сейчас</h2>
+          <p class="section-sub">Проверенное состояние проекта, а не обещание готовности.</p>
+        </div>
+      </div>
+      <div class="grid grid-3">
+        <article class="card">
+          <div class="status green">Готово / подтверждено</div>
+          <div class="metric">3 / 3</div>
+          <div class="metric-label">проверенные production-сборки</div>
+          <ul class="list">
+            <li>Backend build прошёл ранее.</li>
+            <li>Frontend и CRM production build прошли.</li>
+            <li>Prisma Client и схема проверены ранее.</li>
+          </ul>
+        </article>
+        <article class="card">
+          <div class="status red">Блокер продаж</div>
+          <div class="metric">0</div>
+          <div class="metric-label">автоматизированных сквозных тестов backend</div>
+          <ul class="list">
+            <li>В проекте нет файлов тестов.</li>
+            <li>Создание заказа есть, оплата из checkout не подключена.</li>
+            <li>Paynet `PerformTransaction` не реализован.</li>
+          </ul>
+        </article>
+        <article class="card">
+          <div class="status yellow">Cainiao — не подтверждено</div>
+          <div class="metric">Manual</div>
+          <div class="metric-label">трекинг сейчас обновляет CRM-пользователь</div>
+          <ul class="list">
+            <li>Есть модель хранения и контракт; live-клиента нет.</li>
+            <li>Последний известный аудит доступа был «на рассмотрении»; проверьте актуальный статус в кабинете.</li>
+            <li>Нужны тестовые данные и подтверждение маршрута в Узбекистан.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section id="domain-app">
+      <div class="section-head">
+        <div>
+          <h2>Домен и мобильное приложение</h2>
+          <p class="section-sub">Домен куплен, веб-сайт уже размещён — осталось правильно соединить DNS и хостинг. Android-приложение пока прототип.</p>
+        </div>
+      </div>
+      <div class="grid grid-2">
+        <article class="card">
+          <div class="status yellow">DNS-записи внесены · Airnet/Render ещё не завершили публикацию</div>
+          <h3>Что сейчас видно</h3>
+          <ul class="list">
+            <li>Веб-витрина уже открывается на <code>https://uriona-frontend.onrender.com</code>.</li>
+            <li>В Airnet сохранены A-запись <code>uriona.uz</code> → <code>216.24.57.1</code> и CNAME <code>www</code> → <code>uriona-frontend.onrender.com</code>; NS и другие DNS-записи не удалялись.</li>
+            <li>В Render оба домена отмечены Verified, но сертификаты пока имеют статус Certificate Error. Последняя внешняя и авторитетная DNS-проверка всё ещё видела старый IP <code>176.96.243.100</code>; HTTPS домена не отвечал. Запрос в Airnet уже отправлен владельцем домена.</li>
+            <li>Платная корпоративная почта пока не нужна и не является блокером веб-запуска. Не покупайте её сейчас. Если доменная почта понадобится позже, сначала запросите у Airnet MX/SPF/DKIM-параметры; текущие DNS MX/mail-записи требуют проверки и не должны меняться наугад.</li>
+            <li>API остаётся на `https://uriona-api.onrender.com`; это отдельный backend, не направляйте корневой домен на API.</li>
+          </ul>
+        </article>
+        <article class="card">
+          <div class="status blue">Подключение сайта · сделать в панели домена и Render</div>
+          <h3>Последовательность без риска для почты</h3>
+          <ol class="steps">
+            <li>Обе записи уже добавлены в Airnet, а оба домена — в Render. Запрос на обновление DNS отправлен в поддержку Airnet; повторно записи не добавляйте.</li>
+            <li>Дождитесь, пока авторитетные и публичные DNS-проверки начнут показывать новую A/CNAME-запись вместо <code>176.96.243.100</code>.</li>
+            <li>В Render повторно проверьте домены и дождитесь статуса Certificate Issued/Active. Пока указано Certificate Error, домен нельзя считать запущенным.</li>
+            <li>Доменную почту пока отложить. Если решите подключать её позже, сначала получите точные MX/SPF/DKIM записи у Airnet и настройте их отдельно от веб-записей.</li>
+            <li>В настройках frontend build задайте <code>VITE_API_URL=https://uriona-api.onrender.com/api/v1</code> и Firebase Web App config, если Firebase включён; пересоберите сайт. В backend <code>FRONTEND_URL</code> внесите точные production-origin витрины и CRM.</li>
+          </ol>
+          <p><strong>DNS-записи сайта внесены, но внешняя проверка и HTTPS ещё не завершены.</strong> Ждём ответ Airnet и не меняем NS или почтовые записи наугад. Оплата корпоративной почты для этого шага не требуется.</p>
+          <p><a href="https://render.com/docs/custom-domains" target="_blank" rel="noreferrer">Официальная инструкция Render по custom domains</a></p>
+        </article>
+        <article class="card">
+          <div class="status yellow">МП · Android-приложение не готово к публикации</div>
+          <h3>Что уже есть в коде</h3>
+          <p>Есть отдельный Android-проект на Kotlin/Jetpack Compose: базовые экраны каталога, категорий, корзины и профиля, а также заготовка сетевого слоя.</p>
+          <ul class="list">
+            <li>API в мобильном клиенте пока настроен на эмулятор: <code>http://10.0.2.2:8000/api/v1</code> — на опубликованном телефоне это не production API.</li>
+            <li>При ошибке API клиент молча показывает демо-товары; доставка жёстко задана как 35 000 UZS, кнопка заказа пустая, профиль содержит демонстрационные данные.</li>
+            <li>В этом проекте не подтверждены production-вход, оформление заказа, оплата, трекинг, release-подпись и сборка для магазина приложений.</li>
+            <li>iOS-приложение в репозитории не обнаружено.</li>
+          </ul>
+        </article>
+        <article class="card">
+          <div class="status green">Рекомендация · сначала адаптивный сайт</div>
+          <h3>Что делать с МП дальше</h3>
+          <p>Сначала подключить <code>uriona.uz</code> и довести web-покупку до пилота: у адаптивной витрины уже есть backend-интеграция каталога AliExpress. Затем перевести Android-приложение на те же production API-контракты и реальные цены/доставку.</p>
+          <ul class="list">
+            <li>Убрать демо-данные и фальшивые цены/доставку; ошибки сети показывать явно.</li>
+            <li>Реализовать вход, корзину, адрес, checkout, подтверждение оплаты, список заказов и трекинг.</li>
+            <li>Добавить конфигурацию окружений, безопасную обработку токенов, тесты, иконки, политику приватности и release signing.</li>
+            <li>Собрать подписанный Android release, провести тестирование на реальных устройствах и только потом готовить публикацию в Google Play.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section id="business">
+      <div class="section-head">
+        <div>
+          <h2>Бизнес-план: сначала договориться о модели</h2>
+          <p class="section-sub">Небольшой управляемый запуск лучше обещаний, которые команда пока не может выполнить.</p>
+        </div>
+      </div>
+      <div class="grid grid-2">
+        <article class="card decision">
+          <div class="status blue">Решение 1 · до разработки оплаты</div>
+          <h3>Как именно выполняем заказ?</h3>
+          <p>Для пилота рекомендую начать с ручной закупки/передачи поставщику и ручного трекинга, если это операционно подтверждено. Не обещать автоматическое оформление AliExpress или доставку Cainiao, пока нет рабочего процесса и SLA.</p>
+        </article>
+        <article class="card decision">
+          <div class="status blue">Решение 2 · до приёма денег</div>
+          <h3>Какой один канал оплаты запускаем первым?</h3>
+          <p>Выберите Click или Payme по договору, доступности тестового кабинета и фактической аудитории. Не включать оба сразу без необходимости; Paynet оставить выключенным до завершения его реализации и сертификации.</p>
+        </article>
+        <article class="card">
+          <div class="status yellow">Экономика заказа</div>
+          <h3>Считать прибыль до обещания цены</h3>
+          <p>Для каждой категории зафиксировать формулу: цена товара + комиссия/закупка + доставка + конвертация/платёжная комиссия + возвраты/потери + поддержка. Определить минимальную маржу и резерв на курсовые колебания.</p>
+        </article>
+        <article class="card">
+          <div class="status yellow">Операционные правила</div>
+          <h3>Написать понятные условия для покупателя</h3>
+          <p>Сроки — диапазоном и с оговоркой по таможне; правила отмены и возврата; порядок при недоступности товара; кто отвечает за поддержку и как эскалировать потерянную посылку.</p>
+        </article>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <h3>Метрики пилота</h3>
+        <div class="table-wrap" style="margin-top:12px">
+          <table>
+            <thead><tr><th>Метрика</th><th>Что измерять</th><th>Критерий перехода к следующему этапу</th></tr></thead>
+            <tbody>
+              <tr><td>Успешная оплата</td><td>Оплаченные заказы / начатые попытки оплаты</td><td>Нет заказов, отмеченных оплаченными без подтверждённого callback и сверки</td></tr>
+              <tr><td>Экономика</td><td>Фактическая маржа по закрытому заказу</td><td>Маржа положительная с учётом комиссии, доставки и возвратного резерва</td></tr>
+              <tr><td>Исполнение</td><td>Время от оплаты до закупки, отправки и доставки</td><td>Фактические сроки соответствуют опубликованным условиям либо корректно обновляются</td></tr>
+              <tr><td>Поддержка</td><td>Время ответа, обращения по заказу, причины возвратов</td><td>Назначен владелец каждого обращения и рабочий сценарий эскалации</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="roadmap">
+      <div class="section-head">
+        <div>
+          <h2>План по этапам</h2>
+          <p class="section-sub">Переходить дальше только после выполнения критериев выхода.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-number">00</div>
+        <div>
+          <div class="phase-title"><h3>Зафиксировать бизнес-решения</h3><span class="tag">Сейчас · владелец продукта + операции</span></div>
+          <p>Определить первую аудиторию и ассортимент пилота, ручной/автоматический процесс закупки и доставки, географию, публичные сроки, правила отмены/возврата и владельца поддержки. Выбрать одного платёжного провайдера.</p>
+          <ul><li><b>Выход:</b> одностраничные условия пилота, схема денег и ответственности, выбранный платёжный канал.</li><li><b>Не делать:</b> заявлять Cainiao/Paynet как готовые функции без подтверждения.</li></ul>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-number">01</div>
+        <div>
+          <div class="phase-title"><h3>Закрыть минимальный платёжный путь</h3><span class="tag">Backend + frontend</span></div>
+          <p>Соединить checkout с созданием платёжной сессии выбранного провайдера; проверить подпись callback, точную сумму/валюту и привязку к заказу; обработать повторные уведомления, таймауты, отмены и сверку.</p>
+          <ul><li><b>Выход:</b> тестовый заказ проходит от checkout до подтверждённого платежа ровно один раз.</li><li>Оплаченный статус не выставляется из браузера или по возвращению пользователя со страницы провайдера.</li></ul>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-number">02</div>
+        <div>
+          <div class="phase-title"><h3>Прогнать закрытый операционный пилот</h3><span class="tag">Команда + приглашённые тестировщики</span></div>
+          <p>Оформить несколько тестовых/контролируемых заказов по реальному бизнес-процессу. Проверить закупку, импорт/доставку, сообщения покупателю, задержки, отмены и возврат денег.</p>
+          <ul><li><b>Выход:</b> закрытая сверка денег и заказов; подтверждены фактические расходы, сроки и ответственные.</li><li>Если используется ручная доставка — фиксировать перевозчика и трек в CRM, сообщать покупателю.</li></ul>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-number">03</div>
+        <div>
+          <div class="phase-title"><h3>Открыть ограниченный запуск</h3><span class="tag">Только после Go/No-Go</span></div>
+          <p>Включить ограниченный ассортимент и понятный лимит заказов. Ежедневно сверять оплаченные заказы с провайдером и процессом исполнения; временно отключать продажи при поломке оплаты или доставки.</p>
+          <ul><li><b>Выход:</b> несколько последовательных недель без неразобранных расхождений по деньгам и заказам, с приемлемой фактической маржой и SLA.</li></ul>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-number">04</div>
+        <div>
+          <div class="phase-title"><h3>Автоматизировать Cainiao и масштабировать</h3><span class="tag">После доказанного ручного сценария</span></div>
+          <p>Подтвердить права и применимость API, получить документацию/тестовый контур, собрать обязательные отправительские, parcel и таможенные данные; реализовать подпись, идемпотентность, повторные попытки и безопасное хранение ярлыков.</p>
+          <ul><li><b>Выход:</b> сквозная тестовая отправка в Узбекистан, отмена, трекинг и сверка статусов проверены до production.</li></ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="technical">
+      <div class="section-head">
+        <div>
+          <h2>Технический план и критерии готовности</h2>
+          <p class="section-sub">Отмечайте пункты прямо в этом файле; состояние сохраняется в браузере на этом устройстве.</p>
+        </div>
+        <button class="reset" id="reset-checks" type="button">Сбросить отметки</button>
+      </div>
+      <div class="grid grid-2">
+        <article class="card">
+          <div class="status red">P0 · до приёма оплаты</div>
+          <h3>Checkout и платёжный callback</h3>
+          <div class="checklist">
+            <label class="check"><input type="checkbox" data-id="pay-provider"><span><strong>Выбран один провайдер и получены тестовые реквизиты</strong><small>Click или Payme — по договору и условиям продавца.</small></span></label>
+            <label class="check"><input type="checkbox" data-id="pay-init"><span><strong>Backend создаёт платёж и отдаёт безопасное перенаправление/инструкцию</strong><small>Проверяются владелец заказа, сумма, валюта и допустимый статус.</small></span></label>
+            <label class="check"><input type="checkbox" data-id="pay-callback"><span><strong>Callback аутентифицирован и идемпотентен</strong><small>Неверная подпись отклоняется; повторы не дублируют оплату или ledger.</small></span></label>
+            <label class="check"><input type="checkbox" data-id="pay-reconcile"><span><strong>Работают отмена, возврат и ежедневная сверка</strong><small>Сверяются сумма, валюта, transaction reference и состояние заказа.</small></span></label>
+            <label class="check"><input type="checkbox" data-id="pay-ui"><span><strong>UI показывает реальные статусы и понятный сценарий ошибки</strong><small>Возврат на сайт сам по себе не означает, что платёж успешен.</small></span></label>
+          </div>
+        </article>
+        <article class="card">
+          <div class="status yellow">P1 · до открытия пилота</div>
+          <h3>Качество, операции, безопасность</h3>
+          <div class="checklist">
+            <label class="check"><input type="checkbox" data-id="tests"><span><strong>Добавлены тесты критических сценариев</strong><small>Заказ, валидный/невалидный callback, повтор callback, возврат и права CRM.</small></span></label>
+            <label class="check"><input type="checkbox" data-id="cors"><span><strong>CORS ограничен точными доменами production</strong><small>Не разрешать все preview-поддомены Render без явной необходимости.</small></span></label>
+            <label class="check"><input type="checkbox" data-id="health"><span><strong>Добавлен readiness-check базы данных и мониторинг ошибок</strong><small>Проверить алерты, логи без секретов/лишних персональных данных и владельца инцидента.</small></span></label>
+            <label class="check"><input type="checkbox" data-id="backup"><span><strong>Проверены backup, восстановление и миграции</strong><small>Сделать тест восстановления; определить окно обслуживания и откат релиза.</small></span></label>
+            <label class="check"><input type="checkbox" data-id="secrets"><span><strong>Сверены production env и секреты</strong><small>Значения только в secret manager/панели хостинга; никаких секретов в frontend.</small></span></label>
+          </div>
+        </article>
+        <article class="card">
+          <div class="status yellow">P1 · продуктовые данные</div>
+          <h3>Цена, товар, адрес, поддержка</h3>
+          <div class="checklist">
+            <label class="check"><input type="checkbox" data-id="price"><span><strong>Согласована формула цены и валютный резерв</strong><small>Проверить округления, доставку, комиссии и фактическую маржу на тестовой покупке.</small></span></label>
+            <label class="check"><input type="checkbox" data-id="catalog"><span><strong>Проверены права на товарные данные и изображения</strong><small>Понятны актуальность наличия/цены, ограничения поставщика и пользовательские обещания.</small></span></label>
+            <label class="check"><input type="checkbox" data-id="terms"><span><strong>Опубликованы условия заказа, отмены, возврата и обработки данных</strong><small>Условия согласованы с реальным маршрутом и обязательствами компании.</small></span></label>
+            <label class="check"><input type="checkbox" data-id="support"><span><strong>Назначен ответственный за поддержку и исполнение каждого заказа</strong><small>Есть контакт, часы ответа, шаблоны уведомлений и разбор задержки/утраты.</small></span></label>
+          </div>
+        </article>
+        <article class="card">
+          <div class="status blue">P2 · автоматизация доставки</div>
+          <h3>Cainiao — включать отдельно</h3>
+          <div class="checklist">
+            <label class="check"><input type="checkbox" data-id="cainiao-access"><span><strong>Права и чувствительные поля одобрены; статус проверен в консоли</strong><small>История «на рассмотрении» — только последнее известное состояние, перепроверьте его.</small></span></label>
+            <label class="check"><input type="checkbox" data-id="cainiao-docs"><span><strong>Получены спецификация, sandbox и подтверждение маршрута в Узбекистан</strong><small>Уточнить gateway, подпись, resource code, поля и назначение конкретных API.</small></span></label>
+            <label class="check"><input type="checkbox" data-id="cainiao-data"><span><strong>Собираются sender, parcel и таможенные данные</strong><small>Адрес склада/отправителя, вес/габариты, HS-код, происхождение и declared value.</small></span></label>
+            <label class="check"><input type="checkbox" data-id="cainiao-flow"><span><strong>Проверены создание, повторы, отмена, tracking и ярлык</strong><small>Создание отправления доступно только после подтверждённой оплаты; секреты и персональные данные защищены.</small></span></label>
+          </div>
+        </article>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <div class="progress-row"><span>Прогресс отмеченных технических пунктов</span><strong id="progress-label">0 / 18</strong></div>
+        <div class="progress" aria-label="Прогресс чек-листа"><span id="progress-bar"></span></div>
+      </div>
+    </section>
+
+    <section id="release">
+      <div class="section-head">
+        <div>
+          <h2>Решение о запуске</h2>
+          <p class="section-sub">Объективные ворота вместо решения «кажется, уже готово».</p>
+        </div>
+      </div>
+      <div class="grid grid-3">
+        <article class="card">
+          <div class="status red">NO-GO · сейчас</div>
+          <h3>Не принимать реальные заказы с оплатой</h3>
+          <p>Пока нет завершённой оплаты из checkout и проверенного пути от денег до исполнения. Не направлять публичный трафик на рабочий сценарий покупки.</p>
+        </article>
+        <article class="card">
+          <div class="status yellow">GO · закрытый пилот</div>
+          <h3>Можно после P0 и операционной репетиции</h3>
+          <p>Тестовые/приглашённые пользователи, малый лимит, выбранный способ доставки, ответственный оператор, возврат проверен, сверка проводится ежедневно.</p>
+        </article>
+        <article class="card">
+          <div class="status green">GO · шире публике</div>
+          <h3>После устойчивого пилота</h3>
+          <p>Платежи сверяются, деньги и статусы не расходятся, фактическая маржа приемлема, поддержка и возвраты работают, backup/мониторинг проверены.</p>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <div class="card">
+        <h2 style="font-size:24px">Рабочие ссылки проекта</h2>
+        <p class="section-sub">Исходные материалы, на которых основан план.</p>
+        <div class="refs">
+          <a href="../backend/README.md">Статус интеграций и доставка</a>
+          <a href="../render.yaml">Конфигурация Render</a>
+          <a href="../.github/workflows/ci.yml">Текущий CI</a>
+          <a href="../backend/src/modules/integrations/payments/payments.controller.ts">Payment endpoints</a>
+          <a href="../backend/src/modules/integrations/payments/paynet.service.ts">Paynet service</a>
+          <a href="../backend/src/main.ts">CORS и запуск API</a>
+          <a href="../backend/src/health.controller.ts">Health endpoint</a>
+          <a href="../backend/prisma/schema.prisma">Prisma schema</a>
+        </div>
+      </div>
+    </section>
+    <footer class="footer">
+      <div>Uriona · внутренний рабочий план · обновить после выбора платёжного провайдера и проверки статуса Cainiao.</div>
+      <div>Чекбоксы сохраняются локально в браузере. Для печати: Ctrl+P → «Сохранить как PDF».</div>
+    </footer>
+  </main>
+  <script>
+    (() => {
+      const checks = Array.from(document.querySelectorAll('input[type="checkbox"][data-id]'));
+      const storageKey = "uriona-production-plan-checks-v1";
+      const label = document.getElementById("progress-label");
+      const bar = document.getElementById("progress-bar");
+      const update = () => {
+        const completed = checks.filter((item) => item.checked).length;
+        label.textContent = `${completed} / ${checks.length}`;
+        bar.style.width = `${checks.length ? completed / checks.length * 100 : 0}%`;
+        const state = Object.fromEntries(checks.map((item) => [item.dataset.id, item.checked]));
+        localStorage.setItem(storageKey, JSON.stringify(state));
+      };
+      try {
+        const saved = JSON.parse(localStorage.getItem(storageKey) || "{}");
+        checks.forEach((item) => { item.checked = saved[item.dataset.id] === true; });
+      } catch {
+        localStorage.removeItem(storageKey);
+      }
+      checks.forEach((item) => item.addEventListener("change", update));
+      document.getElementById("reset-checks").addEventListener("click", () => {
+        checks.forEach((item) => { item.checked = false; });
+        update();
+      });
+      update();
+    })();
+  </script>
+</body>
+</html>
