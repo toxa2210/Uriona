@@ -1,1 +1,7 @@
-import { Module } from "@nestjs/common"; import { AuthModule } from "../auth/auth.module"; import { OrdersModule } from "../orders/orders.module"; import { CheckoutController } from "./checkout.controller"; @Module({imports:[AuthModule,OrdersModule],controllers:[CheckoutController]}) export class CheckoutModule {}
+import { Module } from "@nestjs/common";
+import { CheckoutController } from "./checkout.controller";
+
+@Module({
+  controllers: [CheckoutController]
+})
+export class CheckoutModule {}
