@@ -1,1 +1,6 @@
-import {defineConfig} from "vite";import react from "@vitejs/plugin-react";export default defineConfig({plugins:[react()],server:{host:true,port:5173,allowedHosts:["uriona.uz","www.uriona.uz"]}});
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+
+export default defineConfig({
+  plugins: [react()],
+});
