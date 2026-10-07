@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { ConfigService } from "@nestjs/config";
 import { PaymentsService } from "./payments.service";
 
@@ -13,7 +14,9 @@ export class PaymeService {
     if (!header?.startsWith("Basic ") || !key) return false;
     const decoded = Buffer.from(header.slice(6), "base64").toString("utf8");
     const [, password] = decoded.split(":");
-    return password === key;
+    const expectedHash = createHash("sha256").update(key).digest();
+    const providedHash = createHash("sha256").update(password ?? "").digest();
+    return timingSafeEqual(expectedHash, providedHash);
   }
 
   private rpc(id: RpcRequest["id"], result: unknown) {
@@ -111,6 +114,25 @@ export class PaymeService {
   }
 
   private async statement(req: RpcRequest) {
-    return this.rpc(req.id, { transactions: [] });
+    const from = Number(req.params?.from ?? 0);
+    const to = Number(req.params?.to ?? Date.now());
+    if (!Number.isFinite(from) || !Number.isFinite(to) || from < 0 || to < from) {
+      return this.error(req.id, -31000, "Invalid period");
+    }
+    const payments = await this.payments.listProviderPayments("payme", new Date(from), new Date(to));
+    return this.rpc(req.id, {
+      transactions: payments.map((payment) => ({
+        id: payment.externalRef,
+        time: payment.createdAt.getTime(),
+        amount: payment.amountMinor * 100,
+        account: { order_id: payment.orderId },
+        create_time: payment.createdAt.getTime(),
+        perform_time: payment.status === "PAID" ? payment.updatedAt.getTime() : 0,
+        cancel_time: payment.status === "REFUNDED" ? payment.updatedAt.getTime() : 0,
+        transaction: payment.id,
+        state: payment.status === "PAID" ? 2 : payment.status === "REFUNDED" ? -1 : 1,
+        reason: null
+      }))
+    });
   }
 }

@@ -43,6 +43,13 @@ export class PaymentsService {
     });
   }
 
+  async listProviderPayments(provider: string, from: Date, to: Date) {
+    return this.prisma.payment.findMany({
+      where: { provider, createdAt: { gte: from, lte: to } },
+      orderBy: { createdAt: "asc" }
+    });
+  }
+
   async findByProviderRef(provider: string, externalRef: string) {
     return this.prisma.payment.findUnique({
       where: { provider_externalRef: { provider, externalRef } }
