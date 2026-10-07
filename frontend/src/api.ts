@@ -22,6 +22,10 @@ export type ApiProduct = {
   status: string;
   imageUrl?: string | null;
   category?: ApiCategory | null;
+  orders?: string;
+  brandName?: string | null;
+  attributes?: string | null;
+  inStock?: boolean;
 };
 export type ApiOption = { id: string; name: string; parentId: string | null };
 export type ProductList = { items: ApiProduct[]; page: number; limit: number; total: number; pages: number };
