@@ -12,11 +12,23 @@ type AliExpressTokenResponse = {
   refresh_expires_in?: number | string;
 };
 
+export type AliExpressFreightOption = {
+  code: string;
+  company: string;
+  feeFormat: string;
+  currency: string;
+  feeUzsMinor: number;
+  minDeliveryDays: string;
+  maxDeliveryDays: string;
+  tracking: boolean | null;
+};
+
 @Injectable()
 export class AliexpressService {
   private readonly gateway: string;
   private readonly timeoutMs = 15_000;
   private refreshPromise?: Promise<string>;
+  private readonly currencyRateCache = new Map<string, { rate: number; expiresAt: number }>();
 
   constructor(private readonly config: ConfigService, private readonly prisma: PrismaService) {
     this.gateway = this.config.get<string>("ALIEXPRESS_API_URL") ?? "https://api-sg.aliexpress.com/sync";
@@ -335,6 +347,219 @@ export class AliexpressService {
       });
     }
     return data;
+  }
+
+  async marketplaceSkuForOrder(productId: string, selectedSkuId: string, quantity: number) {
+    if (!/^\d+$/.test(productId) || !/^\d+$/.test(selectedSkuId)) {
+      throw new BadRequestException("Marketplace product and SKU IDs must be numeric");
+    }
+    if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 999) {
+      throw new BadRequestException("quantity must be an integer between 1 and 999");
+    }
+
+    const payload = await this.call("aliexpress.ds.product.get", {
+      product_id: productId,
+      ship_to_country: "UZ",
+      target_currency: "UZS",
+      target_language: "ru_RU",
+      remove_personal_benefit: "true"
+    }, true);
+    const root = this.asRecord(payload);
+    const response = this.asRecord(root.aliexpress_ds_product_get_response ?? root);
+    const result = this.asRecord(response.result ?? response);
+    const base = this.asRecord(result.ae_item_base_info_dto);
+    const skus = this.asRecords(result.ae_item_sku_info_dtos);
+    const sku = skus.find((item) => this.readString(item, "sku_id", "id") === selectedSkuId);
+    if (!sku) throw new BadRequestException("The selected marketplace variant is no longer available");
+
+    const price = this.parseAmount(this.readString(sku, "offer_sale_price", "sku_price"));
+    const stockText = this.readString(sku, "sku_available_stock");
+    const stock = stockText ? Number(stockText) : Number.NaN;
+    if (!Number.isFinite(price) || price <= 0 || (stockText && (!Number.isFinite(stock) || stock < quantity))) {
+      throw new BadRequestException("The selected marketplace variant is out of stock or has no valid price");
+    }
+    return {
+      title: this.readString(base, "subject"),
+      unitPriceMinor: Math.round(price * 100)
+    };
+  }
+
+  async freightOptions(params: {
+    productId: string;
+    selectedSkuId: string;
+    quantity: string;
+    shipToCountry?: string;
+    currency?: string;
+    language?: string;
+    locale?: string;
+    provinceCode?: string;
+    cityCode?: string;
+  }): Promise<AliExpressFreightOption[]> {
+    if (!/^\d+$/.test(params.productId) || !/^\d+$/.test(params.selectedSkuId)) {
+      throw new BadRequestException("productId and selectedSkuId must be numeric AliExpress IDs");
+    }
+    const quantity = Number(params.quantity);
+    if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 999) {
+      throw new BadRequestException("quantity must be an integer between 1 and 999");
+    }
+    const shipToCountry = params.shipToCountry ?? "UZ";
+    const currency = params.currency ?? "USD";
+    const language = params.language ?? "ru_RU";
+    const locale = params.locale ?? "ru_RU";
+    if (!/^[A-Z]{2}$/.test(shipToCountry)) {
+      throw new BadRequestException("shipToCountry must be a two-letter uppercase country code");
+    }
+    if (!/^[A-Z]{3}$/.test(currency)) {
+      throw new BadRequestException("currency must be a three-letter uppercase currency code");
+    }
+    if (!/^[a-z]{2}_[A-Z]{2}$/.test(language) || !/^[a-z]{2}_[A-Z]{2}$/.test(locale)) {
+      throw new BadRequestException("language and locale must use the language_COUNTRY format");
+    }
+
+    const payload = await this.call("aliexpress.ds.freight.query", {
+      queryDeliveryReq: {
+        productId: params.productId,
+        selectedSkuId: params.selectedSkuId,
+        quantity: String(quantity),
+        shipToCountry,
+        currency,
+        language,
+        locale,
+        ...(params.provinceCode ? { provinceCode: params.provinceCode } : {}),
+        ...(params.cityCode ? { cityCode: params.cityCode } : {})
+      }
+    }, true);
+    const rawOptions = this.findFreightOptions(payload);
+    const options = await Promise.all(rawOptions.map(async (option) => {
+      const code = this.readString(option, "code", "deliveryOptionCode", "delivery_option_code");
+      if (!code) return null;
+      const feeFormat = this.readString(option, "shipping_fee_format", "shippingFeeFormat", "shipping_fee", "shippingFee");
+      const rawAmount = this.readString(option, "shipping_fee", "shippingFee", "shipping_fee_amount", "fee");
+      const amount = this.parseAmount(rawAmount || feeFormat);
+      const optionCurrency = this.readString(option, "currency", "currency_code")
+        || this.inferCurrency(feeFormat, currency);
+      if (!Number.isFinite(amount) || amount < 0) {
+        throw new ServiceUnavailableException(`AliExpress returned an invalid shipping fee for ${code}`);
+      }
+      const feeUzsMinor = await this.convertToUzsMinor(amount, optionCurrency);
+      const trackingValue = option.tracking ?? option.is_tracking;
+      return {
+        code,
+        company: this.readString(option, "company", "companyName", "company_name", "logistics_service_name") || code,
+        feeFormat,
+        currency: optionCurrency,
+        feeUzsMinor,
+        minDeliveryDays: this.readString(option, "min_delivery_days", "minDeliveryDays"),
+        maxDeliveryDays: this.readString(option, "max_delivery_days", "maxDeliveryDays"),
+        tracking: typeof trackingValue === "boolean"
+          ? trackingValue
+          : typeof trackingValue === "string" ? /^(true|yes|1)$/i.test(trackingValue) : null
+      } satisfies AliExpressFreightOption;
+    }));
+    return options.filter((option): option is AliExpressFreightOption => option !== null);
+  }
+
+  private asRecord(value: unknown): Record<string, unknown> {
+    return value && typeof value === "object" && !Array.isArray(value)
+      ? value as Record<string, unknown>
+      : {};
+  }
+
+  private asRecords(value: unknown): Record<string, unknown>[] {
+    if (Array.isArray(value)) return value.map((item) => this.asRecord(item));
+    const record = this.asRecord(value);
+    const nested = Object.values(record).find(Array.isArray);
+    return Array.isArray(nested) ? nested.map((item) => this.asRecord(item)) : [];
+  }
+
+  private readString(record: Record<string, unknown>, ...keys: string[]): string {
+    for (const key of keys) {
+      const value = record[key];
+      if ((typeof value === "string" || typeof value === "number") && String(value).trim()) {
+        return String(value).trim();
+      }
+    }
+    return "";
+  }
+
+  private parseAmount(value: string): number {
+    if (/\bfree\b/i.test(value)) return 0;
+    const cleaned = value.replace(/[^\d.,-]/g, "");
+    if (!cleaned) return Number.NaN;
+    const decimalSeparator = cleaned.lastIndexOf(".") > cleaned.lastIndexOf(",")
+      ? "."
+      : cleaned.lastIndexOf(",") > -1 ? "," : "";
+    const normalized = decimalSeparator
+      ? cleaned.replace(/[.,]/g, (separator, index) =>
+        separator === decimalSeparator && index === cleaned.lastIndexOf(decimalSeparator) ? "." : "")
+      : cleaned;
+    return Number(normalized);
+  }
+
+  private inferCurrency(value: string, fallback: string): string {
+    if (/\bUSD\b|US\s*\$|\$/.test(value)) return "USD";
+    if (/\bCNY\b|\bRMB\b|CN¥|¥/.test(value)) return "CNY";
+    if (/\bEUR\b|€/.test(value)) return "EUR";
+    if (/\bRUB\b|₽/.test(value)) return "RUB";
+    return fallback;
+  }
+
+  private findFreightOptions(payload: unknown): Record<string, unknown>[] {
+    const keys = new Set(["delivery_options", "deliveryOptions", "delivery_option_list", "deliveryOptionList", "options"]);
+    const visited = new Set<object>();
+    const find = (value: unknown, depth: number): Record<string, unknown>[] => {
+      if (!value || typeof value !== "object" || depth > 6 || visited.has(value)) return [];
+      visited.add(value);
+      if (Array.isArray(value)) return value.map((item) => this.asRecord(item));
+      const record = this.asRecord(value);
+      for (const [key, nested] of Object.entries(record)) {
+        if (keys.has(key) && Array.isArray(nested)) return nested.map((item) => this.asRecord(item));
+      }
+      for (const nested of Object.values(record)) {
+        const found = find(nested, depth + 1);
+        if (found.length) return found;
+      }
+      return [];
+    };
+    return find(payload, 0);
+  }
+
+  private async convertToUzsMinor(amount: number, currency: string): Promise<number> {
+    const normalizedCurrency = currency.toUpperCase();
+    let rate = 1;
+    if (normalizedCurrency !== "UZS") {
+      const cached = this.currencyRateCache.get(normalizedCurrency);
+      if (cached && cached.expiresAt > Date.now()) {
+        rate = cached.rate;
+      } else {
+        let response: Response;
+        try {
+          response = await fetch(`https://cbu.uz/uz/arkhiv-kursov-valyut/json/${encodeURIComponent(normalizedCurrency)}/`, {
+            signal: AbortSignal.timeout(8000),
+            headers: { Accept: "application/json" }
+          });
+        } catch {
+          throw new ServiceUnavailableException(`Unable to load the official ${normalizedCurrency}/UZS exchange rate`);
+        }
+        if (!response.ok) {
+          throw new ServiceUnavailableException(`The Central Bank did not provide a ${normalizedCurrency}/UZS exchange rate`);
+        }
+        const rows = await response.json() as Array<{ Rate?: string; Nominal?: string }>;
+        const row = Array.isArray(rows) ? rows[0] : undefined;
+        const officialRate = row?.Rate ? Number(row.Rate.replace(",", ".")) : Number.NaN;
+        const nominal = row?.Nominal ? Number(row.Nominal) : 1;
+        if (!Number.isFinite(officialRate) || officialRate <= 0 || !Number.isFinite(nominal) || nominal <= 0) {
+          throw new ServiceUnavailableException(`The Central Bank returned an invalid ${normalizedCurrency}/UZS exchange rate`);
+        }
+        rate = officialRate / nominal;
+        this.currencyRateCache.set(normalizedCurrency, { rate, expiresAt: Date.now() + 6 * 60 * 60 * 1000 });
+      }
+    }
+    const feeMinor = Math.round(amount * rate * 100);
+    if (!Number.isSafeInteger(feeMinor) || feeMinor < 0) {
+      throw new ServiceUnavailableException("The converted shipping fee exceeds the supported amount");
+    }
+    return feeMinor;
   }
 
   productDetails(productId: string, params: Record<string, string> = {}) {

@@ -36,6 +36,29 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum FinanceEntryType {
+  INCOME
+  EXPENSE
+}
+
+enum FinanceEntrySource {
+  MANUAL
+  PAYMENT
+  REFUND
+}
+
+enum CainiaoShipmentStatus {
+  PREPARED
+  SUBMITTING
+  ACCEPTED
+  LABEL_READY
+  IN_TRANSIT
+  DELIVERED
+  CANCEL_REQUESTED
+  CANCELLED
+  FAILED
+}
+
 model User {
   id            String         @id @default(cuid())
   phone         String?        @unique
@@ -53,6 +76,8 @@ model User {
   sessions      Session[]
   otpChallenges OtpChallenge[]
   cart          Cart?
+  trackingEvents OrderTrackingEvent[] @relation("TrackingEventActor")
+  financeEntries FinanceEntry[]       @relation("FinanceEntryActor")
 }
 
 model OtpChallenge {
@@ -134,48 +159,156 @@ model Product {
 }
 
 model Order {
-  id              String      @id @default(cuid())
-  userId          String
-  user            User        @relation(fields: [userId], references: [id])
-  status          OrderStatus @default(CREATED)
-  totalMinor      Int
-  currency        String      @default("UZS")
-  deliveryAddress String
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  items           OrderItem[]
-  payments        Payment[]
+  id                String               @id @default(cuid())
+  userId            String
+  user              User                 @relation(fields: [userId], references: [id])
+  status            OrderStatus          @default(CREATED)
+  totalMinor        Int
+  subtotalMinor     Int                  @default(0)
+  deliveryMinor     Int                  @default(0)
+  discountMinor     Int                  @default(0)
+  promoCode         String?
+  currency          String               @default("UZS")
+  recipientName     String?
+  recipientPhone    String?
+  deliveryCity      String?
+  deliveryAddress   String
+  shippingCarrier   String?
+  trackingNumber    String?
+  trackingUpdatedAt DateTime?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  items             OrderItem[]
+  payments          Payment[]
+  trackingEvents    OrderTrackingEvent[]
+  financeEntries    FinanceEntry[]
+  cainiaoShipments  CainiaoShipment[]
 
   @@index([userId])
   @@index([status])
+  @@index([trackingNumber])
 }
 
 model OrderItem {
-  id            String  @id @default(cuid())
-  orderId       String
-  order         Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId     String
-  product       Product @relation(fields: [productId], references: [id])
-  quantity      Int
-  unitPriceMinor Int
+  id                    String  @id @default(cuid())
+  orderId               String
+  order                 Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId             String
+  product               Product @relation(fields: [productId], references: [id])
+  quantity              Int
+  unitPriceMinor        Int
+  supplierProductId     String?
+  supplierSkuId         String?
+  productTitle          String?
+  variantLabel          String?
+  imageUrl              String?
+  shippingOptionCode    String?
+  shippingFeeMinor      Int?
+  shippingCompany       String?
+  shippingFeeFormat     String?
+  shippingCurrency      String?
+  shippingMinDays       String?
+  shippingMaxDays       String?
+  shippingTracking      Boolean?
+  shippingQuoteQuantity Int?
 
   @@index([orderId])
 }
 
 model Payment {
-  id          String        @id @default(cuid())
-  orderId     String
-  order       Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  provider    String
-  externalRef String?
-  amountMinor Int
-  currency    String
-  status      PaymentStatus @default(PENDING)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id             String         @id @default(cuid())
+  orderId        String
+  order          Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider       String
+  externalRef    String?
+  amountMinor    Int
+  currency       String
+  status         PaymentStatus  @default(PENDING)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  financeEntries FinanceEntry[]
 
   @@index([orderId])
   @@unique([provider, externalRef])
+}
+
+model OrderTrackingEvent {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status      String
+  description String
+  location    String?
+  occurredAt  DateTime
+  createdAt   DateTime @default(now())
+  createdById String?
+  createdBy   User?    @relation("TrackingEventActor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([orderId, occurredAt])
+}
+
+model FinanceEntry {
+  id          String             @id @default(cuid())
+  type        FinanceEntryType
+  source      FinanceEntrySource @default(MANUAL)
+  category    String
+  description String
+  amountMinor Int
+  currency    String             @default("UZS")
+  occurredAt  DateTime           @default(now())
+  referenceId String?
+  paymentId   String?
+  payment     Payment?           @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  orderId     String?
+  order       Order?             @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  createdById String?
+  createdBy   User?              @relation("FinanceEntryActor", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime           @default(now())
+
+  @@unique([source, referenceId])
+  @@index([occurredAt])
+  @@index([type, occurredAt])
+  @@index([paymentId])
+  @@index([orderId])
+}
+
+model CainiaoShipment {
+  id                       String                @id @default(cuid())
+  orderId                  String
+  order                    Order                 @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  idempotencyKey           String                @unique
+  requestFingerprint       String
+  status                   CainiaoShipmentStatus @default(PREPARED)
+  providerOrderReference   String?
+  waybillNumber            String?
+  carrierCode              String?
+  labelStorageKey          String?
+  providerErrorCode        String?
+  providerErrorMessage     String?
+  attemptCount             Int                   @default(0)
+  lastAttemptAt            DateTime?
+  createdAt                DateTime              @default(now())
+  updatedAt                DateTime              @updatedAt
+  trackingEvents           CainiaoTrackingEvent[]
+
+  @@index([orderId, status])
+  @@index([waybillNumber])
+  @@index([providerOrderReference])
+}
+
+model CainiaoTrackingEvent {
+  id              String         @id @default(cuid())
+  shipmentId      String
+  shipment        CainiaoShipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  providerEventId String?
+  status          String
+  description     String
+  location        String?
+  occurredAt      DateTime
+  createdAt       DateTime       @default(now())
+
+  @@unique([shipmentId, providerEventId])
+  @@index([shipmentId, occurredAt])
 }
 
 model AliexpressOAuthState {

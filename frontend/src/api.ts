@@ -22,6 +22,10 @@ export type ApiProduct = {
   status: string;
   imageUrl?: string | null;
   category?: ApiCategory | null;
+  orders?: string | null;
+  brandName?: string | null;
+  attributes?: string | null;
+  inStock?: boolean;
 };
 export type ApiOption = { id: string; name: string; parentId: string | null };
 export type ProductList = { items: ApiProduct[]; page: number; limit: number; total: number; pages: number };
@@ -133,6 +137,25 @@ export function mapMarketplaceGoods(payload: unknown, priceCurrency: "CNY" | "UZ
       goods.image_url,
       imageUrls.string
     ) || null;
+    const rawAttributes = goods.attributes ?? goods.product_attributes ?? goods.ae_item_properties;
+    const attributes = Array.isArray(rawAttributes)
+      ? rawAttributes.map((attribute) => {
+        const item = asObject(attribute);
+        return firstString(item.attrName, item.name, item.value, item.attrValue);
+      }).filter(Boolean).join(" ")
+      : typeof rawAttributes === "string" ? rawAttributes : "";
+    const rawStock = goods.in_stock ?? goods.inStock ?? goods.is_stock ?? goods.stock;
+    const inStock = typeof rawStock === "boolean"
+      ? rawStock
+      : typeof rawStock === "number"
+        ? rawStock > 0
+        : typeof rawStock === "string" && /^(true|yes|1)$/i.test(rawStock)
+          ? true
+          : typeof rawStock === "string" && /^(false|no|0)$/i.test(rawStock)
+            ? false
+            : typeof rawStock === "string" && /^\d+$/.test(rawStock)
+              ? Number(rawStock) > 0
+              : undefined;
     const product: ApiProduct = {
       id,
       categoryId,
@@ -144,6 +167,10 @@ export function mapMarketplaceGoods(payload: unknown, priceCurrency: "CNY" | "UZ
       priceMinor: Math.max(0, Math.round(price * (hasMarketplacePrice ? (priceCurrency === "UZS" ? 100 : CNY_TO_UZS * 100) : 1))),
       status: discount > 0 ? "sale" : "popular",
       imageUrl,
+      orders: firstString(goods.orders, goods.lastest_volume, goods.sales_volume) || null,
+      brandName: firstString(goods.brand_name, goods.brandName) || null,
+      attributes: attributes || null,
+      ...(inStock === undefined ? {} : { inStock }),
     };
     return [product];
   });
