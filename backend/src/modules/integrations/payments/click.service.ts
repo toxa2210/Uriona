@@ -1,6 +1,6 @@
 import { Injectable, ServiceUnavailableException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { createHash } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { PrismaService } from "../../../database/prisma.service";
 import { PaymentsService } from "./payments.service";
 
@@ -26,7 +26,9 @@ export class ClickService {
       ? common + `${body.merchant_prepare_id}${body.amount}${body.action}${body.sign_time}`
       : common + `${body.amount}${body.action}${body.sign_time}`;
 
-    return this.md5(raw) === String(body.sign_string ?? "");
+    const expected = Buffer.from(this.md5(raw), "utf8");
+    const provided = Buffer.from(String(body.sign_string ?? ""), "utf8");
+    return expected.length === provided.length && timingSafeEqual(expected, provided);
   }
 
   async handle(body: Record<string, unknown>) {

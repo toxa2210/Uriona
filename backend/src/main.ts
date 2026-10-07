@@ -13,10 +13,11 @@ async function bootstrap() {
     "https://uriona-frontend.onrender.com",
     ...(process.env.FRONTEND_URL?.split(",").map((value) => value.trim()) ?? [])
   ]);
+  // Exact origins only. Do NOT allow wildcard *.onrender.com — any Render site
+  // could otherwise call the API with user credentials.
   app.enableCors({
     origin: (requestOrigin, callback) => {
-      const isRenderPreview = requestOrigin?.endsWith(".onrender.com") ?? false;
-      callback(null, !requestOrigin || allowedOrigins.has(requestOrigin) || isRenderPreview);
+      callback(null, !requestOrigin || allowedOrigins.has(requestOrigin));
     },
     credentials: true
   });
