@@ -11,6 +11,46 @@ export class OrdersService {
     private readonly aliexpress: AliexpressService,
   ) {}
 
+  async quoteShipping(items: Array<{
+    productId: string;
+    supplierProductId: string;
+    supplierSkuId: string;
+    quantity: number;
+  }>) {
+    if (!items.length) {
+      throw new BadRequestException("Shipping quote must contain at least one item");
+    }
+    if (new Set(items.map((item) => item.productId)).size !== items.length) {
+      throw new BadRequestException("Duplicate quote items must be combined");
+    }
+
+    return Promise.all(items.map(async (item) => {
+      const currentSku = await this.aliexpress.marketplaceSkuForOrder(
+        item.supplierProductId,
+        item.supplierSkuId,
+        item.quantity,
+      );
+      const shippingOptions = await this.aliexpress.freightOptions({
+        productId: item.supplierProductId,
+        selectedSkuId: item.supplierSkuId,
+        quantity: String(item.quantity),
+        shipToCountry: "UZ",
+        currency: "UZS",
+        language: "ru_RU",
+        locale: "ru_RU",
+      });
+      return {
+        productId: item.productId,
+        supplierProductId: item.supplierProductId,
+        supplierSkuId: item.supplierSkuId,
+        quantity: item.quantity,
+        title: currentSku.title,
+        unitPriceMinor: currentSku.unitPriceMinor,
+        shippingOptions,
+      };
+    }));
+  }
+
   async create(input: {
     userId: string;
     deliveryAddress: string;

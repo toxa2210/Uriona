@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { createUserWithEmailAndPassword, getIdToken, reload, sendEmailVerification, sendPasswordResetEmail, signInWithEmailAndPassword, signOut } from "@firebase/auth";
 import type { User as FirebaseUser } from "@firebase/auth";
-import { ApiRequestError, api, formatUzs, mapMarketplaceCategories, mapMarketplaceGoods, type ApiCategory, type ApiOrder, type ApiProduct, type ApiUser } from "./api";
+import { ApiRequestError, api, formatUzs, mapMarketplaceCategories, mapMarketplaceGoods, type ApiCategory, type ApiOrder, type ApiProduct, type ApiShippingQuote, type ApiUser } from "./api";
 import { firebaseAuth, firebaseConfigReady } from "./firebase";
 import { productPopularity } from "./search";
 
@@ -471,9 +471,9 @@ const uiTranslations: Record<string, Partial<Record<Language, string>>> = Object
   "Как это работает": { en: "How it works", uz: "Bu qanday ishlaydi" },
   "Центр помощи": { en: "Help center", uz: "Yordam markazi" },
   "Как оформить заказ?": { en: "How do I place an order?", uz: "Buyurtmani qanday rasmiylashtiraman?" },
-  "Добавьте доступные товары в корзину и перейдите к оформлению. Сейчас оформление и приём оплаты ещё не подключены.": {
-    en: "Add available products to your cart and proceed to checkout. Checkout and payment processing are not available yet.",
-    uz: "Mavjud mahsulotlarni savatga qo‘shing va rasmiylashtirishga o‘ting. Buyurtma rasmiylashtirish va to‘lov hozircha ishlamaydi.",
+  "Добавьте доступные товары в корзину и перейдите к оформлению. Заказ сохранится со статусом «Ожидает оплаты». Оплата и отправка заказа продавцу пока не подключены.": {
+    en: "Add available products to your cart and proceed to checkout. The order is saved as awaiting payment. Online payment and seller submission are not available yet.",
+    uz: "Mavjud mahsulotlarni savatga qo‘shing va rasmiylashtirishga o‘ting. Buyurtma to‘lov kutilmoqda holatida saqlanadi. Onlayn to‘lov va sotuvchiga yuborish hali ulanmagan.",
   },
   "Где посмотреть статус заказа?": { en: "Where can I check my order status?", uz: "Buyurtma holatini qayerdan ko‘raman?" },
   "Статус оформленного заказа будет доступен в профиле, в разделе «Мои заказы».": {
@@ -892,6 +892,7 @@ type AliExpressProductDetails = {
   dimensions: string;
   deliveryTime: string;
 };
+type CheckoutVariant = { id: string; label: string; stock: number | null };
 
 function readRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -945,6 +946,21 @@ function parseAliExpressProductDetails(payload: unknown): AliExpressProductDetai
       : "",
     deliveryTime: readString(logistics, "delivery_time"),
   };
+}
+
+function checkoutVariants(skus: Record<string, unknown>[]): CheckoutVariant[] {
+  return skus.flatMap((sku, index) => {
+    const id = readString(sku, "sku_id", "id");
+    if (!id) return [];
+    const stockText = readString(sku, "sku_available_stock");
+    const stockValue = stockText ? Number(stockText) : Number.NaN;
+    if (Number.isFinite(stockValue) && stockValue < 1) return [];
+    const label = readRecords(sku.ae_sku_property_dtos)
+      .map((property) => `${readString(property, "property_name", "sku_property_name", "prop_name")}: ${readString(property, "property_value", "sku_property_value", "prop_value")}`)
+      .filter((value) => value !== ": ")
+      .join(" · ") || `Вариант ${index + 1}`;
+    return [{ id, label, stock: Number.isFinite(stockValue) ? stockValue : null }];
+  });
 }
 
 export function App() {
@@ -1006,6 +1022,13 @@ export function App() {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState("");
   const [ordersAttempt, setOrdersAttempt] = useState(0);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
+  const [checkoutError, setCheckoutError] = useState("");
+  const [checkoutVariantsByProduct, setCheckoutVariantsByProduct] = useState<Record<string, CheckoutVariant[]>>({});
+  const [checkoutSkuByProduct, setCheckoutSkuByProduct] = useState<Record<string, string>>({});
+  const [shippingQuotes, setShippingQuotes] = useState<Record<string, ApiShippingQuote>>({});
+  const [shippingOptionByProduct, setShippingOptionByProduct] = useState<Record<string, string>>({});
   const [orderFilter, setOrderFilter] = useState<"all" | "active" | "archive">("all");
   const productDetails = useMemo(
     () => detailPayload === null ? null : parseAliExpressProductDetails(detailPayload),
@@ -1355,6 +1378,26 @@ export function App() {
     ? Math.round(subtotal * 0.1)
     : 0;
   const total = subtotal - discount;
+  const checkoutSubtotal = cartEntryList.reduce((sum, product) => {
+    const quantity = cartItems[product.id] ?? 0;
+    return sum + (shippingQuotes[product.id]?.unitPriceMinor ?? product.priceMinor) * quantity;
+  }, 0);
+  const checkoutDiscount = appliedPromo === "SAVE10" && checkoutSubtotal >= MIN_PROMO_SUBTOTAL
+    ? Math.round(checkoutSubtotal * 0.1)
+    : 0;
+  const checkoutShippingTotal = cartEntryList.reduce((sum, product) => {
+    const quote = shippingQuotes[product.id];
+    const selectedOption = quote?.shippingOptions.find((option) => option.code === shippingOptionByProduct[product.id]);
+    return sum + (selectedOption?.feeUzsMinor ?? 0);
+  }, 0);
+  const checkoutTotal = checkoutSubtotal - checkoutDiscount + checkoutShippingTotal;
+  const checkoutQuotesReady = cartEntryList.length > 0 && cartEntryList.every((product) => {
+    const quote = shippingQuotes[product.id];
+    return quote?.quantity === cartItems[product.id] && quote.shippingOptions.length > 0;
+  });
+  const checkoutShippingSelected = checkoutQuotesReady && cartEntryList.every((product) =>
+    Boolean(shippingOptionByProduct[product.id])
+  );
 
   const retryCatalog = () => setCatalogAttempt((attempt) => attempt + 1);
   const renderCatalogState = (message: string, canRetry: boolean) => (
@@ -1402,6 +1445,8 @@ export function App() {
 
   const handleAddToCart = (productId: string) => {
     setCartItems((items) => ({ ...items, [productId]: (items[productId] ?? 0) + 1 }));
+    setShippingQuotes({});
+    setShippingOptionByProduct({});
     setNotice("Товар добавлен в корзину");
   };
 
@@ -1432,6 +1477,8 @@ export function App() {
   };
 
   const handleQtyChange = (productId: string, delta: number) => {
+    setShippingQuotes({});
+    setShippingOptionByProduct({});
     setCartItems((items) => {
       const nextQty = (items[productId] ?? 0) + delta;
       if (nextQty <= 0) {
@@ -1440,6 +1487,181 @@ export function App() {
       }
       return { ...items, [productId]: nextQty };
     });
+  };
+
+  const beginCheckout = async () => {
+    if (!authToken) {
+      setCheckoutError("Войдите в профиль, чтобы оформить заказ.");
+      setView("Профиль");
+      setNotice("Для оформления заказа войдите в профиль");
+      return;
+    }
+    if (cartEntryList.length === 0) {
+      setCheckoutError("Корзина пуста.");
+      return;
+    }
+    setCheckoutOpen(true);
+    setCheckoutBusy(true);
+    setCheckoutError("");
+    setShippingQuotes({});
+    setShippingOptionByProduct({});
+    try {
+      const entries = await Promise.all(cartEntryList.map(async (product) => {
+        if (!/^\d+$/.test(product.id)) {
+          throw new Error(`Невозможно оформить товар «${productTitle(product)}»: идентификатор AliExpress некорректен.`);
+        }
+        const payload = await api.aliexpress.productDetails(product.id, {
+          ship_to_country: "UZ",
+          target_currency: "UZS",
+          target_language: "ru_RU",
+        });
+        const options = checkoutVariants(parseAliExpressProductDetails(payload).skus);
+        return [product.id, options] as const;
+      }));
+      const variantsByProduct = Object.fromEntries(entries);
+      setCheckoutVariantsByProduct(variantsByProduct);
+      setCheckoutSkuByProduct((previous) => {
+        const next = { ...previous };
+        for (const [productId, options] of entries) {
+          if (options.some((option) => option.id === next[productId])) continue;
+          if (options.length === 1) next[productId] = options[0].id;
+          else delete next[productId];
+        }
+        return next;
+      });
+      const withoutVariants = cartEntryList
+        .filter((product) => variantsByProduct[product.id].length === 0)
+        .map((product) => productTitle(product));
+      if (withoutVariants.length > 0) {
+        setCheckoutError(`Для оформления недоступны варианты товара: ${withoutVariants.join(", ")}. Удалите эти товары из корзины.`);
+      }
+    } catch (error: unknown) {
+      if (error instanceof ApiRequestError && error.status === 401) {
+        clearExpiredSession(profile?.email);
+      }
+      setCheckoutError(error instanceof Error ? error.message : "Не удалось загрузить варианты товаров.");
+    } finally {
+      setCheckoutBusy(false);
+    }
+  };
+
+  const quoteCheckoutShipping = async () => {
+    if (!authToken) {
+      setCheckoutError("Сеанс истёк. Войдите в профиль повторно.");
+      return;
+    }
+    const items = cartEntryList.map((product) => ({
+      productId: product.id,
+      supplierProductId: product.id,
+      supplierSkuId: checkoutSkuByProduct[product.id] ?? "",
+      quantity: cartItems[product.id] ?? 0,
+    }));
+    if (items.some((item) => !item.supplierSkuId)) {
+      setCheckoutError("Выберите вариант каждого товара перед расчётом доставки.");
+      return;
+    }
+
+    setCheckoutBusy(true);
+    setCheckoutError("");
+    setShippingQuotes({});
+    setShippingOptionByProduct({});
+    try {
+      const quotes = await api.orders.quoteShipping(authToken, items);
+      const quotesByProduct = Object.fromEntries(quotes.map((quote) => [quote.productId, quote]));
+      const missingQuotes = cartEntryList.filter((product) => !quotesByProduct[product.id]?.shippingOptions.length);
+      setShippingQuotes(quotesByProduct);
+      setShippingOptionByProduct({});
+      if (missingQuotes.length > 0) {
+        setCheckoutError(`AliExpress не вернул доступный способ доставки для: ${missingQuotes.map(productTitle).join(", ")}.`);
+      }
+    } catch (error: unknown) {
+      if (error instanceof ApiRequestError && error.status === 401) {
+        clearExpiredSession(profile?.email);
+      }
+      setCheckoutError(error instanceof Error ? error.message : "Не удалось рассчитать доставку.");
+    } finally {
+      setCheckoutBusy(false);
+    }
+  };
+
+  const submitCheckoutOrder = async () => {
+    if (!authToken) {
+      setCheckoutError("Сеанс истёк. Войдите в профиль повторно.");
+      return;
+    }
+    if (!profileForm.name.trim() || !profileForm.phone.trim() || !profileForm.city.trim() || !profileForm.address.trim()) {
+      setCheckoutError("Заполните имя, телефон, город и адрес доставки.");
+      return;
+    }
+    if (!/^\+?[0-9()\-\s]{7,40}$/.test(profileForm.phone.trim())) {
+      setCheckoutError("Проверьте номер телефона.");
+      return;
+    }
+    if (!checkoutShippingSelected) {
+      setCheckoutError("Рассчитайте доставку и выберите способ доставки для каждого товара.");
+      return;
+    }
+
+    const orderItems = [];
+    for (const product of cartEntryList) {
+      const quote = shippingQuotes[product.id];
+      const variantId = checkoutSkuByProduct[product.id];
+      const variant = checkoutVariantsByProduct[product.id]?.find((option) => option.id === variantId);
+      const shippingOption = quote?.shippingOptions.find((option) => option.code === shippingOptionByProduct[product.id]);
+      if (!quote || !variant || !shippingOption || quote.quantity !== cartItems[product.id]) {
+        setCheckoutError("Данные товара или доставки изменились. Рассчитайте доставку заново.");
+        return;
+      }
+      orderItems.push({
+        productId: product.id,
+        quantity: cartItems[product.id],
+        supplierProductId: product.id,
+        supplierSkuId: variant.id,
+        productTitle: quote.title || productTitle(product) || "Товар AliExpress",
+        variantLabel: variant.label,
+        imageUrl: product.imageUrl ?? undefined,
+        unitPriceMinor: quote.unitPriceMinor,
+        shippingOptionCode: shippingOption.code,
+        shippingFeeMinor: shippingOption.feeUzsMinor,
+        shippingCompany: shippingOption.company,
+        shippingFeeFormat: shippingOption.feeFormat,
+        shippingCurrency: shippingOption.currency,
+        shippingMinDays: shippingOption.minDeliveryDays,
+        shippingMaxDays: shippingOption.maxDeliveryDays,
+        ...(shippingOption.tracking === null ? {} : { shippingTracking: shippingOption.tracking }),
+        shippingQuoteQuantity: quote.quantity,
+      });
+    }
+
+    setCheckoutBusy(true);
+    setCheckoutError("");
+    try {
+      await api.orders.create(authToken, {
+        recipientName: profileForm.name.trim(),
+        recipientPhone: profileForm.phone.trim(),
+        deliveryCity: profileForm.city.trim(),
+        deliveryAddress: profileForm.address.trim(),
+        ...(appliedPromo ? { promoCode: appliedPromo } : {}),
+        items: orderItems,
+      });
+      setCartItems({});
+      setPromo("");
+      setAppliedPromo("");
+      setCheckoutOpen(false);
+      setShippingQuotes({});
+      setShippingOptionByProduct({});
+      setProfileSection("orders");
+      setOrdersAttempt((attempt) => attempt + 1);
+      setView("Профиль");
+      setNotice("Заказ создан и ожидает оплаты. Он не отправлен продавцу.");
+    } catch (error: unknown) {
+      if (error instanceof ApiRequestError && error.status === 401) {
+        clearExpiredSession(profile?.email);
+      }
+      setCheckoutError(error instanceof Error ? error.message : "Не удалось создать заказ.");
+    } finally {
+      setCheckoutBusy(false);
+    }
   };
 
   const simulatePayment = () => {
@@ -2025,7 +2247,7 @@ export function App() {
         </div>
       </div>
       <div className="profile-help">
-        <details><summary>Как оформить заказ?</summary><p>Добавьте доступные товары в корзину и перейдите к оформлению. Сейчас оформление и приём оплаты ещё не подключены.</p></details>
+        <details><summary>Как оформить заказ?</summary><p>Добавьте доступные товары в корзину и перейдите к оформлению. Заказ сохранится со статусом «Ожидает оплаты». Оплата и отправка заказа продавцу пока не подключены.</p></details>
         <details><summary>Где посмотреть статус заказа?</summary><p>Статус оформленного заказа будет доступен в профиле, в разделе «Мои заказы».</p></details>
         <details><summary>Почему каталог может быть недоступен?</summary><p>Каталог зависит от разрешений AliExpress Open Platform. При отказе API Uriona показывает сообщение и кнопку повтора запроса.</p></details>
         <div className="profile-help-actions">
@@ -2151,13 +2373,97 @@ export function App() {
             </div>
 
             <div className="totals cart-totals">
-              <div><span>{localizeText("Товары", language)} · {cartCount}</span><b>{formatUzs(subtotal)}</b></div>
-              <div><span>Доставка</span><b className="cart-delivery-pending">После расчёта</b></div>
-              {discount > 0 && <div className="cart-discount-row"><span>Скидка</span><b>−{formatUzs(discount)}</b></div>}
-              <div className="grand"><span>{localizeText("Сумма заказа", language)}</span><b>{formatUzs(total)}</b></div>
+              <div><span>{localizeText("Товары", language)} · {cartCount}</span><b>{formatUzs(checkoutOpen ? checkoutSubtotal : subtotal)}</b></div>
+              <div><span>Доставка</span><b className="cart-delivery-pending">{checkoutOpen && checkoutQuotesReady ? formatUzs(checkoutShippingTotal) : "После расчёта"}</b></div>
+              {(checkoutOpen ? checkoutDiscount : discount) > 0 && <div className="cart-discount-row"><span>Скидка</span><b>−{formatUzs(checkoutOpen ? checkoutDiscount : discount)}</b></div>}
+              <div className="grand"><span>{localizeText("Сумма заказа", language)}</span><b>{formatUzs(checkoutOpen ? checkoutTotal : total)}</b></div>
             </div>
 
-            {DEMO_PAYMENT_ENABLED ? (
+            <button type="button" className="primary-btn checkout-btn" onClick={beginCheckout} disabled={checkoutBusy}>
+              <ArrowRight size={18} />{checkoutOpen ? "Обновить варианты и доставку" : "Перейти к оформлению"}
+            </button>
+            <p className="checkout-note">Заказ создаётся только со статусом «Ожидает оплаты». Деньги не списываются, продавцу заказ не отправляется.</p>
+
+            {checkoutOpen && (
+              <section className="checkout-form" aria-label="Оформление заказа">
+                <div className="checkout-form-heading">
+                  <h3>Получатель и доставка</h3>
+                  <button type="button" className="checkout-cancel" onClick={() => setCheckoutOpen(false)} disabled={checkoutBusy}>Закрыть</button>
+                </div>
+                {cartEntryList.map((product) => (
+                  <div className="checkout-line" key={product.id}>
+                    <strong>{productTitle(product)}</strong>
+                    <label>
+                      Вариант товара
+                      <select
+                        value={checkoutSkuByProduct[product.id] ?? ""}
+                        onChange={(event) => {
+                          setCheckoutSkuByProduct((selected) => ({ ...selected, [product.id]: event.target.value }));
+                          setShippingQuotes({});
+                          setShippingOptionByProduct({});
+                          setCheckoutError("");
+                        }}
+                        disabled={checkoutBusy || !checkoutVariantsByProduct[product.id]?.length}
+                      >
+                        <option value="">{checkoutVariantsByProduct[product.id]?.length ? "Выберите вариант" : "Нет доступных вариантов"}</option>
+                        {(checkoutVariantsByProduct[product.id] ?? []).map((variant) => (
+                          <option key={variant.id} value={variant.id}>
+                            {variant.label}{variant.stock === null ? "" : ` · Остаток: ${variant.stock}`}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    {shippingQuotes[product.id] && (
+                      <label>
+                        Способ доставки
+                        <select
+                          value={shippingOptionByProduct[product.id] ?? ""}
+                          onChange={(event) => setShippingOptionByProduct((selected) => ({ ...selected, [product.id]: event.target.value }))}
+                          disabled={checkoutBusy}
+                        >
+                          <option value="">Выберите доставку</option>
+                          {shippingQuotes[product.id].shippingOptions.map((option) => (
+                            <option key={option.code} value={option.code}>
+                              {option.company} · {formatUzs(option.feeUzsMinor)}
+                              {option.minDeliveryDays || option.maxDeliveryDays
+                                ? ` · ${option.minDeliveryDays || "?"}–${option.maxDeliveryDays || "?"} дней`
+                                : ""}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  className="secondary-btn checkout-quote-button"
+                  onClick={quoteCheckoutShipping}
+                  disabled={checkoutBusy || cartEntryList.some((product) => !checkoutSkuByProduct[product.id])}
+                >
+                  {checkoutBusy ? "Проверяем AliExpress…" : "Рассчитать доступность и доставку"}
+                </button>
+                {checkoutQuotesReady && <p className="checkout-disclosure">Цена и доставка перепроверены через AliExpress для выбранных вариантов и количества. Итог будет подтверждён ещё раз при создании заказа.</p>}
+                <div className="checkout-recipient-fields">
+                  <label>Получатель<input value={profileForm.name} onChange={(event) => setProfileForm({ ...profileForm, name: event.target.value })} maxLength={120} autoComplete="name" /></label>
+                  <label>Телефон<input type="tel" value={profileForm.phone} onChange={(event) => setProfileForm({ ...profileForm, phone: event.target.value })} maxLength={40} autoComplete="tel" placeholder="+998" /></label>
+                  <label>Город<input value={profileForm.city} onChange={(event) => setProfileForm({ ...profileForm, city: event.target.value })} maxLength={120} autoComplete="address-level2" /></label>
+                  <label>Адрес доставки<textarea value={profileForm.address} onChange={(event) => setProfileForm({ ...profileForm, address: event.target.value })} maxLength={1000} autoComplete="street-address" rows={3} /></label>
+                </div>
+                {checkoutError && <p className="checkout-error" role="alert">{checkoutError}</p>}
+                <button
+                  type="button"
+                  className="primary-btn checkout-btn"
+                  onClick={submitCheckoutOrder}
+                  disabled={checkoutBusy || !checkoutShippingSelected}
+                >
+                  {checkoutBusy ? "Создаём заказ…" : "Создать заказ — ожидание оплаты"}
+                </button>
+                <p className="checkout-disclosure">Реальная оплата и передача заказа продавцу не подключены. Не переводите деньги по реквизитам, полученным вне официального checkout.</p>
+              </section>
+            )}
+
+            {DEMO_PAYMENT_ENABLED && (
               <div className="demo-payment-panel">
                 <div className="demo-payment-panel-heading">
                   <FlaskConical size={18} />
@@ -2192,13 +2498,6 @@ export function App() {
                 </button>
                 <span className="cart-demo-receipt-note">{localizeText("Это демонстрационный чек. Средства не списывались.", language)}</span>
               </div>
-            ) : (
-              <>
-                <button type="button" className="primary-btn checkout-btn" disabled onClick={() => setNotice("Оформление заказа ещё не подключено")}>
-                  Перейти к оформлению <ArrowRight size={18} />
-                </button>
-                <p className="checkout-note">Реальная оплата пока не подключена.</p>
-              </>
             )}
           </aside>
         </div>

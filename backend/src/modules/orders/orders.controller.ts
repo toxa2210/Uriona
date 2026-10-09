@@ -1,12 +1,15 @@
 import { Body, Controller, Get, Headers, Post } from "@nestjs/common";
 import { Type } from "class-transformer";
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
   IsArray,
   IsBoolean,
   IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
+  Matches,
   Max,
   Min,
   MaxLength,
@@ -76,7 +79,7 @@ class CreateOrderDto {
   @IsString() @IsNotEmpty() @MaxLength(120)
   recipientName!: string;
 
-  @IsString() @IsNotEmpty() @MaxLength(40)
+  @IsString() @IsNotEmpty() @MaxLength(40) @Matches(/^\+?[0-9()\-\s]{7,40}$/)
   recipientPhone!: string;
 
   @IsString() @IsNotEmpty() @MaxLength(120)
@@ -88,13 +91,43 @@ class CreateOrderDto {
   @IsOptional() @IsString() @MaxLength(32)
   promoCode?: string;
 
-  @IsArray() @ValidateNested({ each: true }) @Type(() => ItemDto)
+  @IsArray() @ArrayMinSize(1) @ArrayMaxSize(100)
+  @ValidateNested({ each: true }) @Type(() => ItemDto)
   items!: ItemDto[];
+}
+
+class ShippingQuoteItemDto {
+  @IsString() @IsNotEmpty() @MaxLength(190)
+  productId!: string;
+
+  @IsString() @IsNotEmpty() @MaxLength(32)
+  supplierProductId!: string;
+
+  @IsString() @IsNotEmpty() @MaxLength(32)
+  supplierSkuId!: string;
+
+  @IsInt() @Min(1) @Max(999)
+  quantity!: number;
+}
+
+class ShippingQuotesDto {
+  @IsArray() @ArrayMinSize(1) @ArrayMaxSize(100)
+  @ValidateNested({ each: true }) @Type(() => ShippingQuoteItemDto)
+  items!: ShippingQuoteItemDto[];
 }
 
 @Controller("orders")
 export class OrdersController {
   constructor(private readonly orders: OrdersService, private readonly auth: AuthService) {}
+
+  @Post("shipping-quotes")
+  async quoteShipping(
+    @Headers("authorization") authorization: string | undefined,
+    @Body() body: ShippingQuotesDto,
+  ) {
+    await this.auth.validateSession(authorization?.replace(/^Bearer\s+/i, "") ?? "");
+    return this.orders.quoteShipping(body.items);
+  }
 
   @Post()
   async create(

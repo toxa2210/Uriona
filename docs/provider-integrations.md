@@ -14,7 +14,13 @@ The signed-in Open Platform reference is in [docs/aliexpress-open-api](aliexpres
 - `GET /affiliate/orders` -> `aliexpress.affiliate.order.list`
 - `GET /affiliate/orders/detail` -> `aliexpress.affiliate.order.get`
 
-The frontend loads live affiliate categories and products through these backend routes. The displayed CNY prices are converted using `VITE_CNY_TO_UZS` (defaults to `1800`). Confirm the app has access to Affiliate API methods and is approved for live data; test-status apps may only return sandbox/test results. Seller mutations and fulfillment APIs remain in the API reference and are not exposed publicly by default.
+The storefront uses the Dropshipping product and category APIs for live catalog data. An authenticated `POST /api/v1/orders/shipping-quotes` request verifies the selected SKU and retrieves delivery options for `UZ` in `UZS`. `POST /api/v1/orders` repeats both checks to reject stale prices or delivery fees, then creates only an `AWAITING_PAYMENT` URIONA order. It does not charge the customer or submit a purchase to the AliExpress seller.
+
+Confirm the application has the required Dropshipping API permissions and is approved for live data. Seller order placement and fulfillment APIs are not called by checkout and must not be enabled until the provider permissions, payment flow, and operational process are approved.
+
+## Cainiao
+
+The repository currently defines internal shipment and tracking contracts and database records only. There is no Cainiao API client or live shipment/tracking workflow. Integration requires approved API permissions, the official endpoint/signing requirements, and a confirmed business/onboarding contact from Cainiao. Do not create shipment requests or claim Cainiao tracking is active until those requirements are met.
 
 ## Click
 
@@ -71,14 +77,13 @@ For Paynet UWS production, configure HTTPS, Basic Auth and the provider IP allow
 
 ## Production checklist
 
-1. Provision PostgreSQL/Redis.
-2. Set all provider credentials as deployment secrets.
-3. Put the API behind HTTPS.
-4. Configure provider callback URLs.
-5. Complete provider sandbox/UAT tests.
-6. Obtain production credentials/merchant IDs.
-7. Run Prisma migrations.
-8. Start backend.
-9. Enable product synchronization only after the Pinduoduo application has the required API permissions.
+1. Verify production DNS and TLS for the storefront domain and API.
+2. Provision PostgreSQL/Redis and verify automated backups.
+3. Set Firebase and provider credentials as deployment secrets; keep secrets out of Git and frontend build variables.
+4. Configure provider callback URLs and exact production frontend origins.
+5. Complete payment and marketplace sandbox/UAT tests before accepting live orders.
+6. Obtain production merchant credentials and confirm marketplace order/fulfillment permissions.
+7. Run Prisma migrations and verify the backend health endpoint.
+8. Enable live checkout only when payment, customer support, refund handling, and supplier fulfillment are ready.
 
 No production secret belongs in GitHub.

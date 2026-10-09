@@ -3208,3 +3208,90 @@ input {
   .demo-payment-panel { padding: 12px; }
   .cart-empty-state { padding: 38px 14px; }
 }
+
+.checkout-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  padding-top: 17px;
+  border-top: 1px solid var(--line);
+}
+.checkout-form-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.checkout-form-heading h3 { margin: 0; font-size: 15px; }
+.checkout-cancel {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+.checkout-line {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: rgba(14, 27, 59, .42);
+}
+.checkout-line > strong { color: var(--ink); font-size: 12px; line-height: 1.5; }
+.checkout-line label,
+.checkout-recipient-fields label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+.checkout-line select,
+.checkout-recipient-fields input,
+.checkout-recipient-fields textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 10px 11px;
+  outline: 0;
+  background: rgba(14, 27, 59, .9);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+}
+.checkout-line select:focus,
+.checkout-recipient-fields :is(input, textarea):focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 3px rgba(0, 217, 255, .1);
+}
+.checkout-recipient-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
+.checkout-recipient-fields label:last-child { grid-column: 1 / -1; }
+.checkout-quote-button { min-height: 42px; }
+.checkout-error {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 103, 103, .35);
+  border-radius: 10px;
+  background: rgba(135, 30, 43, .15);
+  color: #ffb2b2;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.checkout-disclosure {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+.light-mode .checkout-line { background: rgba(255, 255, 255, .64); }
+.light-mode .checkout-line select,
+.light-mode .checkout-recipient-fields input,
+.light-mode .checkout-recipient-fields textarea { background: rgba(255, 255, 255, .86); }
+@media (max-width: 560px) {
+  .checkout-form { gap: 11px; }
+  .checkout-recipient-fields { grid-template-columns: minmax(0, 1fr); }
+  .checkout-recipient-fields label:last-child { grid-column: auto; }
+}

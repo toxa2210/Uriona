@@ -1,6 +1,6 @@
 const API_BASE = import.meta.env.DEV
   ? "/api/v1"
-  : import.meta.env.VITE_API_URL ?? "http://localhost:8000/api/v1";
+  : import.meta.env.VITE_API_URL ?? "https://uriona-api.onrender.com/api/v1";
 const CNY_TO_UZS = Number(import.meta.env.VITE_CNY_TO_UZS ?? 1800);
 
 type JsonObject = Record<string, unknown>;
@@ -33,6 +33,25 @@ export type ApiOption = { id: string; name: string; parentId: string | null };
 export type ProductList = { items: ApiProduct[]; page: number; limit: number; total: number; pages: number };
 export type ApiUser = { id: string; phone?: string | null; name?: string | null; email?: string | null; city?: string | null; address?: string | null; language?: string | null; role?: string };
 export type ApiProfileUpdate = Pick<ApiUser, "phone" | "name" | "city" | "address" | "language">;
+export type ApiShippingOption = {
+  code: string;
+  company: string;
+  feeFormat: string;
+  currency: string;
+  feeUzsMinor: number;
+  minDeliveryDays: string;
+  maxDeliveryDays: string;
+  tracking: boolean | null;
+};
+export type ApiShippingQuote = {
+  productId: string;
+  supplierProductId: string;
+  supplierSkuId: string;
+  quantity: number;
+  title: string;
+  unitPriceMinor: number;
+  shippingOptions: ApiShippingOption[];
+};
 export type ApiOrder = {
   id: string;
   status: string;
@@ -79,6 +98,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
   return res.json();
 }
+
+const bearerHeaders = (token: string): HeadersInit => ({ Authorization: `Bearer ${token}` });
 
 function asObject(value: unknown): JsonObject {
   return value && typeof value === "object" ? value as JsonObject : {};
@@ -221,6 +242,42 @@ export const api = {
   },
   product: (id: string) => request<ApiProduct>(`/products/${id}`),
   orders: {
+    quoteShipping: (token: string, items: Array<Pick<ApiShippingQuote, "productId" | "supplierProductId" | "supplierSkuId" | "quantity">>) =>
+      request<ApiShippingQuote[]>("/orders/shipping-quotes", {
+        method: "POST",
+        headers: bearerHeaders(token),
+        body: JSON.stringify({ items }),
+      }),
+    create: (token: string, order: {
+      recipientName: string;
+      recipientPhone: string;
+      deliveryCity: string;
+      deliveryAddress: string;
+      promoCode?: string;
+      items: Array<{
+        productId: string;
+        quantity: number;
+        supplierProductId: string;
+        supplierSkuId: string;
+        productTitle: string;
+        variantLabel: string;
+        imageUrl?: string;
+        unitPriceMinor: number;
+        shippingOptionCode: string;
+        shippingFeeMinor: number;
+        shippingCompany: string;
+        shippingFeeFormat: string;
+        shippingCurrency: string;
+        shippingMinDays: string;
+        shippingMaxDays: string;
+        shippingTracking?: boolean;
+        shippingQuoteQuantity: number;
+      }>;
+    }) => request<ApiOrder>("/orders", {
+      method: "POST",
+      headers: bearerHeaders(token),
+      body: JSON.stringify(order),
+    }),
     list: (token: string) => request<ApiOrder[]>("/orders", { headers: { Authorization: `Bearer ${token}` } }),
   },
   aliexpress: {
