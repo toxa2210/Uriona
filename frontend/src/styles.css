@@ -102,3 +102,14 @@ nav button:hover{background:#fff1f1;color:var(--brand)}
 @media(prefers-reduced-motion:reduce){
  *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
 }
+
+.photo-carousel{position:absolute;inset:0;overflow:hidden;display:grid;place-items:center;touch-action:pan-y pinch-zoom;cursor:pointer}
+.photo-carousel>img{width:100%;height:100%;object-fit:cover;user-select:none}
+.photo-carousel .product-placeholder{width:100%;height:100%;display:grid;place-items:center}
+.photo-arrow{position:absolute;top:50%;transform:translateY(-50%);width:28px;height:34px;border:0;border-radius:9px;background:rgba(255,255,255,.9);color:#333;font-size:24px;line-height:1;display:grid;place-items:center;opacity:0;transition:opacity .16s ease;cursor:pointer}
+.photo-carousel:hover .photo-arrow,.photo-arrow:focus-visible{opacity:1}
+.photo-arrow.prev{left:7px}.photo-arrow.next{right:7px}
+.photo-dots{position:absolute;bottom:8px;left:0;right:0;display:flex;align-items:center;justify-content:center;gap:4px}
+.photo-dots button{width:5px;height:5px;border:0;padding:0;border-radius:50%;background:rgba(255,255,255,.65);box-shadow:0 1px 3px rgba(0,0,0,.25);cursor:pointer}
+.photo-dots button.active{width:14px;border-radius:99px;background:#fff}
+@media(max-width:760px){.photo-arrow{opacity:1;width:25px;height:30px;font-size:22px;background:rgba(255,255,255,.84)}.photo-dots{bottom:6px;gap:4px}.photo-dots button{width:4px;height:4px}.photo-dots button.active{width:12px}}
