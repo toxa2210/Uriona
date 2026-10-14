@@ -898,6 +898,18 @@ function readRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
 
+async function withTimeout<T>(promise: Promise<T>, timeoutMs = 15000): Promise<T> {
+  let timeoutId: number | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = window.setTimeout(() => reject(new Error("Сервер авторизации отвечает слишком долго. Проверьте подключение и настройки Firebase, затем попробуйте ещё раз.")), timeoutMs);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+  }
+}
+
 function readString(record: Record<string, unknown>, ...keys: string[]): string {
   for (const key of keys) {
     const value = record[key];
@@ -1723,12 +1735,12 @@ export function App() {
     setAuthNotice("");
     try {
       if (authMode === "register") {
-        const credential = await createUserWithEmailAndPassword(firebaseAuth, authEmail.trim(), authPassword);
-        await sendEmailVerification(credential.user);
+        const credential = await withTimeout(createUserWithEmailAndPassword(firebaseAuth, authEmail.trim(), authPassword));
+        await withTimeout(sendEmailVerification(credential.user));
         setVerificationPending(true);
         setAuthNotice(`Аккаунт создан. Подтвердите email по ссылке, отправленной на ${credential.user.email ?? authEmail}. После этого нажмите «Я подтвердил email».`);
       } else {
-        const credential = await signInWithEmailAndPassword(firebaseAuth, authEmail.trim(), authPassword);
+        const credential = await withTimeout(signInWithEmailAndPassword(firebaseAuth, authEmail.trim(), authPassword));
         if (!credential.user.emailVerified) {
           await sendEmailVerification(credential.user);
           setVerificationPending(true);
@@ -1751,7 +1763,7 @@ export function App() {
     setProfileBusy(true);
     setAuthNotice("");
     try {
-      await reload(firebaseAuth.currentUser);
+      await withTimeout(reload(firebaseAuth.currentUser));
       const user = firebaseAuth.currentUser;
       if (!user.emailVerified) {
         setAuthNotice("Подтверждение пока не найдено. Откройте ссылку из письма, затем попробуйте ещё раз.");
@@ -1771,7 +1783,7 @@ export function App() {
     setProfileBusy(true);
     setAuthNotice("");
     try {
-      await sendEmailVerification(firebaseAuth.currentUser);
+      await withTimeout(sendEmailVerification(firebaseAuth.currentUser));
       setAuthNotice(`Письмо отправлено повторно на ${firebaseAuth.currentUser.email ?? authEmail}.`);
     } catch (error) {
       setAuthNotice(firebaseErrorMessage(error));
@@ -1809,7 +1821,7 @@ export function App() {
     setProfileBusy(true);
     setAuthNotice("");
     try {
-      await sendPasswordResetEmail(firebaseAuth, authEmail.trim());
+      await withTimeout(sendPasswordResetEmail(firebaseAuth, authEmail.trim()));
       setAuthNotice("Если аккаунт с таким email существует, на него отправлена ссылка для сброса пароля.");
     } catch (error) {
       setAuthNotice(firebaseErrorMessage(error));
