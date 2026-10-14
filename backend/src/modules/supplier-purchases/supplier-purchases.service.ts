@@ -142,6 +142,16 @@ export class SupplierPurchasesService {
     }
     const currency = input.currency.trim().toUpperCase();
     if (!/^[A-Z]{3}$/.test(currency)) throw new BadRequestException("Invalid ISO currency code");
+    if (currency !== purchase.supplierCurrency) {
+      throw new ConflictException("Settlement currency must match the supplier purchase currency");
+    }
+    if (purchase.supplierAmountMinor === null || purchase.supplierAmountMinor === undefined
+      || purchase.supplierShippingMinor === null || purchase.supplierShippingMinor === undefined) {
+      throw new ConflictException("Supplier amount and shipping quote must be recorded before settlement");
+    }
+    if (input.amountMinor !== purchase.supplierAmountMinor + purchase.supplierShippingMinor) {
+      throw new ConflictException("Settlement amount must equal supplier items plus shipping");
+    }
 
     return this.prisma.supplierSettlement.create({
       data: {
