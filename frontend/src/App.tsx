@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Heart, MapPin, Search, ShoppingBag, UserRound, ChevronRight, Truck, ShieldCheck, Zap, X, Plus, Minus } from "lucide-react";
+import { Heart, MapPin, Search, ShoppingBag, UserRound, ChevronRight, Truck, ShieldCheck, Zap, X, Plus, Minus, Home, LayoutGrid } from "lucide-react";
 import { api, formatCny, formatUzs, type ApiProduct, type Category, type PddProduct } from "./api";
 
 type CartItem={product:ApiProduct|PddProduct;quantity:number;source:"local"|"pdd"};
@@ -41,6 +41,14 @@ export function App(){
  <section className="section"><div className="section-head"><div><small>{pddProducts.length?"Результаты Pinduoduo":"Каталог сайта"}</small><h2>{pddProducts.length?"Товары из Китая":"Товары"}</h2></div><span className="api-state">{loading?"Загрузка…":error?"Ошибка API":`${products.length+pddProducts.length} товаров`}</span></div>{error&&<div className="error"><strong>API вернул ошибку</strong><span>{error}</span></div>}{!loading&&!error&&!products.length&&!pddProducts.length&&<div className="empty"><ShoppingBag size={32}/><b>Товаров пока нет</b><span>{pddConfigured?"Введите запрос выше — поиск выполнится в Pinduoduo.":"Подключите Pinduoduo API или добавьте ACTIVE-товары в PostgreSQL."}</span></div>}<div className="grid">{remoteCards}{localCards}</div></section>
  <section className="steps" id="how"><div><small>Просто</small><h2>Как это работает</h2></div><div className="step-grid"><div><strong>01</strong><h3>Найдите товар</h3><p>Поиск идёт через наш API, а при подключённом Pinduoduo — через официальный gateway.</p></div><div><strong>02</strong><h3>Добавьте в корзину</h3><p>Кнопки сайта теперь выполняют реальные действия, а не имитируют их.</p></div><div><strong>03</strong><h3>Оформите заказ</h3><p>Следующий слой — доставка, заказ и платёжные провайдеры.</p></div></div></section></main>
  <footer><div className="brand"><span className="brand-mark">P</span><span>Pinduoduo<span className="uz">.uz</span></span></div><span>© 2026 Pinduoduo Uzbekistan</span><span>API v1 · Реальный каталог · Поддержка</span></footer>
+
+
+ <div className="mobile-nav" aria-label="Мобильная навигация">
+  <button onClick={()=>window.scrollTo({top:0,behavior:"smooth"})}><Home size={20}/><span>Главная</span></button>
+  <button onClick={()=>scroll("catalog")}><LayoutGrid size={20}/><span>Каталог</span></button>
+  <button onClick={()=>setCartOpen(true)}><ShoppingBag size={20}/><span>Корзина</span>{cart.length>0&&<i>{cart.reduce((n,x)=>n+x.quantity,0)}</i>}</button>
+  <button onClick={()=>setLoginOpen(true)}><UserRound size={20}/><span>Профиль</span></button>
+ </div>
 
  {cartOpen&&<div className="overlay" onClick={()=>setCartOpen(false)}><aside className="drawer" onClick={e=>e.stopPropagation()}><button className="close" onClick={()=>setCartOpen(false)}><X/></button><h2>Корзина</h2>{!cart.length?<p>Корзина пуста.</p>:<>{cart.map(i=><div className="cart-row" key={i.product.id}><div><b>{isPdd(i.product)?i.product.title:(i.product.titleRu||i.product.titleUz)}</b><small>{isPdd(i.product)?formatCny(i.product.priceCnyMinor):formatUzs(i.product.priceMinor)}</small></div><div><button onClick={()=>change(i.product.id,-1)}><Minus size={14}/></button><b>{i.quantity}</b><button onClick={()=>change(i.product.id,1)}><Plus size={14}/></button></div></div>)}<h3>Итого: {total.toLocaleString("ru-RU")}</h3><button className="primary" onClick={()=>setLoginOpen(true)}>Оформить заказ</button></>}</aside></div>}
  {detail&&<div className="overlay" onClick={()=>setDetail(null)}><aside className="drawer detail" onClick={e=>e.stopPropagation()}><button className="close" onClick={()=>setDetail(null)}><X/></button><h2>{isPdd(detail)?detail.title:(detail.titleRu||detail.titleUz)}</h2>{isPdd(detail)?<><p>{detail.description||"Описание отсутствует."}</p><b>{formatCny(detail.priceCnyMinor)}</b><button className="primary" onClick={()=>add(detail,"pdd")}>Добавить в корзину</button></>:<><p>{detail.descriptionRu||detail.descriptionUz||"Описание отсутствует."}</p><b>{detail.currency==="UZS"?formatUzs(detail.priceMinor):`${(detail.priceMinor/100).toFixed(2)} ${detail.currency}`}</b><button className="primary" onClick={()=>add(detail,"local")}>Добавить в корзину</button></>}</aside></div>}
