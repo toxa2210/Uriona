@@ -5,20 +5,46 @@ import { AppModule } from "./app.module";
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  const allowedOrigins = new Set([
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "https://uriona.uz",
-    "https://www.uriona.uz",
-    "https://uriona-frontend.onrender.com",
-    ...(process.env.FRONTEND_URL?.split(",").map((value) => value.trim()) ?? [])
-  ]);
+  const allowedOrigins = new Set(
+    [
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      "http://localhost:5174",
+      "http://127.0.0.1:5174",
+      "https://uriona.uz",
+      "https://www.uriona.uz",
+      ...(process.env.FRONTEND_URL?.split(",").map((value) => value.trim()).filter(Boolean) ?? [])
+    ].filter(Boolean)
+  );
+
+  const trustedPreviewHosts = (process.env.TRUSTED_PREVIEW_HOSTS ?? "")
+    .split(",")
+    .map((host) => host.trim())
+    .filter(Boolean);
+
   app.enableCors({
     origin: (requestOrigin, callback) => {
-      const isRenderPreview = requestOrigin?.endsWith(".onrender.com") ?? false;
-      callback(null, !requestOrigin || allowedOrigins.has(requestOrigin) || isRenderPreview);
+      if (!requestOrigin) {
+        return callback(null, false);
+      }
+
+      if (allowedOrigins.has(requestOrigin)) {
+        return callback(null, true);
+      }
+
+      const isTrustedPreview =
+        process.env.NODE_ENV !== "production" &&
+        trustedPreviewHosts.some((host) => requestOrigin.endsWith(host));
+
+      if (isTrustedPreview) {
+        return callback(null, true);
+      }
+
+      return callback(null, false);
     },
-    credentials: true
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
   });
 
   app.useGlobalPipes(
