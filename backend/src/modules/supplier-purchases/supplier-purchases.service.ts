@@ -211,6 +211,12 @@ export class SupplierPurchasesService {
     if (purchase.status !== "READY" && purchase.status !== "SUBMITTING") {
       throw new ConflictException("Only ready or submitting purchases can be marked as placed");
     }
+    const settledCount = await this.prisma.supplierSettlement.count({
+      where: { purchaseId, status: "SETTLED" },
+    });
+    if (settledCount < 1) {
+      throw new ConflictException("A confirmed supplier settlement is required before marking the purchase as placed");
+    }
 
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.supplierPurchase.update({
