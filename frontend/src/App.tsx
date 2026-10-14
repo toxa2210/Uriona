@@ -5,6 +5,8 @@ import {
   ChevronLeft,
   ChevronRight,
   CheckCircle2,
+  Home,
+  LayoutGrid,
   CreditCard,
   FlaskConical,
   Heart,
@@ -2834,6 +2836,13 @@ export function App() {
       </header>
 
       <main className="page">{renderMain()}</main>
+
+      <nav className="mobile-bottom-nav" aria-label="Нижняя навигация">
+        <button type="button" className={view === "Главная" ? "active" : ""} aria-current={view === "Главная" ? "page" : undefined} onClick={openHome}><Home size={20} /><span>{localizeText("Главная", language)}</span></button>
+        <button type="button" className={view === "Категории" || view === "Международный каталог" ? "active" : ""} aria-current={view === "Категории" || view === "Международный каталог" ? "page" : undefined} onClick={() => goTo("Категории")}><LayoutGrid size={20} /><span>{text.catalog}</span></button>
+        <button type="button" className={view === "Корзина" ? "active" : ""} aria-current={view === "Корзина" ? "page" : undefined} onClick={() => goTo("Корзина")}><ShoppingBag size={20} /><span>{text.cart}</span>{cartCount > 0 && <i>{cartCount}</i>}</button>
+        <button type="button" className={view === "Профиль" ? "active" : ""} aria-current={view === "Профиль" ? "page" : undefined} onClick={() => goTo("Профиль")}><UserRound size={20} /><span>{text.profile}</span></button>
+      </nav>
 
       {detailProduct && (
         <div className="product-dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setDetailProduct(null); }}>
