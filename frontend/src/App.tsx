@@ -2,6 +2,31 @@ import { useEffect, useMemo, useState } from "react";
 import { Heart, MapPin, Search, ShoppingBag, UserRound, ChevronRight, Truck, ShieldCheck, Zap, X, Plus, Minus, Home, LayoutGrid } from "lucide-react";
 import { api, formatCny, formatUzs, type ApiProduct, type Category, type PddProduct } from "./api";
 
+
+function extractProductImages(product:ApiProduct|PddProduct):string[]{
+ const values:string[]=[];
+ const add=(value:unknown)=>{if(typeof value==="string"&&/^https?:\\/\\//i.test(value)&&!values.includes(value))values.push(value);};
+ add(product.imageUrl);add(product.thumbnailUrl);
+ if("raw" in product&&product.raw&&typeof product.raw==="object"){
+  const raw=product.raw as Record<string,unknown>;
+  for(const key of ["images","imageUrls","image_urls","goodsGalleryUrls","goods_gallery_urls","gallery","goodsImageUrlList"]){
+   const value=raw[key];
+   if(Array.isArray(value))value.forEach(item=>{if(typeof item==="string")add(item);else if(item&&typeof item==="object"){const obj=item as Record<string,unknown>;add(obj.url);add(obj.imageUrl);add(obj.image_url);}});
+   else if(typeof value==="string")add(value);
+  }
+ }
+ return values;
+}
+function PhotoCarousel({images,alt,onOpen}:{images:string[];alt:string;onOpen?:()=>void}){
+ const [index,setIndex]=useState(0); const [startX,setStartX]=useState<number|null>(null);
+ const start=(e:React.TouchEvent<HTMLDivElement>)=>setStartX(e.touches[0]?.clientX??null);
+ const end=(e:React.TouchEvent<HTMLDivElement>)=>{if(startX===null)return;const delta=(e.changedTouches[0]?.clientX??startX)-startX;if(Math.abs(delta)>35&&images.length>1)setIndex(i=>(i+(delta<0?1:images.length-1))%images.length);setStartX(null);};
+ return <div className="photo-carousel" onTouchStart={start} onTouchEnd={end} onClick={onOpen} role={onOpen?"button":undefined} aria-label={alt}>
+  {images.length>0?<img src={images[index]} alt={alt} draggable={false}/>:<div className="product-placeholder"><ShoppingBag/></div>}
+  {images.length>1&&<><button type="button" className="photo-arrow prev" aria-label="Предыдущее фото" onClick={e=>{e.stopPropagation();setIndex(i=>(i+images.length-1)%images.length)}}>‹</button><button type="button" className="photo-arrow next" aria-label="Следующее фото" onClick={e=>{e.stopPropagation();setIndex(i=>(i+1)%images.length)}}>›</button><div className="photo-dots" onClick={e=>e.stopPropagation()}>{images.map((_,i)=><button key={i} type="button" aria-label={`Фото ${i+1}`} className={i===index?"active":""} onClick={()=>setIndex(i)}/>)}</div></>}
+ </div>;
+}
+
 type CartItem={product:ApiProduct|PddProduct;quantity:number;source:"local"|"pdd"};
 const isPdd=(p:ApiProduct|PddProduct):p is PddProduct=>"title" in p;
 
@@ -31,8 +56,8 @@ export function App(){
  async function sendOtp(){try{const r=await api.requestOtp(phone);setOtpSent(true);setAuthMessage(r.devCode?`Код для разработки: ${r.devCode}`:"Код отправлен")}catch(e){setAuthMessage(e instanceof Error?e.message:"Ошибка")}}
  async function verify(){try{const r=await api.verifyOtp(phone,otp);localStorage.setItem("pdu_access_token",r.accessToken);setAuthMessage("Вы вошли в аккаунт");}catch(e){setAuthMessage(e instanceof Error?e.message:"Неверный код")}}
 
- const remoteCards=pddProducts.map(p=><article className="product" key={`pdd-${p.id}`}><div className="photo"><button className={liked.includes(p.id)?"heart active":"heart"} onClick={()=>setLiked(x=>x.includes(p.id)?x.filter(i=>i!==p.id):[...x,p.id])}><Heart size={19} fill={liked.includes(p.id)?"currentColor":"none"}/></button>{p.imageUrl?<img src={p.imageUrl} alt={p.title} onClick={()=>setDetail(p)}/>:<div className="product-placeholder"><ShoppingBag/></div>}</div><div className="product-body"><h3 onClick={()=>setDetail(p)}>{p.title}</h3><div className="rating">{p.sales!==null?`${p.sales.toLocaleString("ru-RU")} продаж`:"Pinduoduo"}</div><div className="prices"><b>{formatCny(p.priceCnyMinor)}</b></div><button className="primary product-add" onClick={()=>add(p,"pdd")}>В корзину</button></div></article>);
- const localCards=products.map(p=><article className="product" key={p.id}><div className="photo"><button className={liked.includes(p.id)?"heart active":"heart"} onClick={()=>setLiked(x=>x.includes(p.id)?x.filter(i=>i!==p.id):[...x,p.id])}><Heart size={19} fill={liked.includes(p.id)?"currentColor":"none"}/></button><div className="product-placeholder" onClick={()=>setDetail(p)}><ShoppingBag/></div></div><div className="product-body"><h3 onClick={()=>setDetail(p)}>{p.titleRu||p.titleUz}</h3><div className="rating">{p.category?.nameRu||"Каталог"}</div><div className="prices"><b>{p.currency==="UZS"?formatUzs(p.priceMinor):`${(p.priceMinor/100).toFixed(2)} ${p.currency}`}</b></div><button className="primary product-add" onClick={()=>add(p,"local")}>В корзину</button></div></article>);
+ const remoteCards=pddProducts.map(p=><article className="product" key={`pdd-${p.id}`}><div className="photo"><button className={liked.includes(p.id)?"heart active":"heart"} onClick={()=>setLiked(x=>x.includes(p.id)?x.filter(i=>i!==p.id):[...x,p.id])}><Heart size={19} fill={liked.includes(p.id)?"currentColor":"none"}/></button><PhotoCarousel images={extractProductImages(p)} alt={p.title} onOpen={()=>setDetail(p)}/></div><div className="product-body"><h3 onClick={()=>setDetail(p)}>{p.title}</h3><div className="rating">{p.sales!==null?`${p.sales.toLocaleString("ru-RU")} продаж`:"Pinduoduo"}</div><div className="prices"><b>{formatCny(p.priceCnyMinor)}</b></div><button className="primary product-add" onClick={()=>add(p,"pdd")}>В корзину</button></div></article>);
+ const localCards=products.map(p=><article className="product" key={p.id}><div className="photo"><button className={liked.includes(p.id)?"heart active":"heart"} onClick={()=>setLiked(x=>x.includes(p.id)?x.filter(i=>i!==p.id):[...x,p.id])}><Heart size={19} fill={liked.includes(p.id)?"currentColor":"none"}/></button><PhotoCarousel images={extractProductImages(p)} alt={p.titleRu||p.titleUz} onOpen={()=>setDetail(p)}/></div><div className="product-body"><h3 onClick={()=>setDetail(p)}>{p.titleRu||p.titleUz}</h3><div className="rating">{p.category?.nameRu||"Каталог"}</div><div className="prices"><b>{p.currency==="UZS"?formatUzs(p.priceMinor):`${(p.priceMinor/100).toFixed(2)} ${p.currency}`}</b></div><button className="primary product-add" onClick={()=>add(p,"local")}>В корзину</button></div></article>);
 
  return <div className="app">
  <header><div className="top"><div className="brand"><span className="brand-mark">P</span><span>Pinduoduo<span className="uz">.uz</span></span></div><button className="location" onClick={()=>scroll("catalog")}><MapPin size={17}/><div><small>Доставка в</small><b>Ташкент</b></div></button><form className="search" onSubmit={e=>{e.preventDefault();search()}}><Search size={20}/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Ищите товары в каталоге"/><button type="submit">Найти</button></form><button className="icon-btn" onClick={()=>setLoginOpen(true)}><UserRound size={21}/><span>Войти</span></button><button className="icon-btn cart" onClick={()=>setCartOpen(true)}><ShoppingBag size={21}/><span>Корзина</span>{cart.length>0&&<i>{cart.reduce((n,x)=>n+x.quantity,0)}</i>}</button></div><nav><button onClick={()=>scroll("catalog")}>Каталог</button><button onClick={()=>{setQ("");setPddProducts([]);scroll("catalog")}}>Товары из Китая</button><button onClick={()=>scroll("catalog")}>Скидки</button><button onClick={()=>scroll("how")}>Как заказать</button><button onClick={()=>scroll("how")}>Доставка</button><button onClick={()=>setLoginOpen(true)}>Поддержка</button></nav></header>
