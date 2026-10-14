@@ -83,6 +83,27 @@ describe("SupplierPurchasesService", () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
+  it("rejects a settlement amount that differs from supplier items plus shipping", async () => {
+    prisma.supplierSettlement.findUnique.mockResolvedValue(null);
+    prisma.supplierPurchase.findUnique.mockResolvedValue({
+      id: "purchase-1",
+      status: "READY",
+      supplierCurrency: "CNY",
+      supplierAmountMinor: 1000,
+      supplierShippingMinor: 200,
+    });
+
+    await expect(service.createSettlement("purchase-1", "settlement-key", {
+      beneficiaryName: "Supplier Ltd",
+      beneficiaryBank: "Bank",
+      beneficiaryAccountRef: "vault://beneficiary/1",
+      contractReference: "invoice-1",
+      currency: "CNY",
+      amountMinor: 1500,
+    })).rejects.toBeInstanceOf(ConflictException);
+    expect(prisma.supplierSettlement.create).not.toHaveBeenCalled();
+  });
+
   it("requires a bank reference to mark a settlement as sent", async () => {
     prisma.supplierSettlement.findUnique.mockResolvedValue({
       id: "settlement-1",
