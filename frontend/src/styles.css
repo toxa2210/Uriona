@@ -3421,3 +3421,66 @@ input {
   .home-language-chip { margin-left: auto; }
   .home-promo-tabs button { font-size: 11px; }
 }
+
+
+/* Account screen: clean, compact mobile layout and predictable auth feedback. */
+.auth-panel {
+  width: min(100%, 620px);
+  margin: clamp(12px, 3vw, 28px) auto 24px;
+  padding: clamp(18px, 3vw, 30px);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: linear-gradient(150deg, rgba(13, 24, 52, .94), rgba(6, 12, 30, .88));
+  box-shadow: 0 18px 48px rgba(0, 0, 0, .18);
+}
+.auth-panel .profile-header { margin-bottom: 18px; }
+.auth-panel .profile-intro { margin: 0 0 22px; }
+.auth-panel .auth-form { gap: 16px; }
+.auth-panel .auth-form label { display: grid; gap: 8px; color: var(--muted); font-size: 14px; font-weight: 700; }
+.auth-panel .auth-form input {
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(16, 30, 62, .85);
+  color: var(--ink);
+  font-size: 16px;
+}
+.auth-panel .auth-form input:focus { outline: 2px solid rgba(0, 217, 255, .55); outline-offset: 1px; }
+.auth-panel .profile-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
+.auth-panel .profile-actions button { width: 100%; min-width: 0; min-height: 48px; margin: 0; }
+.auth-panel .profile-actions button:only-child { grid-column: 1 / -1; }
+.auth-panel .auth-link { margin-top: 18px; padding: 8px 0; }
+.auth-panel .auth-message { overflow-wrap: anywhere; }
+@media (max-width: 699px) {
+  .page { padding: 12px 12px 32px; }
+  .top-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: 12px 12px 10px; }
+  .top-row .brand { grid-column: 1; grid-row: 1; min-width: 0; font-size: 1.15rem; }
+  .top-row .catalog-menu-wrap { grid-column: 2; grid-row: 1; }
+  .top-row .search-box { grid-column: 1 / -1; grid-row: 2; width: 100%; min-width: 0; }
+  .top-row .header-orders { display: none; }
+  .top-row .header-profile,
+  .top-row .cart { grid-row: 1; }
+  .top-sub-row { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 12px 12px; align-items: center; }
+  .top-sub-tools { display: flex; flex: 1 1 100%; flex-wrap: wrap; justify-content: flex-start; gap: 7px; min-width: 0; }
+  .home-delivery-chip { flex: 1 1 140px; min-width: 0; }
+  .home-language-chip { flex: 0 0 68px; }
+  .home-currency-chip { flex: 0 0 58px; }
+  .home-theme-chip { flex: 0 0 40px; }
+  .home-promo-tabs { order: 2; width: 100%; }
+  .auth-panel { margin: 4px auto 18px; padding: 18px 15px; border-radius: 20px; }
+  .auth-panel .profile-header { gap: 13px; align-items: center; }
+  .auth-panel .profile-avatar { width: 58px; height: 58px; flex: 0 0 58px; }
+  .auth-panel .profile-header h2 { font-size: clamp(1.35rem, 6vw, 1.8rem); line-height: 1.15; }
+  .auth-panel .profile-intro { margin-bottom: 20px; font-size: 14px; }
+  .auth-panel .profile-actions { grid-template-columns: minmax(0, 1fr); gap: 9px; }
+  .auth-panel .profile-actions button { min-height: 48px; }
+}
+@media (max-width: 380px) {
+  .page { padding-inline: 8px; }
+  .top-row { padding-inline: 8px; gap: 7px; }
+  .top-row .brand { font-size: 1rem; }
+  .auth-panel { padding: 15px 12px; }
+}
