@@ -21,8 +21,14 @@ jobs:
         run: npm install
       - name: Generate Prisma client
         run: npx prisma generate
+      - name: Validate Prisma schema
+        run: npx prisma validate
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/uriona
       - name: Build backend
         run: npm run build
+      - name: Test backend
+        run: npm test -- --runInBand
 
   frontend:
     runs-on: ubuntu-latest
