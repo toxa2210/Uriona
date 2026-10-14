@@ -47,6 +47,29 @@ enum FinanceEntrySource {
   REFUND
 }
 
+enum SupplierPurchaseStatus {
+  PENDING
+  READY
+  SUBMITTING
+  PLACED
+  FULFILLING
+  SHIPPED
+  DELIVERED
+  FAILED
+  CANCELLED
+  REFUND_REQUIRED
+}
+
+enum SupplierSettlementStatus {
+  DRAFT
+  APPROVED
+  SENT
+  SETTLED
+  REJECTED
+  FAILED
+  CANCELLED
+}
+
 enum CainiaoShipmentStatus {
   PREPARED
   SUBMITTING
@@ -183,6 +206,7 @@ model Order {
   trackingEvents    OrderTrackingEvent[]
   financeEntries    FinanceEntry[]
   cainiaoShipments  CainiaoShipment[]
+  supplierPurchases SupplierPurchase[]
 
   @@index([userId])
   @@index([status])
@@ -327,4 +351,58 @@ model AliexpressCredential {
   accessTokenExpiresAt  DateTime
   refreshTokenExpiresAt DateTime?
   updatedAt             DateTime  @updatedAt
+}
+
+
+model SupplierPurchase {
+  id                    String                 @id @default(cuid())
+  orderId               String
+  order                 Order                  @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  provider              String                 @default("aliexpress")
+  status                SupplierPurchaseStatus @default(PENDING)
+  idempotencyKey        String                 @unique
+  requestFingerprint    String
+  supplierCurrency      String                 @default("CNY")
+  supplierAmountMinor   Int?
+  supplierShippingMinor Int?
+  externalOrderId       String?
+  confirmationSource    String?
+  confirmationReference String?
+  lastErrorCode         String?
+  lastErrorMessage      String?
+  attemptCount          Int                    @default(0)
+  lastAttemptAt         DateTime?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  settlements           SupplierSettlement[]
+
+  @@unique([provider, externalOrderId])
+  @@unique([orderId, provider])
+  @@index([status, createdAt])
+}
+
+model SupplierSettlement {
+  id                     String                   @id @default(cuid())
+  purchaseId             String
+  purchase               SupplierPurchase         @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
+  status                 SupplierSettlementStatus @default(DRAFT)
+  idempotencyKey         String                   @unique
+  beneficiaryName        String
+  beneficiaryBank        String
+  beneficiaryAccountRef  String
+  contractReference      String
+  currency               String
+  amountMinor            Int
+  bankReference          String?                  @unique
+  proofStorageKey        String?
+  approvedById           String?
+  approvedAt             DateTime?
+  initiatedAt            DateTime?
+  settledAt              DateTime?
+  failureReason          String?
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+
+  @@index([purchaseId, status])
+  @@index([status, createdAt])
 }

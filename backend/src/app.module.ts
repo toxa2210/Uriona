@@ -9,6 +9,7 @@ import { CartModule } from "./modules/cart/cart.module";
 import { CheckoutModule } from "./modules/checkout/checkout.module";
 import { IntegrationsModule } from "./modules/integrations/integrations.module";
 import { CrmModule } from "./modules/crm/crm.module";
+import { SupplierPurchasesModule } from "./modules/supplier-purchases/supplier-purchases.module";
 import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
 import { RequestIdMiddleware } from "./common/request-id.middleware";
 
@@ -22,7 +23,8 @@ import { RequestIdMiddleware } from "./common/request-id.middleware";
     OrdersModule,
     CheckoutModule,
     IntegrationsModule,
-    CrmModule
+    CrmModule,
+    SupplierPurchasesModule
   ],
   controllers: [HealthController]
 })
