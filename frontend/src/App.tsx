@@ -655,7 +655,7 @@ const translations = {
     best: "Лучшие предложения", popular: "Популярные товары", forYou: "Случайная подборка для вас",
     searchResults: (query: string) => `Товары по запросу «${query}»`, seeAll: "Смотреть всё", payments: "Платежи", shipping: "Доставка",
     catalogPdd: "Категория каталога", all: "Все категории", tags: "Все теги", goods: "Товары", allGoods: "Все товары",
-    add: "Добавить", buy: "Купить", details: "Подробнее", loading: "Загружаем товары AliExpress...", noGoods: "Реальные товары не найдены.",
+    add: "Добавить", buy: "Купить", details: "Подробнее", loading: "Загружаем товары", noGoods: "Реальные товары не найдены.",
     lang: "Язык", light: "Светлая тема", dark: "Тёмная тема", loadingCatalog: "Загружаем каталог", apiError: "Ошибка каталога",
     china: "Международный каталог", hot: "Горячие товары", showAll: "Показать всё", sale: "Акции недели", discount: "Скидка",
     emptyCart: "Корзина пуста", addFromCatalog: "Добавьте товары из каталога и вернитесь сюда.", shop: "К покупкам",
@@ -679,7 +679,7 @@ const translations = {
     best: "Best offers", popular: "Popular products", forYou: "A random selection for you",
     searchResults: (query: string) => `Products for “${query}”`, seeAll: "View all", payments: "Payments", shipping: "Delivery",
     catalogPdd: "Catalog category", all: "All categories", tags: "All tags", goods: "Products", allGoods: "All products",
-    add: "Add", buy: "Buy", details: "Details", loading: "Loading AliExpress products...", noGoods: "No real products found.",
+    add: "Add", buy: "Buy", details: "Details", loading: "Loading products", noGoods: "No real products found.",
     lang: "Language", light: "Light theme", dark: "Dark theme", loadingCatalog: "Loading catalog", apiError: "Catalog error",
     china: "Global catalog", hot: "Trending products", showAll: "Show all", sale: "Weekly deals", discount: "Sale",
     emptyCart: "Your cart is empty", addFromCatalog: "Add products from the catalog and come back here.", shop: "Start shopping",
@@ -703,7 +703,7 @@ const translations = {
     best: "Eng yaxshi takliflar", popular: "Mashhur mahsulotlar", forYou: "Siz uchun tasodifiy tanlov",
     searchResults: (query: string) => `“${query}” so‘rovi bo‘yicha mahsulotlar`, seeAll: "Barchasini ko‘rish", payments: "To‘lovlar", shipping: "Yetkazib berish",
     catalogPdd: "Katalog kategoriyasi", all: "Barcha kategoriyalar", tags: "Barcha teglar", goods: "Mahsulotlar", allGoods: "Barcha mahsulotlar",
-    add: "Qo‘shish", buy: "Sotib olish", details: "Batafsil", loading: "AliExpress mahsulotlari yuklanmoqda...", noGoods: "Haqiqiy mahsulotlar topilmadi.",
+    add: "Qo‘shish", buy: "Sotib olish", details: "Batafsil", loading: "Mahsulotlar yuklanmoqda", noGoods: "Haqiqiy mahsulotlar topilmadi.",
     lang: "Til", light: "Yorug‘ rejim", dark: "Qorong‘i rejim", loadingCatalog: "Katalog yuklanmoqda", apiError: "Katalog xatosi",
     china: "Xalqaro katalog", hot: "Ommabop mahsulotlar", showAll: "Barchasini ko‘rsatish", sale: "Haftalik chegirmalar", discount: "Chegirma",
     emptyCart: "Savat bo‘sh", addFromCatalog: "Katalogdan mahsulot qo‘shing va bu yerga qayting.", shop: "Xaridga o‘tish",
@@ -1009,6 +1009,10 @@ export function App() {
   const [liveCatalog, setLiveCatalog] = useState(false);
   const [catalogSource, setCatalogSource] = useState<"loading" | "aliexpress" | "local" | "unavailable">("loading");
   const [catalogLoading, setCatalogLoading] = useState(true);
+  const [catalogPage, setCatalogPage] = useState(1);
+  const [catalogHasMore, setCatalogHasMore] = useState(true);
+  const [catalogMoreLoading, setCatalogMoreLoading] = useState(false);
+  const catalogSentinelRef = useRef<HTMLDivElement>(null);
   const [catalogError, setCatalogError] = useState("");
   const [catalogAttempt, setCatalogAttempt] = useState(0);
   const [detailProduct, setDetailProduct] = useState<ApiProduct | null>(null);
@@ -1213,6 +1217,9 @@ export function App() {
   useEffect(() => {
     let active = true;
     setCatalogLoading(true);
+    setCatalogPage(1);
+    setCatalogHasMore(true);
+    setCatalogMoreLoading(false);
     setCatalogError("");
     setCatalogSource("loading");
     const timer = window.setTimeout(() => {
@@ -1238,6 +1245,8 @@ export function App() {
             ?? null,
         }));
         const liveProducts = isHomeRecommendations ? shuffleItems(mappedProducts) : mappedProducts;
+        setCatalogHasMore(mappedProducts.length >= 20);
+        setCatalogPage(1);
         if (!liveProducts.length) {
           setProducts([]);
           setLiveCatalog(true);
@@ -1265,6 +1274,46 @@ export function App() {
       window.clearTimeout(timer);
     };
   }, [search, selectedCat, categories, language, catalogAttempt, recommendationKeyword, view]);
+  
+  useEffect(() => {
+    if (view !== "Категории" || catalogLoading || !catalogHasMore || catalogMoreLoading || catalogSource !== "aliexpress") return;
+    const sentinel = catalogSentinelRef.current;
+    if (!sentinel || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return;
+      setCatalogMoreLoading(true);
+      const selectedCategory = categories.find((category) => category.id === selectedCat);
+      const searchTerm = search.trim();
+      api.aliexpress.dropshippingProducts({
+        keyWord: searchTerm || (selectedCat !== "all" ? categoryLabel(selectedCategory)?.trim() : "") || recommendationKeyword,
+        ...(selectedCat !== "all" ? { categoryId: selectedCat } : {}),
+        pageIndex: catalogPage + 1,
+        pageSize: 20,
+        ...(selectedCat !== "all" ? { sortBy: "orders,desc" } : {}),
+        currency: "UZS",
+        countryCode: "UZ",
+      }).then((payload) => {
+        const nextProducts = mapMarketplaceGoods(payload, "UZS").map((product) => ({
+          ...product,
+          category: categories.find((category) => category.id === product.categoryId)
+            ?? categories.find((category) => category.id === selectedCat)
+            ?? null,
+        }));
+        setProducts((current) => {
+          const merged = new Map(current.map((product) => [product.id, product]));
+          nextProducts.forEach((product) => merged.set(product.id, product));
+          return Array.from(merged.values());
+        });
+        setCatalogPage((page) => page + 1);
+        setCatalogHasMore(nextProducts.length >= 20);
+      }).catch(() => {
+        setCatalogHasMore(false);
+      }).finally(() => setCatalogMoreLoading(false));
+    }, { rootMargin: "500px 0px" });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [view, catalogLoading, catalogHasMore, catalogMoreLoading, catalogSource, catalogPage, selectedCat, search, categories, recommendationKeyword, language]);
+
 
   const visibleProducts = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -2092,7 +2141,8 @@ export function App() {
       </div>
 
       <div className="category-grid large-grid category-browser-grid">
-        {categories.length === 0 && renderCatalogState(categoriesLoading ? text.loadingCatalog : categoriesError || text.noGoods, !categoriesLoading && Boolean(categoriesError))}
+        {categoriesLoading && categories.length === 0 && Array.from({ length: 15 }, (_, index) => <div key={`category-skeleton-${index}`} className="category-browser-skeleton" aria-hidden="true"><span /><i /><i /></div>)}
+        {categories.length === 0 && !categoriesLoading && renderCatalogState(categoriesError || text.noGoods, Boolean(categoriesError))}
         {browsedCategories.map((category, index) => {
           const children = categoryChildren.get(category.id) ?? [];
           const isSelected = selectedCat === category.id;
@@ -2133,13 +2183,15 @@ export function App() {
         )}
       </div>
 
-      {products.length === 0 ? (
+      {catalogLoading && products.length === 0 ? (
         <div className="catalog-products-state">
-          {renderCatalogState(
-            catalogLoading ? text.loading : catalogError || text.noGoods,
-            !catalogLoading && Boolean(catalogError)
-          )}
+          <p className="catalog-loading-label" role="status">{text.loading}</p>
+          <div className="product-grid compact-grid catalog-skeleton-grid" aria-hidden="true">
+            {Array.from({ length: 10 }, (_, index) => <div key={`product-skeleton-${index}`} className="catalog-product-skeleton"><span className="skeleton-image" /><i className="skeleton-line wide" /><i className="skeleton-line" /><i className="skeleton-line short" /></div>)}
+          </div>
         </div>
+      ) : products.length === 0 ? (
+        <div className="catalog-products-state">{renderCatalogState(catalogError || text.noGoods, Boolean(catalogError))}</div>
       ) : products.length > 0 ? (
         <>
           <div className="section-head panel-head">
@@ -2171,6 +2223,8 @@ export function App() {
               </article>
             ))}
           </div>
+          <div ref={catalogSentinelRef} className="catalog-infinite-sentinel" aria-hidden="true" />
+          {catalogMoreLoading && <p className="catalog-loading-label" role="status">{text.loading}</p>}
         </>
       ) : null}
     </section>
