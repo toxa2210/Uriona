@@ -1088,6 +1088,8 @@ export function App() {
     localStorage.setItem("uriona-language", language);
     localStorage.setItem("uriona-theme", lightMode ? "light" : "dark");
     document.documentElement.lang = language === "uz" ? "uz" : language;
+    document.documentElement.style.colorScheme = lightMode ? "light" : "dark";
+    document.body.classList.toggle("light-mode", lightMode);
   }, [language, lightMode]);
 
   useEffect(() => {
@@ -2877,12 +2879,39 @@ export function App() {
         <div className="product-dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setDetailProduct(null); }}>
           <section className="product-dialog" role="dialog" aria-modal="true" aria-labelledby="product-dialog-title">
             <button type="button" className="product-dialog-close" onClick={() => setDetailProduct(null)} aria-label="Закрыть"><X size={20} /></button>
-            {(productDetails?.images[0] || detailProduct.imageUrl) && <img className="product-dialog-image" src={productDetails?.images[0] || detailProduct.imageUrl || undefined} alt={productDetails?.subject || productTitle(detailProduct) || ""} referrerPolicy="no-referrer" />}
-            <small>{productDetails?.categoryId ? localizeText("Товар AliExpress", language) : categoryLabel(detailProduct.category) || localizeText("Товар AliExpress", language)}</small>
-            <h2 id="product-dialog-title">{productDetails?.subject || productTitle(detailProduct)}</h2>
-            <p>{productDetails?.description || productDescription(detailProduct) || (detailLoading ? "Загружаем описание товара…" : "Описание не предоставлено API.")}</p>
-            <strong>{formatUzs(detailProduct.priceMinor)}</strong>
-            <code>product_id: {detailProduct.id}</code>
+            <div className="product-dialog-layout">
+              <div className="product-dialog-gallery">
+                {(productDetails?.images[0] || detailProduct.imageUrl) ? (
+                  <img className="product-dialog-image" src={productDetails?.images[0] || detailProduct.imageUrl || undefined} alt={productDetails?.subject || productTitle(detailProduct) || ""} referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="product-dialog-image-placeholder"><ShoppingBag size={44} /><span>Фото товара загружается</span></div>
+                )}
+                {productDetails?.images && productDetails.images.length > 1 && (
+                  <div className="product-detail-images" aria-label="Фотографии товара">
+                    {productDetails.images.slice(1, 7).map((image) => <img key={image} src={image} alt="" referrerPolicy="no-referrer" loading="lazy" />)}
+                  </div>
+                )}
+              </div>
+              <div className="product-dialog-information">
+                <div className="product-dialog-eyebrow"><span className="product-dialog-dot" />{categoryLabel(detailProduct.category) || localizeText("Товар AliExpress", language)}</div>
+                <h2 id="product-dialog-title">{productDetails?.subject || productTitle(detailProduct)}</h2>
+                <div className="product-dialog-price-row"><strong>{formatUzs(detailProduct.priceMinor)}</strong><span className="product-dialog-availability"><CheckCircle2 size={15} /> Доступность уточняется</span></div>
+                <p className="product-dialog-description">{productDetails?.description || productDescription(detailProduct) || (detailLoading ? "Загружаем описание товара…" : "Подробное описание пока не предоставлено поставщиком.")}</p>
+                <div className="product-dialog-assurances">
+                  <span><ShieldCheck size={17} /> Безопасное оформление</span>
+                  <span><Truck size={17} /> Доставка рассчитывается перед заказом</span>
+                </div>
+                <div className="product-dialog-actions">
+                  <button type="button" className="primary-btn product-dialog-buy" onClick={() => { handleAddToCart(detailProduct.id); setDetailProduct(null); goTo("Корзина", "Товар добавлен — можно продолжить оформление"); }}>
+                    <Zap size={17} /> Купить сейчас
+                  </button>
+                  <button type="button" className="secondary-btn product-dialog-add" onClick={() => handleAddToCart(detailProduct.id)}>
+                    <ShoppingBag size={17} /> В корзину
+                  </button>
+                </div>
+                <div className="product-dialog-meta-line"><span>Артикул</span><code>{detailProduct.id}</code></div>
+              </div>
+            </div>
             {detailLoading && <p className="product-detail-state" role="status">Загружаем данные AliExpress…</p>}
             {detailError && <div className="product-detail-state" role="alert"><span>{detailError}</span><button type="button" onClick={() => setDetailAttempt((attempt) => attempt + 1)}>Повторить</button></div>}
             {productDetails && <>
@@ -2894,9 +2923,6 @@ export function App() {
                 {productDetails.dimensions && <div><dt>Размер упаковки</dt><dd>{productDetails.dimensions}</dd></div>}
                 {productDetails.deliveryTime && <div><dt>Срок отправки</dt><dd>{productDetails.deliveryTime}</dd></div>}
               </dl>
-              {productDetails.images.length > 1 && <div className="product-detail-images" aria-label="Фотографии товара">
-                {productDetails.images.slice(1, 7).map((image) => <img key={image} src={image} alt="" referrerPolicy="no-referrer" loading="lazy" />)}
-              </div>}
               {productDetails.videos.length > 0 && <div className="product-detail-videos">
                 {productDetails.videos.map((video) => <video key={video} src={video} controls preload="none" aria-label="Видео товара" />)}
               </div>}
