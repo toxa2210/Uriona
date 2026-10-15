@@ -979,7 +979,7 @@ function checkoutVariants(skus: Record<string, unknown>[]): CheckoutVariant[] {
 
 export function App() {
   const [language, setLanguage] = useState<Language>(() => (localStorage.getItem("uriona-language") as Language) || "ru");
-  const [lightMode, setLightMode] = useState(() => localStorage.getItem("uriona-theme") === "light");
+  const [lightMode, setLightMode] = useState(() => localStorage.getItem("uriona-theme") !== "dark");
   const text = translations[language];
   const categoryLabel = (category?: ApiCategory | null) => language === "uz"
     ? category?.nameUz || category?.nameRu
