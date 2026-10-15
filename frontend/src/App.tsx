@@ -189,7 +189,7 @@ const uiTranslations: Record<string, Partial<Record<Language, string>>> = Object
   "Каталог": { en: "Catalog", uz: "Katalog" },
   "Категории": { en: "Categories", uz: "Kategoriyalar" },
   "Все категории": { en: "All categories", uz: "Barcha kategoriyalar" },
-  "Категория AliExpress": { en: "AliExpress category", uz: "AliExpress kategoriyasi" },
+  "Категория AliExpress": { en: "Category", uz: "Kategoriya" },
   "Категория каталога": { en: "Catalog category", uz: "Katalog kategoriyasi" },
   "Товары": { en: "Products", uz: "Mahsulotlar" },
   "Все товары": { en: "All products", uz: "Barcha mahsulotlar" },
@@ -654,7 +654,7 @@ const translations = {
     safe: "Безопасная оплата", deliveryUz: "Доставка в Узбекистан", categoriesQuick: "Быстрый выбор", allCategories: "Все категории",
     best: "Лучшие предложения", popular: "Популярные товары", forYou: "Случайная подборка для вас",
     searchResults: (query: string) => `Товары по запросу «${query}»`, seeAll: "Смотреть всё", payments: "Платежи", shipping: "Доставка",
-    catalogPdd: "Категория AliExpress", all: "Все категории", tags: "Все теги", goods: "Товары", allGoods: "Все товары",
+    catalogPdd: "Категория каталога", all: "Все категории", tags: "Все теги", goods: "Товары", allGoods: "Все товары",
     add: "Добавить", buy: "Купить", details: "Подробнее", loading: "Загружаем товары AliExpress...", noGoods: "Реальные товары не найдены.",
     lang: "Язык", light: "Светлая тема", dark: "Тёмная тема", loadingCatalog: "Загружаем каталог", apiError: "Ошибка каталога",
     china: "Международный каталог", hot: "Горячие товары", showAll: "Показать всё", sale: "Акции недели", discount: "Скидка",
@@ -678,7 +678,7 @@ const translations = {
     safe: "Secure payment", deliveryUz: "Delivery to Uzbekistan", categoriesQuick: "Quick pick", allCategories: "All categories",
     best: "Best offers", popular: "Popular products", forYou: "A random selection for you",
     searchResults: (query: string) => `Products for “${query}”`, seeAll: "View all", payments: "Payments", shipping: "Delivery",
-    catalogPdd: "AliExpress category", all: "All categories", tags: "All tags", goods: "Products", allGoods: "All products",
+    catalogPdd: "Catalog category", all: "All categories", tags: "All tags", goods: "Products", allGoods: "All products",
     add: "Add", buy: "Buy", details: "Details", loading: "Loading AliExpress products...", noGoods: "No real products found.",
     lang: "Language", light: "Light theme", dark: "Dark theme", loadingCatalog: "Loading catalog", apiError: "Catalog error",
     china: "Global catalog", hot: "Trending products", showAll: "Show all", sale: "Weekly deals", discount: "Sale",
@@ -702,7 +702,7 @@ const translations = {
     safe: "Xavfsiz to‘lov", deliveryUz: "O‘zbekistonga yetkazib berish", categoriesQuick: "Tezkor tanlov", allCategories: "Barcha kategoriyalar",
     best: "Eng yaxshi takliflar", popular: "Mashhur mahsulotlar", forYou: "Siz uchun tasodifiy tanlov",
     searchResults: (query: string) => `“${query}” so‘rovi bo‘yicha mahsulotlar`, seeAll: "Barchasini ko‘rish", payments: "To‘lovlar", shipping: "Yetkazib berish",
-    catalogPdd: "AliExpress kategoriyasi", all: "Barcha kategoriyalar", tags: "Barcha teglar", goods: "Mahsulotlar", allGoods: "Barcha mahsulotlar",
+    catalogPdd: "Katalog kategoriyasi", all: "Barcha kategoriyalar", tags: "Barcha teglar", goods: "Mahsulotlar", allGoods: "Barcha mahsulotlar",
     add: "Qo‘shish", buy: "Sotib olish", details: "Batafsil", loading: "AliExpress mahsulotlari yuklanmoqda...", noGoods: "Haqiqiy mahsulotlar topilmadi.",
     lang: "Til", light: "Yorug‘ rejim", dark: "Qorong‘i rejim", loadingCatalog: "Katalog yuklanmoqda", apiError: "Katalog xatosi",
     china: "Xalqaro katalog", hot: "Ommabop mahsulotlar", showAll: "Barchasini ko‘rsatish", sale: "Haftalik chegirmalar", discount: "Chegirma",
@@ -987,9 +987,13 @@ export function App() {
   const productTitle = (product: Pick<ApiProduct, "titleRu" | "titleUz">) => language === "uz"
     ? product.titleUz || product.titleRu
     : product.titleRu || product.titleUz;
-  const productDescription = (product: ApiProduct) => language === "uz"
-    ? product.descriptionUz || product.descriptionRu
-    : product.descriptionRu || product.descriptionUz;
+  const productDescription = (product: ApiProduct) => {
+    const description = language === "uz"
+      ? product.descriptionUz || product.descriptionRu
+      : product.descriptionRu || product.descriptionUz;
+    // Older catalog records may contain a supplier URL in the description field.
+    return description && !/^https?:\/\//i.test(description.trim()) ? description : "";
+  };
   const [view, setView] = useState<View>("Главная");
   const [search, setSearch] = useState("");
   const [catalogMenuOpen, setCatalogMenuOpen] = useState(false);
@@ -1876,7 +1880,7 @@ export function App() {
                 />
                 <span className="promo-side-shade" />
                 <span className="promo-side-copy">
-                  <small>{categoryLabel(product.category) || (liveCatalog ? "AliExpress" : "URIONA")}</small>
+                  <small>{categoryLabel(product.category) || "URIONA"}</small>
                   <strong>{productTitle(product)}</strong>
                   <b>{formatUzs(product.priceMinor)}</b>
                   <span className="promo-side-cta">{text.details}<ChevronRight size={14} /></span>
@@ -1888,7 +1892,7 @@ export function App() {
               <div className="promo-feature-copy">
                 <small className="promo-feature-kicker">URIONA&nbsp; · &nbsp;{text.forYou}</small>
                 <h1>{productTitle(activeHeroProduct)}</h1>
-                <p>{categoryLabel(activeHeroProduct.category) || (liveCatalog ? "AliExpress" : text.catalog)}</p>
+                <p>{categoryLabel(activeHeroProduct.category) || text.catalog}</p>
                 <div className="promo-feature-actions">
                   <strong>{formatUzs(activeHeroProduct.priceMinor)}</strong>
                   <button type="button" onClick={() => void openProductDetails(activeHeroProduct)}>
@@ -2022,7 +2026,7 @@ export function App() {
                       </button>
                     </div>
                     <div className="product-body home-product-body">
-                      <span className="product-category">{categoryLabel(product.category) || (liveCatalog ? "AliExpress" : text.catalog)}</span>
+                      <span className="product-category">{categoryLabel(product.category) || text.catalog}</span>
                       <button type="button" className="home-product-title" onClick={() => void openProductDetails(product)}>
                         {productTitle(product)}
                       </button>
@@ -2365,7 +2369,7 @@ export function App() {
                         : <ShoppingBag size={28} aria-hidden="true" />}
                     </div>
                     <div className="cart-copy cart-copy-modern">
-                      <span className="cart-product-category">{categoryLabel(product.category) || "AliExpress"}</span>
+                      <span className="cart-product-category">{categoryLabel(product.category) || "URIONA"}</span>
                       <h3>{productTitle(product)}</h3>
                       <span className="cart-delivery-hint"><Truck size={14} />{localizeText("Найдено для доставки в Узбекистан", language)}</span>
                       <strong className="cart-unit-price">{formatUzs(product.priceMinor)}</strong>
@@ -2887,7 +2891,7 @@ export function App() {
                 )}
               </div>
               <div className="product-dialog-information">
-                <div className="product-dialog-eyebrow"><span className="product-dialog-dot" />{categoryLabel(detailProduct.category) || localizeText("Товар AliExpress", language)}</div>
+                <div className="product-dialog-eyebrow"><span className="product-dialog-dot" />{categoryLabel(detailProduct.category) || (language === "uz" ? "Mahsulot" : language === "en" ? "Product" : "Товар")}</div>
                 <h2 id="product-dialog-title">{productDetails?.subject || productTitle(detailProduct)}</h2>
                 <div className="product-dialog-price-row"><strong>{formatUzs(detailProduct.priceMinor)}</strong><span className="product-dialog-availability"><CheckCircle2 size={15} /> Доступность уточняется</span></div>
                 <p className="product-dialog-description">{productDetails?.description || productDescription(detailProduct) || (detailLoading ? "Загружаем описание товара…" : "Подробное описание пока не предоставлено поставщиком.")}</p>
