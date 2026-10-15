@@ -512,3 +512,9 @@ body.light-mode .product-dialog-actions { background: var(--dialog-bg); }
   0% { background-position: 100% 0; }
   100% { background-position: -120% 0; }
 }
+
+/* Main catalog product cards: five columns on desktop, responsive on smaller screens. */
+.product-grid.large-grid:not(.home-product-grid) { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (max-width: 1100px) { .product-grid.large-grid:not(.home-product-grid) { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .product-grid.large-grid:not(.home-product-grid) { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .product-grid.large-grid:not(.home-product-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
