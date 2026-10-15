@@ -150,7 +150,9 @@ export function mapMarketplaceGoods(payload: unknown, priceCurrency: "CNY" | "UZ
     const categoryId = firstString(goods.first_level_category_id, goods.category_id, goods.cat_id, goods.cateId, categoryIds[0], goods.goods_cat_id)
       .split(",")[0] || null;
     const title = firstString(goods.product_title, goods.goods_name, goods.goods_title, goods.title) || "Товар маркетплейса";
-    const description = firstString(goods.product_detail_url, goods.itemUrl, goods.goods_desc, goods.goods_description, goods.description);
+    const rawDescription = firstString(goods.goods_desc, goods.goods_description, goods.description);
+    // Product detail links are internal supplier metadata, never customer-facing descriptions.
+    const description = /^https?:\/\//i.test(rawDescription) ? "" : rawDescription;
     const imageUrls = asObject(goods.product_main_image_url);
     const imageUrl = firstString(
       goods.product_main_image_url,
