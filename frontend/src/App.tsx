@@ -1309,8 +1309,7 @@ export function App() {
         setCatalogPage((page) => page + 1);
         setCatalogHasMore(nextProducts.length >= 20 && nextProducts.some((product) => product.id));
       }).catch(() => {
-        // Keep pagination available so a transient upstream error can be retried on the next scroll.
-        setCatalogHasMore(true);
+        setCatalogHasMore(false);
       }).finally(() => setCatalogMoreLoading(false));
     }, { rootMargin: "500px 0px" });
     observer.observe(sentinel);
