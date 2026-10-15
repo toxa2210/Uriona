@@ -206,7 +206,8 @@ export function mapMarketplaceCategories(payload: unknown): ApiCategory[] {
     const category = asObject(entry);
     const id = firstString(category.category_id, category.cat_id, category.goods_cat_id, category.id);
     const name = firstString(category.category_name, category.cat_name, category.goods_cat_name, category.name);
-    const parentId = firstString(category.parent_category_id, category.parent_id);
+    const rawParentId = firstString(category.parent_category_id, category.parent_id, category.parent_cat_id, category.parentCategoryId);
+    const parentId = rawParentId && !["0", "null", "undefined", "-1"].includes(rawParentId.toLowerCase()) ? rawParentId : "";
     return id && name ? [{ id, nameUz: name, nameRu: name, parentId: parentId || null }] : [];
   });
 }
