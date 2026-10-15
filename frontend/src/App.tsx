@@ -1940,6 +1940,35 @@ export function App() {
         )}
       </section>
 
+      <section className="section-block home-category-shortcuts" aria-label={text.catalog}>
+        <div className="section-head home-category-heading">
+          <div>
+            <small>{text.forYou}</small>
+            <h2>{localizeText("Категории", language)}</h2>
+          </div>
+          <button type="button" onClick={() => goTo("Категории")}>{text.seeAll}<ChevronRight size={16} /></button>
+        </div>
+        <div className="home-category-strip">
+          {topLevelCategories.slice(0, 8).map((category, index) => (
+            <button
+              type="button"
+              key={category.id}
+              className="home-category-chip"
+              onClick={() => {
+                setSelectedCat(category.id);
+                setCategoryParentId(category.id);
+                setCategorySearch("");
+                goTo("Каталог");
+              }}
+            >
+              <span className={`home-category-icon c${index % 8}`}><LayoutGrid size={19} /></span>
+              <span>{categoryLabel(category)}</span>
+              <ChevronRight size={15} className="home-category-arrow" />
+            </button>
+          ))}
+        </div>
+      </section>
+
       <section className="section-block home-products">
         <div className="section-head">
           <div>
