@@ -35,7 +35,7 @@ import { createUserWithEmailAndPassword, getIdToken, reload, sendEmailVerificati
 import type { User as FirebaseUser } from "@firebase/auth";
 import { ApiRequestError, api, formatUzs, mapMarketplaceCategories, mapMarketplaceGoods, type ApiCategory, type ApiOrder, type ApiProduct, type ApiShippingQuote, type ApiUser } from "./api";
 import { firebaseAuth, firebaseConfigReady } from "./firebase";
-import { productPopularity } from "./search";
+import { prepareMarketplaceQuery, productPopularity } from "./search";
 
 const navItems = ["Главная", "Категории", "Корзина", "Профиль"] as const;
 type Language = "ru" | "en" | "uz";
@@ -1227,8 +1227,9 @@ export function App() {
       const isHomeRecommendations = view === "Главная" && selectedCat === "all" && !searchTerm;
       const selectedCategory = categories.find((category) => category.id === selectedCat);
       const categoryKeyword = selectedCat !== "all" ? categoryLabel(selectedCategory)?.trim() : "";
+      const marketplaceKeyword = prepareMarketplaceQuery(searchTerm || categoryKeyword || recommendationKeyword);
       const load = api.aliexpress.dropshippingProducts({
-        keyWord: searchTerm || categoryKeyword || recommendationKeyword,
+        keyWord: marketplaceKeyword,
         ...(selectedCat !== "all" ? { categoryId: selectedCat } : {}),
         pageIndex: 1,
         pageSize: 20,
@@ -1284,8 +1285,9 @@ export function App() {
       setCatalogMoreLoading(true);
       const selectedCategory = categories.find((category) => category.id === selectedCat);
       const searchTerm = search.trim();
+      const nextKeyword = prepareMarketplaceQuery(searchTerm || (selectedCat !== "all" ? categoryLabel(selectedCategory)?.trim() : "") || recommendationKeyword);
       api.aliexpress.dropshippingProducts({
-        keyWord: searchTerm || (selectedCat !== "all" ? categoryLabel(selectedCategory)?.trim() : "") || recommendationKeyword,
+        keyWord: nextKeyword,
         ...(selectedCat !== "all" ? { categoryId: selectedCat } : {}),
         pageIndex: catalogPage + 1,
         pageSize: 20,
@@ -1305,9 +1307,10 @@ export function App() {
           return Array.from(merged.values());
         });
         setCatalogPage((page) => page + 1);
-        setCatalogHasMore(nextProducts.length >= 20);
+        setCatalogHasMore(nextProducts.length >= 20 && nextProducts.some((product) => product.id));
       }).catch(() => {
-        setCatalogHasMore(false);
+        // Keep pagination available so a transient upstream error can be retried on the next scroll.
+        setCatalogHasMore(true);
       }).finally(() => setCatalogMoreLoading(false));
     }, { rootMargin: "500px 0px" });
     observer.observe(sentinel);
