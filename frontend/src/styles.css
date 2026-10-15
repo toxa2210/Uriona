@@ -783,57 +783,77 @@ input {
   background: rgba(20, 21, 22, 0.56);
 }
 .product-dialog {
+  --dialog-bg: #0b1531;
+  --dialog-text: #edf5ff;
+  --dialog-muted: #aab7d0;
+  --dialog-surface: #101a30;
+  --dialog-border: rgba(111, 145, 213, .24);
+  --dialog-shadow: 0 28px 80px rgba(0, 0, 0, .42);
+  --dialog-price: var(--cyan);
   position: relative;
   width: min(520px, 100%);
   max-height: min(84vh, 760px);
   overflow: auto;
   padding: 24px;
-  border-radius: 12px;
-  background: #fff;
-  color: #17181A;
+  border: 1px solid var(--dialog-border);
+  border-radius: 18px;
+  background: var(--dialog-bg);
+  color: var(--dialog-text);
+  box-shadow: var(--dialog-shadow);
+  color-scheme: dark;
 }
 .product-dialog-close {
   position: absolute;
   top: 12px;
   right: 12px;
+  z-index: 3;
   display: grid;
   place-items: center;
   width: 36px;
   height: 36px;
-  border: 1px solid #e4e5e7;
+  border: 1px solid var(--dialog-border);
   border-radius: 50%;
-  background: #fff;
-  color: #17181A;
+  background: var(--dialog-surface);
+  color: var(--dialog-text);
+  cursor: pointer;
 }
+.product-dialog-close:hover { filter: brightness(1.12); }
 .product-dialog-image {
   display: block;
   width: 100%;
   max-height: 320px;
   margin-bottom: 16px;
+  border-radius: 14px;
   object-fit: contain;
-  background: #f5f5f6;
+  background: var(--dialog-surface);
 }
 .product-dialog small,
 .product-dialog code {
   display: block;
-  color: #6F7378;
+  color: var(--dialog-muted);
   font-size: 12px;
 }
 .product-dialog h2 {
   margin: 8px 0;
+  color: var(--dialog-text);
   font-size: 22px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 .product-dialog p {
-  color: #575b60;
-  line-height: 1.55;
+  color: var(--dialog-muted);
+  line-height: 1.65;
 }
 .product-dialog strong {
   display: block;
   margin: 16px 0;
+  color: var(--dialog-price);
   font-size: 20px;
 }
-.product-dialog code {
-  overflow-wrap: anywhere;
+.product-dialog code { overflow-wrap: anywhere; }
+.product-dialog :is(button, a, input, select, textarea):focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--cyan) 70%, white);
+  outline-offset: 3px;
 }
 
 .large-grid {
