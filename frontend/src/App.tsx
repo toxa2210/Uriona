@@ -1040,6 +1040,8 @@ export function App() {
   const [catalogMoreLoading, setCatalogMoreLoading] = useState(false);
   const [catalogMoreError, setCatalogMoreError] = useState("");
   const catalogMoreRequestRef = useRef(false);
+  const catalogSeenProductIdsRef = useRef<Set<string>>(new Set());
+  const catalogDuplicatePageCountRef = useRef(0);
   const catalogSentinelRef = useRef<HTMLDivElement>(null);
   const [catalogError, setCatalogError] = useState("");
   const [catalogAttempt, setCatalogAttempt] = useState(0);
@@ -1250,6 +1252,8 @@ export function App() {
     setCatalogMoreLoading(false);
     setCatalogMoreError("");
     catalogMoreRequestRef.current = false;
+    catalogSeenProductIdsRef.current = new Set();
+    catalogDuplicatePageCountRef.current = 0;
     setCatalogError("");
     setCatalogSource("loading");
     const timer = window.setTimeout(() => {
@@ -1275,8 +1279,11 @@ export function App() {
             ?? categories.find((category) => category.id === selectedCat)
             ?? null,
         }));
-        const liveProducts = isHomeRecommendations ? shuffleItems(mappedProducts) : mappedProducts;
-        setCatalogHasMore(mappedProducts.length >= 20);
+        const uniqueInitialProducts = Array.from(new Map(mappedProducts.map((product) => [product.id, product])).values());
+        const liveProducts = isHomeRecommendations ? shuffleItems(uniqueInitialProducts) : uniqueInitialProducts;
+        catalogSeenProductIdsRef.current = new Set(liveProducts.map((product) => product.id));
+        catalogDuplicatePageCountRef.current = 0;
+        setCatalogHasMore(mappedProducts.length >= 20 && uniqueInitialProducts.length > 0);
         setCatalogPage(1);
         if (!liveProducts.length) {
           setProducts([]);
@@ -1317,6 +1324,7 @@ export function App() {
       || catalogSource !== "aliexpress"
     ) return;
 
+    let active = true;
     const sentinel = catalogSentinelRef.current;
     if (!sentinel || typeof IntersectionObserver === "undefined") return;
 
@@ -1330,40 +1338,56 @@ export function App() {
       const nextKeyword = prepareMarketplaceQuery(
         searchTerm || (selectedCat !== "all" ? categoryLabel(selectedCategory)?.trim() : "") || recommendationKeyword
       );
+      const requestedPage = catalogPage + 1;
 
       api.aliexpress.dropshippingProducts({
         keyWord: nextKeyword,
         ...(selectedCat !== "all" ? { categoryId: selectedCat } : {}),
-        pageIndex: catalogPage + 1,
+        pageIndex: requestedPage,
         pageSize: 20,
         ...(selectedCat !== "all" ? { sortBy: "orders,desc" } : {}),
         currency: "UZS",
         countryCode: "UZ",
       }).then((payload) => {
-        const nextProducts = mapMarketplaceGoods(payload, "UZS").map((product) => ({
+        if (!active) return;
+        const pageProducts = mapMarketplaceGoods(payload, "UZS").map((product) => ({
           ...product,
           category: categories.find((category) => category.id === product.categoryId)
             ?? categories.find((category) => category.id === selectedCat)
             ?? null,
         }));
+        const seen = catalogSeenProductIdsRef.current;
+        const uniqueProducts = pageProducts.filter((product) => !seen.has(product.id));
+        uniqueProducts.forEach((product) => seen.add(product.id));
+
         setProducts((current) => {
           const merged = new Map(current.map((product) => [product.id, product]));
-          nextProducts.forEach((product) => merged.set(product.id, product));
+          uniqueProducts.forEach((product) => merged.set(product.id, product));
           return Array.from(merged.values());
         });
-        setCatalogPage((page) => page + 1);
-        setCatalogHasMore(nextProducts.length >= 20 && nextProducts.some((product) => product.id));
+        setCatalogPage(requestedPage);
+
+        if (uniqueProducts.length === 0 && pageProducts.length > 0) {
+          catalogDuplicatePageCountRef.current += 1;
+        } else {
+          catalogDuplicatePageCountRef.current = 0;
+        }
+        const hitDuplicateSafetyLimit = catalogDuplicatePageCountRef.current >= 3;
+        setCatalogHasMore(pageProducts.length >= 20 && !hitDuplicateSafetyLimit);
         setCatalogMoreError("");
       }).catch((error: unknown) => {
-        setCatalogMoreError(aliExpressErrorMessage(error, language, "dropshipping"));
+        if (active) setCatalogMoreError(aliExpressErrorMessage(error, language, "dropshipping"));
       }).finally(() => {
         catalogMoreRequestRef.current = false;
-        setCatalogMoreLoading(false);
+        if (active) setCatalogMoreLoading(false);
       });
     }, { rootMargin: "500px 0px" });
 
     observer.observe(sentinel);
-    return () => observer.disconnect();
+    return () => {
+      active = false;
+      observer.disconnect();
+    };
   }, [
     view, catalogLoading, catalogHasMore, catalogMoreLoading, catalogMoreError,
     catalogSource, catalogPage, selectedCat, search, categories, recommendationKeyword, language
