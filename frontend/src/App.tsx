@@ -2131,8 +2131,6 @@ export function App() {
 
   const renderCatalog = () => renderHome();
 
-  const renderCatalog = () => renderHome();
-
   const renderChinaGoods = () => (
     <section className="screen-panel">
       <div className="section-head panel-head">
