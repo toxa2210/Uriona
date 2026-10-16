@@ -990,21 +990,21 @@ function parseAliExpressProductDetails(payload: unknown): AliExpressProductDetai
 }
 
 function localizedSupplierTitle(title: string, language: Language, fallback: string): string {
-  const value = title.trim().replace(/\\s+/g, " ");
+  const value = title.trim().replace(/\s+/g, " ");
   if (!value) return fallback;
   const normalized = value.toLowerCase();
-  if (/\\b(phone|smartphone|cell phone|iphone)\\b/.test(normalized) && /\\b(holder|stand|support)\\b/.test(normalized) && /\\b(tablet)\\b/.test(normalized)) {
+  if (/\b(phone|smartphone|cell phone|iphone)\b/.test(normalized) && /\b(holder|stand|support)\b/.test(normalized) && /\b(tablet)\b/.test(normalized)) {
     if (language === "uz") return "Telefon va planshet uchun taglik";
     if (language === "en") return "Phone and tablet stand";
     return "Держатель для телефона и планшета";
   }
-  if (/\\b(phone|smartphone|cell phone|iphone)\\b/.test(normalized) && /\\b(holder|stand|support)\\b/.test(normalized)) {
+  if (/\b(phone|smartphone|cell phone|iphone)\b/.test(normalized) && /\b(holder|stand|support)\b/.test(normalized)) {
     if (language === "uz") return "Telefon uchun taglik";
     if (language === "en") return "Phone stand";
     return "Подставка для телефона";
   }
   // Supplier titles are often keyword lists. Keep them readable instead of displaying duplicates.
-  const words = value.split(/[\\s,|]+/).filter(Boolean);
+  const words = value.split(/[\s,|]+/).filter(Boolean);
   const unique: string[] = [];
   for (const word of words) {
     const key = word.toLowerCase().replace(/[^a-zа-яё0-9]/gi, "");
