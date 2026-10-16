@@ -1040,6 +1040,7 @@ export function App() {
   const [catalogMoreLoading, setCatalogMoreLoading] = useState(false);
   const [catalogMoreError, setCatalogMoreError] = useState("");
   const catalogMoreRequestRef = useRef(false);
+  const catalogRequestKeyRef = useRef(0);
   const catalogSentinelRef = useRef<HTMLDivElement>(null);
   const [catalogError, setCatalogError] = useState("");
   const [catalogAttempt, setCatalogAttempt] = useState(0);
@@ -1244,6 +1245,7 @@ export function App() {
 
   useEffect(() => {
     let active = true;
+    const requestKey = ++catalogRequestKeyRef.current;
     setCatalogLoading(true);
     setCatalogPage(1);
     setCatalogHasMore(true);
@@ -1325,8 +1327,12 @@ export function App() {
       catalogMoreRequestRef.current = true;
       setCatalogMoreLoading(true);
 
-      const selectedCategory = categories.find((category) => category.id === selectedCat);
-      const searchTerm = search.trim();
+      const requestKey = catalogRequestKeyRef.current;
+      const requestSearch = search.trim();
+      const requestCategory = selectedCat;
+      const requestPage = catalogPage + 1;
+      const selectedCategory = categories.find((category) => category.id === requestCategory);
+      const searchTerm = requestSearch;
       const nextKeyword = prepareMarketplaceQuery(
         searchTerm || (selectedCat !== "all" ? categoryLabel(selectedCategory)?.trim() : "") || recommendationKeyword
       );
@@ -1334,12 +1340,13 @@ export function App() {
       api.aliexpress.dropshippingProducts({
         keyWord: nextKeyword,
         ...(selectedCat !== "all" ? { categoryId: selectedCat } : {}),
-        pageIndex: catalogPage + 1,
+        pageIndex: requestPage,
         pageSize: 20,
         ...(selectedCat !== "all" ? { sortBy: "orders,desc" } : {}),
         currency: "UZS",
         countryCode: "UZ",
       }).then((payload) => {
+        if (requestKey !== catalogRequestKeyRef.current || requestSearch !== search.trim() || requestCategory !== selectedCat) return;
         const nextProducts = mapMarketplaceGoods(payload, "UZS").map((product) => ({
           ...product,
           category: categories.find((category) => category.id === product.categoryId)
@@ -1355,10 +1362,14 @@ export function App() {
         setCatalogHasMore(nextProducts.length >= 20 && nextProducts.some((product) => product.id));
         setCatalogMoreError("");
       }).catch((error: unknown) => {
-        setCatalogMoreError(aliExpressErrorMessage(error, language, "dropshipping"));
+        if (requestKey === catalogRequestKeyRef.current && requestSearch === search.trim() && requestCategory === selectedCat) {
+          setCatalogMoreError(aliExpressErrorMessage(error, language, "dropshipping"));
+        }
       }).finally(() => {
-        catalogMoreRequestRef.current = false;
-        setCatalogMoreLoading(false);
+        if (requestKey === catalogRequestKeyRef.current) {
+          catalogMoreRequestRef.current = false;
+          setCatalogMoreLoading(false);
+        }
       });
     }, { rootMargin: "500px 0px" });
 
@@ -2748,15 +2759,16 @@ export function App() {
               onChange={(event) => setSearch(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
+                  event.preventDefault();
                   setSelectedCat("all");
-                  goTo("Каталог");
+                  goTo("Главная");
                 }
               }}
               placeholder={text.search}
             />
             <button type="button" aria-label={text.search} onClick={() => {
               setSelectedCat("all");
-              goTo("Каталог");
+              goTo("Главная");
             }}><Search size={17} /></button>
           </div>
 
