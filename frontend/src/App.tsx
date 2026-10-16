@@ -1279,10 +1279,11 @@ export function App() {
             ?? categories.find((category) => category.id === selectedCat)
             ?? null,
         }));
-        const liveProducts = isHomeRecommendations ? shuffleItems(mappedProducts) : mappedProducts;
+        const uniqueInitialProducts = Array.from(new Map(mappedProducts.map((product) => [product.id, product])).values());
+        const liveProducts = isHomeRecommendations ? shuffleItems(uniqueInitialProducts) : uniqueInitialProducts;
         catalogSeenProductIdsRef.current = new Set(liveProducts.map((product) => product.id));
         catalogDuplicatePageCountRef.current = 0;
-        setCatalogHasMore(mappedProducts.length >= 20);
+        setCatalogHasMore(mappedProducts.length >= 20 && uniqueInitialProducts.length > 0);
         setCatalogPage(1);
         if (!liveProducts.length) {
           setProducts([]);
