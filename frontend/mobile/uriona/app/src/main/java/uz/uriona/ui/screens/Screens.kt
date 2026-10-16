@@ -46,7 +46,7 @@ fun SplashScreen(onNavigateToHome: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "O'zbekiston uchun elektron tijorat (AliExpress)",
+                text = "O'zbekiston uchun elektron tijorat",
                 color = Color.White.copy(alpha = 0.8f),
                 fontSize = 14.sp
             )
@@ -163,7 +163,7 @@ fun HomeScreen(
             value = searchQuery,
             onValueChange = onSearchChange,
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("AliExpress bo'yicha qidirish...") },
+            placeholder = { Text("Uriona bo'yicha qidirish...") },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
             singleLine = true,
             shape = MaterialTheme.shapes.medium
@@ -419,7 +419,7 @@ fun HomeScreenPreview() {
     UrionaTheme {
         HomeScreen(
             products = listOf(
-                Product("1", "AliExpress Smart Watch T800", "450,000 UZS", 450000, null, "electronics"),
+                Product("1", "Smart Watch T800", "450,000 UZS", 450000, null, "electronics"),
                 Product("2", "Wireless Earbuds Pro", "280,000 UZS", 280000, null, "electronics")
             ),
             categories = listOf(
