@@ -1039,6 +1039,8 @@ export function App() {
   const [catalogPage, setCatalogPage] = useState(1);
   const [catalogHasMore, setCatalogHasMore] = useState(true);
   const [catalogMoreLoading, setCatalogMoreLoading] = useState(false);
+  const [catalogMoreError, setCatalogMoreError] = useState("");
+  const catalogMoreRequestRef = useRef(false);
   const catalogSentinelRef = useRef<HTMLDivElement>(null);
   const [catalogError, setCatalogError] = useState("");
   const [catalogAttempt, setCatalogAttempt] = useState(0);
@@ -1247,6 +1249,8 @@ export function App() {
     setCatalogPage(1);
     setCatalogHasMore(true);
     setCatalogMoreLoading(false);
+    setCatalogMoreError("");
+    catalogMoreRequestRef.current = false;
     setCatalogError("");
     setCatalogSource("loading");
     const timer = window.setTimeout(() => {
@@ -1304,15 +1308,30 @@ export function App() {
   }, [search, selectedCat, categories, language, catalogAttempt, recommendationKeyword, view]);
   
   useEffect(() => {
-    if (view !== "Категории" || catalogLoading || !catalogHasMore || catalogMoreLoading || catalogSource !== "aliexpress") return;
+    const supportsInfiniteScroll = view === "Главная" || view === "Категории" || view === "Каталог";
+    if (
+      !supportsInfiniteScroll
+      || catalogLoading
+      || !catalogHasMore
+      || catalogMoreLoading
+      || catalogMoreError
+      || catalogSource !== "aliexpress"
+    ) return;
+
     const sentinel = catalogSentinelRef.current;
     if (!sentinel || typeof IntersectionObserver === "undefined") return;
+
     const observer = new IntersectionObserver((entries) => {
-      if (!entries.some((entry) => entry.isIntersecting)) return;
+      if (!entries.some((entry) => entry.isIntersecting) || catalogMoreRequestRef.current) return;
+      catalogMoreRequestRef.current = true;
       setCatalogMoreLoading(true);
+
       const selectedCategory = categories.find((category) => category.id === selectedCat);
       const searchTerm = search.trim();
-      const nextKeyword = prepareMarketplaceQuery(searchTerm || (selectedCat !== "all" ? categoryLabel(selectedCategory)?.trim() : "") || recommendationKeyword);
+      const nextKeyword = prepareMarketplaceQuery(
+        searchTerm || (selectedCat !== "all" ? categoryLabel(selectedCategory)?.trim() : "") || recommendationKeyword
+      );
+
       api.aliexpress.dropshippingProducts({
         keyWord: nextKeyword,
         ...(selectedCat !== "all" ? { categoryId: selectedCat } : {}),
@@ -1335,13 +1354,21 @@ export function App() {
         });
         setCatalogPage((page) => page + 1);
         setCatalogHasMore(nextProducts.length >= 20 && nextProducts.some((product) => product.id));
-      }).catch(() => {
-        setCatalogHasMore(false);
-      }).finally(() => setCatalogMoreLoading(false));
+        setCatalogMoreError("");
+      }).catch((error: unknown) => {
+        setCatalogMoreError(aliExpressErrorMessage(error, language, "dropshipping"));
+      }).finally(() => {
+        catalogMoreRequestRef.current = false;
+        setCatalogMoreLoading(false);
+      });
     }, { rootMargin: "500px 0px" });
+
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [view, catalogLoading, catalogHasMore, catalogMoreLoading, catalogSource, catalogPage, selectedCat, search, categories, recommendationKeyword, language]);
+  }, [
+    view, catalogLoading, catalogHasMore, catalogMoreLoading, catalogMoreError,
+    catalogSource, catalogPage, selectedCat, search, categories, recommendationKeyword, language
+  ]);
 
 
   const visibleProducts = useMemo(() => {
@@ -2076,7 +2103,7 @@ export function App() {
             </div>
             : homeProducts.length === 0
               ? renderCatalogState(catalogError || text.noGoods, Boolean(catalogError))
-            : homeProducts.slice(0, 36).map((product, index) => {
+            : homeProducts.map((product, index) => {
                 const isLiked = liked.includes(product.id);
                 const tag = product.status === "sale" ? text.discount : product.status === "popular" ? text.popular : "Новинка";
                 return (
@@ -2123,6 +2150,10 @@ export function App() {
                 );
               })}
         </div>
+        <div ref={catalogSentinelRef} className="catalog-infinite-sentinel" aria-hidden="true" />
+        {catalogMoreLoading && <p className="catalog-loading-label" role="status">Загружаем ещё товары…</p>}
+        {catalogMoreError && <div className="catalog-more-error" role="alert"><span>{catalogMoreError}</span><button type="button" className="secondary-btn" onClick={() => setCatalogMoreError("")}>Повторить</button></div>}
+        {!catalogHasMore && products.length > 0 && <p className="catalog-end-label" role="status">Вы посмотрели все товары</p>}
       </section>
     </div>
   );
@@ -2253,6 +2284,8 @@ export function App() {
           </div>
           <div ref={catalogSentinelRef} className="catalog-infinite-sentinel" aria-hidden="true" />
           {catalogMoreLoading && <p className="catalog-loading-label" role="status">{text.loading}</p>}
+          {catalogMoreError && <div className="catalog-more-error" role="alert"><span>{catalogMoreError}</span><button type="button" className="secondary-btn" onClick={() => setCatalogMoreError("")}>Повторить</button></div>}
+          {!catalogHasMore && products.length > 0 && <p className="catalog-end-label" role="status">Вы посмотрели все товары</p>}
         </>
       ) : null}
     </section>
