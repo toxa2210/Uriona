@@ -2924,7 +2924,7 @@ export function App() {
         </div>
       )}
 
-      {notice && <div className="toast">{notice}</div>
+      {notice && <div className="toast">{notice}</div>}
 
     </div>,
     language,
