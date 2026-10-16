@@ -1045,6 +1045,8 @@ export function App() {
   const [catalogError, setCatalogError] = useState("");
   const [catalogAttempt, setCatalogAttempt] = useState(0);
   const [detailProduct, setDetailProduct] = useState<ApiProduct | null>(null);
+  const [detailImage, setDetailImage] = useState("");
+  const [detailImageZoomOpen, setDetailImageZoomOpen] = useState(false);
   const [detailPayload, setDetailPayload] = useState<unknown>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
@@ -1223,6 +1225,8 @@ export function App() {
     }
 
     let active = true;
+    setDetailImage(detailProduct.imageUrl ?? "");
+    setDetailImageZoomOpen(false);
     setDetailPayload(null);
     setDetailError("");
     setDetailLoading(true);
@@ -2846,14 +2850,20 @@ export function App() {
             <button type="button" className="product-dialog-close" onClick={() => setDetailProduct(null)} aria-label="Закрыть"><X size={20} /></button>
             <div className="product-dialog-layout">
               <div className="product-dialog-gallery">
-                {(productDetails?.images[0] || detailProduct.imageUrl) ? (
-                  <img className="product-dialog-image" src={productDetails?.images[0] || detailProduct.imageUrl || undefined} alt={productDetails?.subject || productTitle(detailProduct) || ""} referrerPolicy="no-referrer" />
+                {(detailImage || productDetails?.images[0] || detailProduct.imageUrl) ? (
+                  <button type="button" className="product-dialog-image-button" onClick={() => setDetailImageZoomOpen(true)} aria-label="Открыть фото товара на весь экран">
+                    <img className="product-dialog-image" src={detailImage || productDetails?.images[0] || detailProduct.imageUrl || undefined} alt={productDetails?.subject || productTitle(detailProduct) || ""} referrerPolicy="no-referrer" />
+                  </button>
                 ) : (
                   <div className="product-dialog-image-placeholder"><ShoppingBag size={44} /><span>Фото товара загружается</span></div>
                 )}
-                {productDetails?.images && productDetails.images.length > 1 && (
+                {productDetails?.images && productDetails.images.length > 0 && (
                   <div className="product-detail-images" aria-label="Фотографии товара">
-                    {productDetails.images.slice(1, 7).map((image) => <img key={image} src={image} alt="" referrerPolicy="no-referrer" loading="lazy" />)}
+                    {productDetails.images.slice(0, 8).map((image) => (
+                      <button type="button" key={image} className={"product-detail-image-thumb " + ((detailImage || productDetails.images[0]) === image ? "selected" : "")} onClick={() => setDetailImage(image)} aria-label="Выбрать фотографию товара">
+                        <img src={image} alt="" referrerPolicy="no-referrer" loading="lazy" />
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
@@ -2897,16 +2907,32 @@ export function App() {
                   const properties = readRecords(sku.ae_sku_property_dtos)
                     .map((property) => `${readString(property, "property_name", "sku_property_name", "prop_name")}: ${readString(property, "property_value", "sku_property_value", "prop_value")}`)
                     .filter((value) => value !== ": ");
+                  const skuId = readString(sku, "sku_id");
                   const price = readString(sku, "offer_sale_price", "sku_price");
                   const stock = readString(sku, "sku_available_stock");
-                  return <div className="product-detail-sku" key={readString(sku, "sku_id") || index}>
+                  const selected = checkoutSkuByProduct[detailProduct.id] === skuId;
+                  return <button
+                    type="button"
+                    className={`product-detail-sku product-detail-sku-option ${selected ? "selected" : ""}`}
+                    key={skuId || index}
+                    disabled={!skuId}
+                    aria-pressed={selected}
+                    onClick={() => skuId && setCheckoutSkuByProduct((current) => ({ ...current, [detailProduct.id]: skuId }))}
+                  >
                     <span>{properties.join(" · ") || `Вариант ${index + 1}`}</span>
                     <b>{price ? `${price} USD` : "Цена не указана"}{stock ? ` · Остаток: ${stock}` : ""}</b>
-                  </div>;
+                  </button>;
                 })}
               </div>}
             </>}
           </section>
+        </div>
+      )}
+
+      {detailImageZoomOpen && detailImage && (
+        <div className="product-image-zoom" role="dialog" aria-modal="true" aria-label="Фото товара на весь экран" onMouseDown={(event) => { if (event.target === event.currentTarget) setDetailImageZoomOpen(false); }}>
+          <button type="button" className="product-image-zoom-close" onClick={() => setDetailImageZoomOpen(false)} aria-label="Закрыть фото"><X size={22} /></button>
+          <img src={detailImage} alt={String(productDetails?.subject || (detailProduct ? productTitle(detailProduct) : "") || "")} referrerPolicy="no-referrer" />
         </div>
       )}
 
