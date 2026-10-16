@@ -203,9 +203,9 @@ const uiTranslations: Record<string, Partial<Record<Language, string>>> = Object
     uz: "Mahsulotni ushbu qurilmada saqlash uchun uning kartasidagi yurakchani bosing.",
   },
   "Найти товары": { en: "Find products", uz: "Mahsulotlarni topish" },
-  "В текущем каталоге Uriona AliExpress не передаёт данные продавцов, необходимые для подписки на магазин. Раздел заработает после подтверждения доступа к данным магазинов.": {
-    en: "The current URIONA catalog does not receive the seller data needed to follow stores from AliExpress. This section will be available once access to store data is approved.",
-    uz: "URIONA katalogi do‘konlarga obuna bo‘lish uchun kerakli AliExpress sotuvchi ma’lumotlarini olmayapti. Do‘kon ma’lumotlariga ruxsat berilgach, bu bo‘lim ishlaydi.",
+  "Данные продавцов пока недоступны в каталоге Uriona, поэтому подписка на магазины ещё не работает.": {
+    en: "Seller data is not yet available in the Uriona catalog, so following stores is not available yet.",
+    uz: "Uriona katalogida do‘konlarga obuna bo‘lish funksiyasi hali mavjud emas.",
   },
   "Вернуться в каталог": { en: "Back to catalog", uz: "Katalogga qaytish" },
   "Язык интерфейса": { en: "Interface language", uz: "Interfeys tili" },
@@ -216,7 +216,7 @@ const uiTranslations: Record<string, Partial<Record<Language, string>>> = Object
   "Каталог": { en: "Catalog", uz: "Katalog" },
   "Категории": { en: "Categories", uz: "Kategoriyalar" },
   "Все категории": { en: "All categories", uz: "Barcha kategoriyalar" },
-  "Категория AliExpress": { en: "Category", uz: "Kategoriya" },
+  "Категория Uriona": { en: "Category", uz: "Kategoriya" },
   "Категория каталога": { en: "Catalog category", uz: "Katalog kategoriyasi" },
   "Товары": { en: "Products", uz: "Mahsulotlar" },
   "Все товары": { en: "All products", uz: "Barcha mahsulotlar" },
@@ -270,19 +270,19 @@ const uiTranslations: Record<string, Partial<Record<Language, string>>> = Object
   },
   "Раздел помощи": { en: "Help center", uz: "Yordam bo‘limi" },
   "Почему каталог может быть недоступен?": { en: "Why might the catalog be unavailable?", uz: "Nega katalog ishlamasligi mumkin?" },
-  "Каталог зависит от разрешений AliExpress Open Platform. При отказе API Uriona показывает сообщение и кнопку повтора запроса.": {
-    en: "The catalog depends on AliExpress Open Platform permissions. If the API request fails, URIONA shows a message and a retry button.",
-    uz: "Katalog AliExpress Open Platform ruxsatlariga bog‘liq. API so‘rovi bajarilmasa, URIONA xabar va qayta urinish tugmasini ko‘rsatadi.",
+  "Каталог Uriona временно недоступен. Попробуйте обновить данные позже.": {
+    en: "The Uriona catalog is temporarily unavailable. Please try loading it again later.",
+    uz: "Uriona katalogi vaqtincha mavjud emas. Keyinroq qayta urinib ko‘ring.",
   },
   "Ташкент": { en: "Tashkent", uz: "Toshkent" },
   "Доставка в": { en: "Deliver to", uz: "Yetkazish manzili" },
   "Главное меню": { en: "Main menu", uz: "Asosiy menyu" },
   "Нижняя навигация": { en: "Bottom navigation", uz: "Quyi navigatsiya" },
   "Закрыть": { en: "Close", uz: "Yopish" },
-  "Товар AliExpress": { en: "AliExpress product", uz: "AliExpress mahsuloti" },
+  "Товар Uriona": { en: "Uriona product", uz: "Uriona mahsuloti" },
   "Загружаем описание товара…": { en: "Loading product description…", uz: "Mahsulot tavsifi yuklanmoqda…" },
   "Описание не предоставлено API.": { en: "No description was provided by the API.", uz: "API mahsulot tavsifini taqdim etmadi." },
-  "Загружаем данные AliExpress…": { en: "Loading AliExpress data…", uz: "AliExpress ma’lumotlari yuklanmoqda…" },
+  "Загружаем данные Uriona…": { en: "Loading Uriona data…", uz: "Uriona ma’lumotlari yuklanmoqda…" },
   "Статус": { en: "Status", uz: "Holat" },
   "ID категории": { en: "Category ID", uz: "Kategoriya ID raqami" },
   "Магазин": { en: "Store", uz: "Do‘kon" },
@@ -371,9 +371,9 @@ const uiTranslations: Record<string, Partial<Record<Language, string>>> = Object
   },
   "Найти товары": { en: "Find products", uz: "Mahsulotlarni topish" },
   "Любимые магазины": { en: "Favorite stores", uz: "Sevimli do‘konlar" },
-  "В текущем каталоге Uriona AliExpress не передаёт данные продавцов, необходимые для подписки на магазин. Раздел заработает после подтверждения доступа к данным магазинов.": {
-    en: "The current URIONA catalog does not receive the seller data needed to follow stores from AliExpress. This section will be available once access to store data is approved.",
-    uz: "URIONA katalogi do‘konlarga obuna bo‘lish uchun kerakli AliExpress sotuvchi ma’lumotlarini olmayapti. Do‘kon ma’lumotlariga ruxsat berilgach, bu bo‘lim ishlaydi.",
+  "Данные продавцов пока недоступны в каталоге Uriona, поэтому подписка на магазины ещё не работает.": {
+    en: "Seller data is not yet available in the Uriona catalog, so following stores is not available yet.",
+    uz: "Uriona katalogida do‘konlarga obuna bo‘lish funksiyasi hali mavjud emas.",
   },
   "Вернуться в каталог": { en: "Back to catalog", uz: "Katalogga qaytish" },
   "Язык интерфейса": { en: "Interface language", uz: "Interfeys tili" },
@@ -453,9 +453,9 @@ const uiTranslations: Record<string, Partial<Record<Language, string>>> = Object
   "Помощь по Uriona": { en: "URIONA help", uz: "URIONA yordami" },
   "Частые вопросы": { en: "Frequently asked questions", uz: "Ko‘p so‘raladigan savollar" },
   "Как найти товар?": { en: "How do I find a product?", uz: "Mahsulotni qanday topaman?" },
-  "Откройте каталог и воспользуйтесь строкой поиска. Доступность реального каталога зависит от ответа AliExpress API.": {
-    en: "Open the catalog and use the search bar. Real catalog availability depends on the AliExpress API response.",
-    uz: "Katalogni ochib, qidiruv satridan foydalaning. Haqiqiy katalog mavjudligi AliExpress API javobiga bog‘liq.",
+  "Откройте каталог и воспользуйтесь строкой поиска. Доступность каталога Uriona может временно меняться.": {
+    en: "Open the Uriona catalog and use the search bar. Catalog availability may vary temporarily.",
+    uz: "Uriona katalogini ochib, qidiruv satridan foydalaning. Katalog vaqtincha mavjud bo‘lmasligi mumkin.",
   },
   "Где проверить заказ?": { en: "Where can I check my order?", uz: "Buyurtmani qayerdan tekshirish mumkin?" },
   "После оформления заказа его статус появится в разделе «Мои заказы» профиля.": {
@@ -587,9 +587,9 @@ const uiTranslations: Record<string, Partial<Record<Language, string>>> = Object
   "Помощь по Uriona": { en: "URIONA help", uz: "URIONA yordami" },
   "Частые вопросы": { en: "Frequently asked questions", uz: "Ko‘p so‘raladigan savollar" },
   "Как найти товар?": { en: "How do I find a product?", uz: "Mahsulotni qanday topaman?" },
-  "Откройте каталог и воспользуйтесь строкой поиска. Доступность реального каталога зависит от ответа AliExpress API.": {
-    en: "Open the catalog and use the search bar. Real catalog availability depends on the AliExpress API response.",
-    uz: "Katalogni ochib, qidiruv satridan foydalaning. Haqiqiy katalog mavjudligi AliExpress API javobiga bog‘liq.",
+  "Откройте каталог и воспользуйтесь строкой поиска. Доступность каталога Uriona может временно меняться.": {
+    en: "Open the Uriona catalog and use the search bar. Catalog availability may vary temporarily.",
+    uz: "Uriona katalogini ochib, qidiruv satridan foydalaning. Katalog vaqtincha mavjud bo‘lmasligi mumkin.",
   },
   "Где проверить заказ?": { en: "Where can I check my order?", uz: "Buyurtmani qayerdan tekshirish mumkin?" },
   "После оформления заказа его статус появится в разделе «Мои заказы» профиля.": {
@@ -688,8 +688,8 @@ const translations = {
     emptyCart: "Корзина пуста", addFromCatalog: "Добавьте товары из каталога и вернитесь сюда.", shop: "К покупкам",
     retry: "Повторить",
     emptyCategories: "Категории пока не загружены.", localCatalogLabel: "Каталог URIONA",
-    localCatalogNote: "Показаны товары из каталога URIONA. Данные AliExpress сейчас недоступны.",
-    affiliatePermissionError: "AliExpress пока не разрешил приложению доступ к каталогу товаров. Проверьте права Affiliate API в Open Platform.",
+    localCatalogNote: "Показаны товары из каталога URIONA. Каталог временно недоступен.",
+    affiliatePermissionError: "Не удалось загрузить каталог Uriona. Попробуйте повторить запрос позже.",
     dropshippingAuthorizationError: "Для подробностей товара не подключена авторизация Dropshipping API.",
     dropshippingPermissionError: "У приложения нет разрешения Dropshipping API для поиска и просмотра товаров.",
     catalogUnavailable: "Не удалось загрузить каталог. Проверьте подключение и попробуйте позже.",
@@ -712,8 +712,8 @@ const translations = {
     emptyCart: "Your cart is empty", addFromCatalog: "Add products from the catalog and come back here.", shop: "Start shopping",
     retry: "Retry",
     emptyCategories: "Categories are not available yet.", localCatalogLabel: "URIONA catalog",
-    localCatalogNote: "Showing products saved in the URIONA catalog. AliExpress data is currently unavailable.",
-    affiliatePermissionError: "AliExpress has not granted this app access to its product catalog. Check Affiliate API permissions in Open Platform.",
+    localCatalogNote: "Showing products saved in the URIONA catalog. The catalog is temporarily unavailable.",
+    affiliatePermissionError: "Could not load the Uriona catalog. Please try again later.",
     dropshippingAuthorizationError: "Dropshipping API authorization is not connected for product details.",
     dropshippingPermissionError: "This app does not have Dropshipping API permission to search for and view products.",
     catalogUnavailable: "Could not load the catalog. Check your connection and try again later.",
@@ -736,8 +736,8 @@ const translations = {
     emptyCart: "Savat bo‘sh", addFromCatalog: "Katalogdan mahsulot qo‘shing va bu yerga qayting.", shop: "Xaridga o‘tish",
     retry: "Qayta urinish",
     emptyCategories: "Kategoriyalar hozircha mavjud emas.", localCatalogLabel: "URIONA katalogi",
-    localCatalogNote: "URIONA katalogida saqlangan mahsulotlar ko‘rsatilmoqda. AliExpress ma’lumotlari hozir mavjud emas.",
-    affiliatePermissionError: "AliExpress ilovaga mahsulot katalogidan foydalanishga ruxsat bermagan. Open Platform'da Affiliate API huquqlarini tekshiring.",
+    localCatalogNote: "URIONA katalogida saqlangan mahsulotlar ko‘rsatilmoqda. Katalog vaqtincha mavjud emas.",
+    affiliatePermissionError: "Uriona katalogini yuklab bo‘lmadi. Keyinroq qayta urinib ko‘ring.",
     dropshippingAuthorizationError: "Mahsulot tafsilotlari uchun Dropshipping API avtorizatsiyasi ulanmagan.",
     dropshippingPermissionError: "Ilovada mahsulotlarni qidirish va ko‘rish uchun Dropshipping API ruxsati yo‘q.",
     catalogUnavailable: "Katalogni yuklab bo‘lmadi. Ulanishni tekshirib, keyinroq qayta urinib ko‘ring.",
@@ -1507,19 +1507,19 @@ export function App() {
   const categoryUiLabel = (key: "count" | "search" | "clearSearch" | "all" | "back" | "select" | "selected" | "subcategories" | "noResults", count = 0) => {
     const labels = {
       ru: {
-        count: `Категорий: ${count}`, search: "Поиск по всем категориям AliExpress", all: "Все 548 категорий",
+        count: `Категорий: ${count}`, search: "Поиск по всем категориям Uriona", all: "Все 548 категорий",
         clearSearch: "Очистить поиск",
         back: "Назад", select: "Выбрать категорию", selected: "Выбрана", subcategories: `Подкатегорий: ${count}`,
         noResults: "Категории не найдены",
       },
       en: {
-        count: `Categories: ${count}`, search: "Search all AliExpress categories", all: "All 548 categories",
+        count: `Categories: ${count}`, search: "Search all Uriona categories", all: "All 548 categories",
         clearSearch: "Clear search",
         back: "Back", select: "Select category", selected: "Selected", subcategories: `Subcategories: ${count}`,
         noResults: "No categories found",
       },
       uz: {
-        count: `Kategoriyalar: ${count}`, search: "Barcha AliExpress kategoriyalaridan qidirish", all: "Barcha 548 kategoriya",
+        count: `Kategoriyalar: ${count}`, search: "Barcha Uriona kategoriyalaridan qidirish", all: "Barcha 548 kategoriya",
         clearSearch: "Qidiruvni tozalash",
         back: "Orqaga", select: "Kategoriyani tanlash", selected: "Tanlangan", subcategories: `Quyi kategoriyalar: ${count}`,
         noResults: "Kategoriyalar topilmadi",
@@ -1606,7 +1606,7 @@ export function App() {
     try {
       const entries = await Promise.all(cartEntryList.map(async (product) => {
         if (!/^\d+$/.test(product.id)) {
-          throw new Error(`Невозможно оформить товар «${productTitle(product)}»: идентификатор AliExpress некорректен.`);
+          throw new Error(`Невозможно оформить товар «${productTitle(product)}»: данные товара некорректны.`);
         }
         const payload = await api.aliexpress.productDetails(product.id, {
           ship_to_country: "UZ",
@@ -1670,7 +1670,7 @@ export function App() {
       setShippingQuotes(quotesByProduct);
       setShippingOptionByProduct({});
       if (missingQuotes.length > 0) {
-        setCheckoutError(`AliExpress не вернул доступный способ доставки для: ${missingQuotes.map(productTitle).join(", ")}.`);
+        setCheckoutError(`Не удалось рассчитать доставку для: ${missingQuotes.map(productTitle).join(", ")}.`);
       }
     } catch (error: unknown) {
       if (error instanceof ApiRequestError && error.status === 401) {
@@ -2380,7 +2380,7 @@ export function App() {
       <div className="profile-help">
         <details><summary>Как оформить заказ?</summary><p>Добавьте доступные товары в корзину и перейдите к оформлению. Заказ сохранится со статусом «Ожидает оплаты». Оплата и отправка заказа продавцу пока не подключены.</p></details>
         <details><summary>Где посмотреть статус заказа?</summary><p>Статус оформленного заказа будет доступен в профиле, в разделе «Мои заказы».</p></details>
-        <details><summary>Почему каталог может быть недоступен?</summary><p>Каталог зависит от разрешений AliExpress Open Platform. При отказе API Uriona показывает сообщение и кнопку повтора запроса.</p></details>
+        <details><summary>Почему каталог может быть недоступен?</summary><p>Каталог Uriona временно недоступен. Попробуйте обновить данные позже.</p></details>
         <div className="profile-help-actions">
           <button type="button" className="secondary-btn" onClick={() => goTo("Профиль")}>Открыть профиль</button>
           <button type="button" className="secondary-btn" onClick={() => goTo("Корзина")}>Открыть корзину</button>
@@ -2572,9 +2572,9 @@ export function App() {
                   onClick={quoteCheckoutShipping}
                   disabled={checkoutBusy || cartEntryList.some((product) => !checkoutSkuByProduct[product.id])}
                 >
-                  {checkoutBusy ? "Проверяем AliExpress…" : "Рассчитать доступность и доставку"}
+                  {checkoutBusy ? "Проверяем данные заказа…" : "Рассчитать доступность и доставку"}
                 </button>
-                {checkoutQuotesReady && <p className="checkout-disclosure">Цена и доставка перепроверены через AliExpress для выбранных вариантов и количества. Итог будет подтверждён ещё раз при создании заказа.</p>}
+                {checkoutQuotesReady && <p className="checkout-disclosure">Цена и доставка перепроверены для выбранных вариантов и количества. Итог будет подтверждён ещё раз при создании заказа.</p>}
                 <div className="checkout-recipient-fields">
                   <label>Получатель<input value={profileForm.name} onChange={(event) => setProfileForm({ ...profileForm, name: event.target.value })} maxLength={120} autoComplete="name" /></label>
                   <label>Телефон<input type="tel" value={profileForm.phone} onChange={(event) => setProfileForm({ ...profileForm, phone: event.target.value })} maxLength={40} autoComplete="tel" placeholder="+998" /></label>
@@ -2762,7 +2762,7 @@ export function App() {
                 ))}</div> : <div className="profile-empty"><Heart size={30} /><h3>Избранное пока пусто</h3><p>Нажимайте на сердечко в карточке товара — товары сохранятся на этом устройстве.</p><button type="button" className="secondary-btn" onClick={() => goTo("Каталог")}>Найти товары</button></div>}
                 {unavailableFavorites > 0 && <p className="profile-hint">{unavailableFavorites} сохранённых товаров сейчас отсутствуют в локальном каталоге. Когда каталог загрузится, они появятся здесь.</p>}
               </>}
-              {profileSection === "stores" && <div className="profile-empty"><Store size={30} /><h3>Любимые магазины</h3><p>В текущем каталоге Uriona AliExpress не передаёт данные продавцов, необходимые для подписки на магазин. Раздел заработает после подтверждения доступа к данным магазинов.</p><button type="button" className="secondary-btn" onClick={() => goTo("Каталог")}>Вернуться в каталог</button></div>}
+              {profileSection === "stores" && <div className="profile-empty"><Store size={30} /><h3>Любимые магазины</h3><p>Данные продавцов пока недоступны в каталоге Uriona, поэтому подписка на магазины ещё не работает.</p><button type="button" className="secondary-btn" onClick={() => goTo("Каталог")}>Вернуться в каталог</button></div>}
               {profileSection === "reviews" && <div className="profile-empty"><Star size={30} /><h3>Мои отзывы</h3><p>Отзывы можно оставить после доставки заказа. Публикация и хранение отзывов пока не подключены.</p><button type="button" className="secondary-btn" onClick={() => setProfileSection("orders")}>Мои заказы</button></div>}
               {profileSection === "questions" && <div className="profile-empty"><HelpCircle size={30} /><h3>Вопросы и ответы</h3><p>Вопросы продавцам и история ответов пока не подключены: для этого нужен разрешённый API продавцов и отдельный раздел товара.</p><button type="button" className="secondary-btn" onClick={() => goTo("Поддержка")}>Открыть справку</button></div>}
               {profileSection === "coupons" && <div className="profile-coupon">
@@ -2791,7 +2791,7 @@ export function App() {
               </>}
               {profileSection === "support" && <div className="profile-help">
                 <div className="profile-section-heading"><div><small>Помощь по Uriona</small><h3>Частые вопросы</h3></div><MessageCircle size={22} /></div>
-                <details><summary>Как найти товар?</summary><p>Откройте каталог и воспользуйтесь строкой поиска. Доступность реального каталога зависит от ответа AliExpress API.</p></details>
+                <details><summary>Как найти товар?</summary><p>Откройте каталог и воспользуйтесь строкой поиска. Доступность каталога Uriona может временно меняться.</p></details>
                 <details><summary>Где проверить заказ?</summary><p>После оформления заказа его статус появится в разделе «Мои заказы» профиля.</p></details>
                 <details><summary>Как сохранить товар?</summary><p>Нажмите на значок сердца на карточке товара. Избранное сохраняется в браузере на этом устройстве.</p></details>
                 <details><summary>Как связаться с поддержкой?</summary><p>Контактный канал поддержки Uriona ещё не настроен. Мы не показываем фиктивный телефон или неработающий чат.</p></details>
@@ -2992,7 +2992,7 @@ export function App() {
                 <div className="product-dialog-meta-line"><span>Артикул</span><code>{detailProduct.id}</code></div>
               </div>
             </div>
-            {detailLoading && <p className="product-detail-state" role="status">Загружаем данные AliExpress…</p>}
+            {detailLoading && <p className="product-detail-state" role="status">Загружаем данные Uriona…</p>}
             {detailError && <div className="product-detail-state" role="alert"><span>{detailError}</span><button type="button" onClick={() => setDetailAttempt((attempt) => attempt + 1)}>Повторить</button></div>}
             {productDetails && <>
               <dl className="product-detail-meta">
