@@ -991,18 +991,18 @@ function parseAliExpressProductDetails(payload: unknown): AliExpressProductDetai
 
 function splitProductDescription(description: string): string[] {
   const cleaned = description
-    .replace(/<\\/?(?:p|div|br|li|ul|ol|h[1-6])\\b[^>]*>/gi, "\\n")
+    .replace(/<\/?(?:p|div|br|li|ul|ol|h[1-6])\b[^>]*>/gi, "\n")
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&")
     .replace(/&quot;/gi, '"')
     .replace(/&#39;|&apos;/gi, "'")
-    .replace(/\\s+/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
   if (!cleaned) return [];
-  const numbered = cleaned.replace(/\\s+(?=(?:[1-9]\\s*[:.)、]|[1-9]\\s*[、.]))/g, "\\n");
-  return numbered.split(/\\n+/)
-    .flatMap((part) => part.split(/(?<=[.!?。！？])\\s+(?=[A-ZА-ЯЁ0-9])/))
+  const numbered = cleaned.replace(/\s+(?=(?:[1-9]\s*[:.)、]|[1-9]\s*[、.]))/g, "\n");
+  return numbered.split(/\n+/)
+    .flatMap((part) => part.split(/(?<=[.!?。！？])\s+(?=[A-ZА-ЯЁ0-9])/))
     .map((part) => part.trim())
     .filter(Boolean)
     .slice(0, 30);
