@@ -989,6 +989,25 @@ function parseAliExpressProductDetails(payload: unknown): AliExpressProductDetai
   };
 }
 
+function splitProductDescription(description: string): string[] {
+  const cleaned = description
+    .replace(/<\\/?(?:p|div|br|li|ul|ol|h[1-6])\\b[^>]*>/gi, "\\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/\\s+/g, " ")
+    .trim();
+  if (!cleaned) return [];
+  const numbered = cleaned.replace(/\\s+(?=(?:[1-9]\\s*[:.)、]|[1-9]\\s*[、.]))/g, "\\n");
+  return numbered.split(/\\n+/)
+    .flatMap((part) => part.split(/(?<=[.!?。！？])\\s+(?=[A-ZА-ЯЁ0-9])/))
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .slice(0, 30);
+}
+
 function localizedSupplierTitle(title: string, language: Language, fallback: string): string {
   const value = title.trim().replace(/\s+/g, " ");
   if (!value) return fallback;
@@ -3063,7 +3082,14 @@ export function App() {
                 <div className="product-dialog-eyebrow"><span className="product-dialog-dot" />{categoryLabel(detailProduct.category) || (language === "uz" ? "Mahsulot" : language === "en" ? "Product" : "Товар")}</div>
                 <h2 id="product-dialog-title">{detailDisplayTitle}</h2>
                 <div className="product-dialog-price-row"><strong>{formatUzs(detailProduct.priceMinor)}</strong><span className="product-dialog-availability"><CheckCircle2 size={15} /> Доступность уточняется</span></div>
-                <p className="product-dialog-description">{productDetails?.description || productDescription(detailProduct) || (detailLoading ? "Загружаем описание товара…" : "Подробное описание пока не предоставлено поставщиком.")}</p>
+                <section className="product-detail-section product-detail-description-section">
+                  <h3>Описание товара</h3>
+                  {detailLoading && !productDetails?.description ? <p className="product-dialog-description">Загружаем описание товара…</p> : (
+                    <div className="product-dialog-description">
+                      {splitProductDescription(productDetails?.description || productDescription(detailProduct) || "Подробное описание пока не предоставлено поставщиком.").map((paragraph, index) => <p key={index}>{paragraph}</p>)}
+                    </div>
+                  )}
+                </section>
                 <div className="product-dialog-assurances">
                   <span><ShieldCheck size={17} /> Безопасное оформление</span>
                   <span><Truck size={17} /> Доставка рассчитывается перед заказом</span>
@@ -3082,18 +3108,21 @@ export function App() {
             {detailLoading && <p className="product-detail-state" role="status">Загружаем фотографии и характеристики товара…</p>}
             {detailError && <div className="product-detail-state" role="alert"><span>{detailError}</span><button type="button" onClick={() => setDetailAttempt((attempt) => attempt + 1)}>Повторить</button></div>}
             {productDetails && <>
-              <dl className="product-detail-meta">
+              <section className="product-detail-section product-detail-specifications">
+                <h3>Характеристики</h3>
+                <dl className="product-detail-meta">
                 {productDetails.status && <div><dt>Статус</dt><dd>{productDetails.status}</dd></div>}
                 {productDetails.categoryId && <div><dt>ID категории</dt><dd>{productDetails.categoryId}</dd></div>}
                 {productDetails.storeName && <div><dt>Магазин</dt><dd>{productDetails.storeName}</dd></div>}
                 {productDetails.grossWeight && <div><dt>Вес брутто</dt><dd>{productDetails.grossWeight}</dd></div>}
                 {productDetails.dimensions && <div><dt>Размер упаковки</dt><dd>{productDetails.dimensions}</dd></div>}
                 {productDetails.deliveryTime && <div><dt>Срок отправки</dt><dd>{productDetails.deliveryTime}</dd></div>}
-              </dl>
+                </dl>
+              </section>
               {productDetails.videos.length > 0 && <div className="product-detail-videos">
                 {productDetails.videos.map((video) => <video key={video} src={video} controls preload="none" aria-label="Видео товара" />)}
               </div>}
-              {productDetails.skus.length > 0 && <div className="product-detail-skus">
+              {productDetails.skus.length > 0 && <section className="product-detail-section product-detail-skus">
                 <h3>Варианты товара</h3>
                 {productDetails.skus.slice(0, 24).map((sku, index) => {
                   const properties = readRecords(sku.ae_sku_property_dtos)
@@ -3106,7 +3135,7 @@ export function App() {
                     <b>{price ? `${price} USD` : "Цена не указана"}{stock ? ` · Остаток: ${stock}` : ""}</b>
                   </div>;
                 })}
-              </div>}
+              </section>}
             </>}
           </section>
         </div>
