@@ -1391,9 +1391,6 @@ export function App() {
   }, [
     view, catalogLoading, catalogHasMore, catalogMoreLoading, catalogMoreError,
     catalogSource, catalogPage, selectedCat, search, categories, recommendationKeyword, language
-  ]); [
-    view, catalogLoading, catalogHasMore, catalogMoreLoading, catalogMoreError,
-    catalogSource, catalogPage, selectedCat, search, categories, recommendationKeyword, language
   ]);
 
 
