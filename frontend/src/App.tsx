@@ -1137,7 +1137,7 @@ export function App() {
     return detailProduct?.imageUrl ? [detailProduct.imageUrl] : [];
   }, [productDetails, detailProduct]);
   const detailDisplayTitle = detailProduct
-    ? localizedSupplierTitle(productDetails?.subject || productTitle(detailProduct) || "Товар", language, productTitle(detailProduct) || "Товар")
+    ? localizedSupplierTitle(String(productDetails?.subject || productTitle(detailProduct) || "Товар"), language, "Товар")
     : "";
 
   const clearExpiredSession = (email?: string | null) => {
