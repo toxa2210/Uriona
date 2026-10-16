@@ -2920,7 +2920,7 @@ export function App() {
       {detailImageZoomOpen && detailImage && (
         <div className="product-image-zoom" role="dialog" aria-modal="true" aria-label="Фото товара на весь экран" onMouseDown={(event) => { if (event.target === event.currentTarget) setDetailImageZoomOpen(false); }}>
           <button type="button" className="product-image-zoom-close" onClick={() => setDetailImageZoomOpen(false)} aria-label="Закрыть фото"><X size={22} /></button>
-          <img src={detailImage} alt={productDetails?.subject || (detailProduct ? productTitle(detailProduct) : "")} referrerPolicy="no-referrer" />
+          <img src={detailImage} alt={String(productDetails?.subject || (detailProduct ? productTitle(detailProduct) : "") || "")} referrerPolicy="no-referrer" />
         </div>
       )}
 
