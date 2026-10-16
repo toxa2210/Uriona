@@ -989,6 +989,31 @@ function parseAliExpressProductDetails(payload: unknown): AliExpressProductDetai
   };
 }
 
+function localizedSupplierTitle(title: string, language: Language, fallback: string): string {
+  const value = title.trim().replace(/\\s+/g, " ");
+  if (!value) return fallback;
+  const normalized = value.toLowerCase();
+  if (/\\b(phone|smartphone|cell phone|iphone)\\b/.test(normalized) && /\\b(holder|stand|support)\\b/.test(normalized) && /\\b(tablet)\\b/.test(normalized)) {
+    if (language === "uz") return "Telefon va planshet uchun taglik";
+    if (language === "en") return "Phone and tablet stand";
+    return "Держатель для телефона и планшета";
+  }
+  if (/\\b(phone|smartphone|cell phone|iphone)\\b/.test(normalized) && /\\b(holder|stand|support)\\b/.test(normalized)) {
+    if (language === "uz") return "Telefon uchun taglik";
+    if (language === "en") return "Phone stand";
+    return "Подставка для телефона";
+  }
+  // Supplier titles are often keyword lists. Keep them readable instead of displaying duplicates.
+  const words = value.split(/[\\s,|]+/).filter(Boolean);
+  const unique: string[] = [];
+  for (const word of words) {
+    const key = word.toLowerCase().replace(/[^a-zа-яё0-9]/gi, "");
+    if (key && !unique.some((existing) => existing.toLowerCase().replace(/[^a-zа-яё0-9]/gi, "") === key)) unique.push(word);
+    if (unique.length >= 9) break;
+  }
+  return unique.join(" ") || fallback;
+}
+
 function checkoutVariants(skus: Record<string, unknown>[]): CheckoutVariant[] {
   return skus.flatMap((sku, index) => {
     const id = readString(sku, "sku_id", "id");
@@ -1049,6 +1074,8 @@ export function App() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
   const [detailAttempt, setDetailAttempt] = useState(0);
+  const [detailImageIndex, setDetailImageIndex] = useState(0);
+  const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState("");
   const [liked, setLiked] = useState<string[]>(readStoredLiked);
@@ -1085,6 +1112,14 @@ export function App() {
     () => detailPayload === null ? null : parseAliExpressProductDetails(detailPayload),
     [detailPayload],
   );
+  const detailImages = useMemo(() => {
+    const images = productDetails?.images.filter(Boolean) ?? [];
+    if (images.length) return [...new Set(images)];
+    return detailProduct?.imageUrl ? [detailProduct.imageUrl] : [];
+  }, [productDetails, detailProduct]);
+  const detailDisplayTitle = detailProduct
+    ? localizedSupplierTitle(productDetails?.subject || productTitle(detailProduct), language, productTitle(detailProduct))
+    : "";
 
   const clearExpiredSession = (email?: string | null) => {
     localStorage.removeItem("uriona-access-token");
@@ -1213,6 +1248,11 @@ export function App() {
       });
     return () => { active = false; };
   }, [language, catalogAttempt]);
+
+  useEffect(() => {
+    setDetailImageIndex(0);
+    setImageViewerOpen(false);
+  }, [detailProduct?.id]);
 
   useEffect(() => {
     if (!detailProduct) {
@@ -2994,20 +3034,34 @@ export function App() {
             <button type="button" className="product-dialog-close" onClick={() => setDetailProduct(null)} aria-label="Закрыть"><X size={20} /></button>
             <div className="product-dialog-layout">
               <div className="product-dialog-gallery">
-                {(productDetails?.images[0] || detailProduct.imageUrl) ? (
-                  <img className="product-dialog-image" src={productDetails?.images[0] || detailProduct.imageUrl || undefined} alt={productDetails?.subject || productTitle(detailProduct) || ""} referrerPolicy="no-referrer" />
+                {detailImages.length > 0 ? (
+                  <button type="button" className="product-dialog-image-trigger" onClick={() => setImageViewerOpen(true)} aria-label="Открыть фото товара на весь экран">
+                    <img className="product-dialog-image" src={detailImages[Math.min(detailImageIndex, detailImages.length - 1)]} alt={detailDisplayTitle} referrerPolicy="no-referrer" />
+                    <span className="product-dialog-zoom-hint">Увеличить фото</span>
+                  </button>
                 ) : (
-                  <div className="product-dialog-image-placeholder"><ShoppingBag size={44} /><span>Фото товара загружается</span></div>
+                  <div className="product-dialog-image-placeholder"><ShoppingBag size={44} /><span>{detailLoading ? "Загружаем фото товара…" : "Фото товара пока недоступно"}</span></div>
                 )}
-                {productDetails?.images && productDetails.images.length > 1 && (
+                {detailImages.length > 1 && (
                   <div className="product-detail-images" aria-label="Фотографии товара">
-                    {productDetails.images.slice(1, 7).map((image) => <img key={image} src={image} alt="" referrerPolicy="no-referrer" loading="lazy" />)}
+                    {detailImages.map((image, index) => (
+                      <button
+                        type="button"
+                        key={image}
+                        className={index === detailImageIndex ? "product-detail-thumbnail is-active" : "product-detail-thumbnail"}
+                        onClick={() => setDetailImageIndex(index)}
+                        aria-label={`Показать фото ${index + 1}`}
+                        aria-pressed={index === detailImageIndex}
+                      >
+                        <img src={image} alt={`Фото товара ${index + 1}`} referrerPolicy="no-referrer" loading="lazy" />
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
               <div className="product-dialog-information">
                 <div className="product-dialog-eyebrow"><span className="product-dialog-dot" />{categoryLabel(detailProduct.category) || (language === "uz" ? "Mahsulot" : language === "en" ? "Product" : "Товар")}</div>
-                <h2 id="product-dialog-title">{productDetails?.subject || productTitle(detailProduct)}</h2>
+                <h2 id="product-dialog-title">{detailDisplayTitle}</h2>
                 <div className="product-dialog-price-row"><strong>{formatUzs(detailProduct.priceMinor)}</strong><span className="product-dialog-availability"><CheckCircle2 size={15} /> Доступность уточняется</span></div>
                 <p className="product-dialog-description">{productDetails?.description || productDescription(detailProduct) || (detailLoading ? "Загружаем описание товара…" : "Подробное описание пока не предоставлено поставщиком.")}</p>
                 <div className="product-dialog-assurances">
@@ -3025,7 +3079,7 @@ export function App() {
                 <div className="product-dialog-meta-line"><span>Артикул</span><code>{detailProduct.id}</code></div>
               </div>
             </div>
-            {detailLoading && <p className="product-detail-state" role="status">Загружаем данные AliExpress…</p>}
+            {detailLoading && <p className="product-detail-state" role="status">Загружаем фотографии и характеристики товара…</p>}
             {detailError && <div className="product-detail-state" role="alert"><span>{detailError}</span><button type="button" onClick={() => setDetailAttempt((attempt) => attempt + 1)}>Повторить</button></div>}
             {productDetails && <>
               <dl className="product-detail-meta">
@@ -3055,6 +3109,16 @@ export function App() {
               </div>}
             </>}
           </section>
+        </div>
+      )}
+
+      {imageViewerOpen && detailImages.length > 0 && (
+        <div className="product-image-viewer" role="dialog" aria-modal="true" aria-label="Просмотр фотографий товара" onMouseDown={(event) => { if (event.target === event.currentTarget) setImageViewerOpen(false); }}>
+          <button type="button" className="product-image-viewer-close" onClick={() => setImageViewerOpen(false)} aria-label="Закрыть просмотр"><X size={24} /></button>
+          {detailImages.length > 1 && <button type="button" className="product-image-viewer-nav product-image-viewer-prev" onClick={() => setDetailImageIndex((index) => (index - 1 + detailImages.length) % detailImages.length)} aria-label="Предыдущее фото"><ChevronLeft size={30} /></button>}
+          <img className="product-image-viewer-photo" src={detailImages[Math.min(detailImageIndex, detailImages.length - 1)]} alt={detailDisplayTitle} referrerPolicy="no-referrer" />
+          {detailImages.length > 1 && <button type="button" className="product-image-viewer-nav product-image-viewer-next" onClick={() => setDetailImageIndex((index) => (index + 1) % detailImages.length)} aria-label="Следующее фото"><ChevronRight size={30} /></button>}
+          <div className="product-image-viewer-count">{detailImageIndex + 1} / {detailImages.length}</div>
         </div>
       )}
 
