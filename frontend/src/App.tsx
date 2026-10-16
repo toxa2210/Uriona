@@ -2885,12 +2885,21 @@ export function App() {
                   const properties = readRecords(sku.ae_sku_property_dtos)
                     .map((property) => `${readString(property, "property_name", "sku_property_name", "prop_name")}: ${readString(property, "property_value", "sku_property_value", "prop_value")}`)
                     .filter((value) => value !== ": ");
+                  const skuId = readString(sku, "sku_id");
                   const price = readString(sku, "offer_sale_price", "sku_price");
                   const stock = readString(sku, "sku_available_stock");
-                  return <div className="product-detail-sku" key={readString(sku, "sku_id") || index}>
+                  const selected = checkoutSkuByProduct[detailProduct.id] === skuId;
+                  return <button
+                    type="button"
+                    className={`product-detail-sku product-detail-sku-option ${selected ? "selected" : ""}`}
+                    key={skuId || index}
+                    disabled={!skuId}
+                    aria-pressed={selected}
+                    onClick={() => skuId && setCheckoutSkuByProduct((current) => ({ ...current, [detailProduct.id]: skuId }))}
+                  >
                     <span>{properties.join(" · ") || `Вариант ${index + 1}`}</span>
                     <b>{price ? `${price} USD` : "Цена не указана"}{stock ? ` · Остаток: ${stock}` : ""}</b>
-                  </div>;
+                  </button>;
                 })}
               </div>}
             </>}
