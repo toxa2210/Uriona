@@ -1250,7 +1250,7 @@ export function App() {
     setCatalogHasMore(true);
     setCatalogMoreLoading(false);
     setCatalogMoreError("");
-    setCatalogMoreRequestRef.current = false;
+    catalogMoreRequestRef.current = false;
     setCatalogError("");
     setCatalogSource("loading");
     const timer = window.setTimeout(() => {
