@@ -40,6 +40,33 @@ import { prepareMarketplaceQuery, productPopularity } from "./search";
 const navItems = ["Главная", "Категории", "Корзина", "Профиль"] as const;
 type Language = "ru" | "en" | "uz";
 const HOME_RECOMMENDATION_KEYWORDS = ["phone", "home decor", "kitchen", "women fashion", "watch", "toys", "bag", "beauty"];
+const CATEGORY_PHOTOS = [
+  "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=640&q=80",
+  "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=640&q=80",
+  "https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=640&q=80",
+  "https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?auto=format&fit=crop&w=640&q=80",
+  "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=640&q=80",
+  "https://images.unsplash.com/photo-1558060370-d644479cb6f7?auto=format&fit=crop&w=640&q=80",
+  "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=640&q=80",
+  "https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=640&q=80",
+];
+
+function categoryPhoto(category?: ApiCategory | null, index = 0): string {
+  const label = `${category?.nameRu ?? ""} ${category?.nameUz ?? ""}`.toLocaleLowerCase();
+  const rules: Array<[RegExp, number]> = [
+    [/одежд|обув|аксессуар|kiyim|poyabzal|aksessuar/, 0],
+    [/электрон|телефон|смартфон|компьютер|elektron|telefon|kompyuter/, 1],
+    [/дом|интерьер|мебел|home|uy|mebel/, 2],
+    [/красот|космет|уход|beauty|go‘zallik|parvarish|kosmet/, 3],
+    [/час|украшен|ювелир|soat|taqinchoq/, 4],
+    [/игруш|дет|toy|o‘yinchoq|bolalar/, 5],
+    [/сумк|рюкзак|багаж|bag|sumka|ryukzak/, 6],
+    [/кухн|бытов|посуда|kitchen|oshxona|idish/, 7],
+  ];
+  const match = rules.find(([pattern]) => pattern.test(label));
+  return CATEGORY_PHOTOS[match?.[1] ?? Math.abs(index) % CATEGORY_PHOTOS.length];
+}
+
 
 function shuffleItems<T>(items: T[]): T[] {
   const shuffled = [...items];
@@ -2018,9 +2045,8 @@ export function App() {
                 goTo("Каталог");
               }}
             >
-              <span className={`home-category-icon c${index % 8}`}><LayoutGrid size={19} /></span>
-              <span>{categoryLabel(category)}</span>
-              <ChevronRight size={15} className="home-category-arrow" />
+              <img className="home-category-photo" src={categoryPhoto(category, index)} alt={categoryLabel(category) || "Категория товаров"} loading="lazy" decoding="async" />
+              <span className="home-category-title">{categoryLabel(category)}</span>
             </button>
           ))}
         </div>
@@ -2163,7 +2189,7 @@ export function App() {
                   }
                 }}
               >
-                <span className={`category-icon c${index % 8}`}>◇</span>
+                <img className="category-browser-photo" src={categoryPhoto(category, index)} alt={categoryLabel(category) || "Категория товаров"} loading="lazy" decoding="async" />
                 <b>{categoryLabel(category)}</b>
                 {children.length > 0 && <small>{categoryUiLabel("subcategories", children.length)}</small>}
               </button>
