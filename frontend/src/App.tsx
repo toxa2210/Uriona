@@ -1715,7 +1715,7 @@ export function App() {
         quantity: cartItems[product.id],
         supplierProductId: product.id,
         supplierSkuId: variant.id,
-        productTitle: quote.title || productTitle(product) || "Товар AliExpress",
+        productTitle: quote.title || productTitle(product) || "Товар Uriona",
         variantLabel: variant.label,
         imageUrl: product.imageUrl ?? undefined,
         unitPriceMinor: quote.unitPriceMinor,
