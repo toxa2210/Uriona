@@ -761,7 +761,6 @@ const LogoMark = ({ className = "" }: { className?: string }) => (
 );
 
 const topMenuItems = [
-  { label: "Каталог", view: "Каталог" as View, message: "Каталог открыт" },
   { label: "Международный каталог", view: "Международный каталог" as View, message: "Открыт международный каталог" },
   { label: "Скидки", view: "Скидки" as View, message: "Акции и скидки" },
   { label: "Как заказать", view: "Как заказать" as View, message: "Как заказать" },
@@ -2051,34 +2050,6 @@ export function App() {
         )}
       </section>
 
-      <section className="section-block home-category-shortcuts" aria-label={text.catalog}>
-        <div className="section-head home-category-heading">
-          <div>
-            <small>{text.forYou}</small>
-            <h2>{localizeText("Категории", language)}</h2>
-          </div>
-          <button type="button" onClick={() => goTo("Категории")}>{text.seeAll}<ChevronRight size={16} /></button>
-        </div>
-        <div className="home-category-strip">
-          {topLevelCategories.slice(0, 8).map((category, index) => (
-            <button
-              type="button"
-              key={category.id}
-              className="home-category-chip"
-              onClick={() => {
-                setSelectedCat(category.id);
-                setCategoryParentId(category.id);
-                setCategorySearch("");
-                goTo("Каталог");
-              }}
-            >
-              <img className="home-category-photo" src={categoryPhoto(category, index)} alt={categoryLabel(category) || "Категория товаров"} loading="lazy" decoding="async" />
-              <span className="home-category-title">{categoryLabel(category)}</span>
-            </button>
-          ))}
-        </div>
-      </section>
-
       <section className="section-block home-products">
         <div className="section-head">
           <div>
@@ -2158,138 +2129,7 @@ export function App() {
     </div>
   );
 
-  const renderCatalog = () => (
-    <section className="screen-panel">
-      <div className="section-head panel-head">
-        <div>
-          <small>Каталог</small>
-          <h2>Категории</h2>
-        </div>
-        <span className="category-total">{categoryUiLabel("count", categories.length)}</span>
-      </div>
-
-      <div className="category-browser-controls">
-        <label className="category-search">
-          <Search size={17} />
-          <input
-            value={categorySearch}
-            onChange={(event) => setCategorySearch(event.target.value)}
-            placeholder={categoryUiLabel("search")}
-            aria-label={categoryUiLabel("search")}
-          />
-          {categorySearch && <button type="button" onClick={() => setCategorySearch("")} aria-label={categoryUiLabel("clearSearch")}><X size={16} /></button>}
-        </label>
-        {categorySearch ? (
-          <button className="category-back-btn" type="button" onClick={() => setCategorySearch("")}>
-            {categoryUiLabel("all")}
-          </button>
-        ) : categoryParentId ? (
-          <div className="category-breadcrumbs">
-            <button type="button" onClick={() => setCategoryParentId(null)}>{localizeText("Все категории", language)}</button>
-            {categoryPath.map((category) => (
-              <span key={category.id}>
-                <ChevronRight size={14} />
-                <button type="button" onClick={() => setCategoryParentId(category.id)}>{categoryLabel(category)}</button>
-              </span>
-            ))}
-            <button className="category-back-btn" type="button" onClick={() => setCategoryParentId(categoryPath.length > 1 ? categoryPath[categoryPath.length - 2].id : null)}>
-              <ChevronRight size={14} className="back-chevron" />{categoryUiLabel("back")}
-            </button>
-          </div>
-        ) : null}
-      </div>
-
-      <div className="category-grid large-grid category-browser-grid">
-        {categoriesLoading && categories.length === 0 && Array.from({ length: 15 }, (_, index) => <div key={`category-skeleton-${index}`} className="category-browser-skeleton" aria-hidden="true"><span /><i /><i /></div>)}
-        {categories.length === 0 && !categoriesLoading && renderCatalogState(categoriesError || text.noGoods, Boolean(categoriesError))}
-        {browsedCategories.map((category, index) => {
-          const children = categoryChildren.get(category.id) ?? [];
-          const isSelected = selectedCat === category.id;
-          return (
-            <article key={category.id} className={`category-browser-card ${isSelected ? "selected" : ""}`}>
-              <button
-                type="button"
-                className={`category-item ${isSelected ? "active" : ""}`}
-                onClick={() => {
-                  if (categorySearch || children.length === 0) {
-                    setSelectedCat(category.id);
-                    setNotice(`${categoryLabel(category)} активна`);
-                    if (categorySearch) setCategorySearch("");
-                  } else {
-                    setCategoryParentId(category.id);
-                  }
-                }}
-              >
-                <img className="category-browser-photo" src={categoryPhoto(category, index)} alt={categoryLabel(category) || "Категория товаров"} loading="lazy" decoding="async" />
-                <b>{categoryLabel(category)}</b>
-                {children.length > 0 && <small>{categoryUiLabel("subcategories", children.length)}</small>}
-              </button>
-              <button
-                type="button"
-                className="category-select-btn"
-                onClick={() => {
-                  setSelectedCat(category.id);
-                  setNotice(`${categoryLabel(category)} активна`);
-                }}
-              >
-                {categoryUiLabel(isSelected ? "selected" : "select")}
-              </button>
-            </article>
-          );
-        })}
-        {!categoriesLoading && categories.length > 0 && browsedCategories.length === 0 && (
-          <p className="category-empty-state" role="status">{categorySearch ? categoryUiLabel("noResults") : text.emptyCategories}</p>
-        )}
-      </div>
-
-      {catalogLoading && products.length === 0 ? (
-        <div className="catalog-products-state">
-          <p className="catalog-loading-label" role="status">{text.loading}</p>
-          <div className="product-grid compact-grid catalog-skeleton-grid" aria-hidden="true">
-            {Array.from({ length: 10 }, (_, index) => <div key={`product-skeleton-${index}`} className="catalog-product-skeleton"><span className="skeleton-image" /><i className="skeleton-line wide" /><i className="skeleton-line" /><i className="skeleton-line short" /></div>)}
-          </div>
-        </div>
-      ) : products.length === 0 ? (
-        <div className="catalog-products-state">{renderCatalogState(catalogError || text.noGoods, Boolean(catalogError))}</div>
-      ) : products.length > 0 ? (
-        <>
-          <div className="section-head panel-head">
-            <div>
-              <small>Товары</small>
-              <h2>{selectedCat === "all" ? "Все товары" : categoryLabel(categories.find((item) => item.id === selectedCat))}</h2>
-            </div>
-          </div>
-          {catalogSource === "local" && <p className="catalog-source-note" role="status">{text.localCatalogNote}</p>}
-          <div className="product-grid compact-grid">
-            {catalogMessage ? renderCatalogState(catalogMessage, Boolean(catalogError)) : visibleProducts.map((product, index) => (
-              <article key={product.id} className="product-card compact-card">
-                <div className={`product-media media-${index % 5}`}>
-                  {product.imageUrl && <img src={product.imageUrl} alt={productTitle(product) || ""} referrerPolicy="no-referrer" loading="lazy" />}
-                  <span className="product-tag">{product.status === "sale" ? "Скидка" : "Новинка"}</span>
-                  <button type="button" className={`wish-btn ${liked.includes(product.id) ? "active" : ""}`} onClick={() => toggleFavorite(product.id)} aria-label={liked.includes(product.id) ? "Удалить из избранного" : "Добавить в избранное"}>
-                    <Heart size={15} fill={liked.includes(product.id) ? "currentColor" : "none"} />
-                  </button>
-                </div>
-                <div className="product-body">
-                  <span className="product-category">{categoryLabel(product.category)}</span>
-                  <h3>{productTitle(product)}</h3>
-                  {catalogSource === "aliexpress" && <button type="button" className="product-details-btn" onClick={() => void openProductDetails(product)}>Подробнее</button>}
-                  <div className="price-row">
-                    <strong>{formatUzs(product.priceMinor)}</strong>
-                    <button type="button" className="mini-cart" onClick={() => handleAddToCart(product.id)}><Plus size={14} />Добавить</button>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-          <div ref={catalogSentinelRef} className="catalog-infinite-sentinel" aria-hidden="true" />
-          {catalogMoreLoading && <p className="catalog-loading-label" role="status">{text.loading}</p>}
-          {catalogMoreError && <div className="catalog-more-error" role="alert"><span>{catalogMoreError}</span><button type="button" className="secondary-btn" onClick={() => setCatalogMoreError("")}>Повторить</button></div>}
-          {!catalogHasMore && products.length > 0 && <p className="catalog-end-label" role="status">Вы посмотрели все товары</p>}
-        </>
-      ) : null}
-    </section>
-  );
+  const renderCatalog = () => renderHome();
 
   const renderChinaGoods = () => (
     <section className="screen-panel">
