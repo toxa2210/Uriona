@@ -36,10 +36,10 @@ import type { User as FirebaseUser } from "@firebase/auth";
 import { ApiRequestError, api, formatUzs, mapMarketplaceCategories, mapMarketplaceGoods, type ApiCategory, type ApiOrder, type ApiProduct, type ApiShippingQuote, type ApiUser } from "./api";
 import { firebaseAuth, firebaseConfigReady } from "./firebase";
 import { prepareMarketplaceQuery, productPopularity } from "./search";
+import { parseSearchInterests, recordSearchInterest, selectHomeRecommendationQueries, type SearchInterests } from "./recommendations";
 
 const navItems = ["Главная", "Категории", "Корзина", "Профиль"] as const;
 type Language = "ru" | "en" | "uz";
-const HOME_RECOMMENDATION_KEYWORDS = ["phone", "home decor", "kitchen", "women fashion", "watch", "toys", "bag", "beauty"];
 const CATEGORY_PHOTOS = [
   "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=640&q=80",
   "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=640&q=80",
@@ -771,6 +771,7 @@ const topMenuItems = [
 const CART_STORAGE_KEY = "uriona-cart";
 const PRODUCTS_STORAGE_KEY = "uriona-cart-products";
 const LIKED_STORAGE_KEY = "uriona-liked-products";
+const SEARCH_INTERESTS_STORAGE_KEY = "uriona-search-interests";
 const DEMO_PAYMENT_STORAGE_KEY = "uriona-demo-payment";
 const DEMO_PAYMENT_ENABLED = import.meta.env.DEV;
 const MIN_PROMO_SUBTOTAL = 500_000 * 100;
@@ -1026,7 +1027,7 @@ export function App() {
   const catalogMenuRef = useRef<HTMLDivElement>(null);
   const [heroSlide, setHeroSlide] = useState(0);
   const [homeSort, setHomeSort] = useState<HomeSort>("deals");
-  const [recommendationKeyword] = useState(() => HOME_RECOMMENDATION_KEYWORDS[Math.floor(Math.random() * HOME_RECOMMENDATION_KEYWORDS.length)]);
+  const [searchInterests, setSearchInterests] = useState<SearchInterests>(() => parseSearchInterests(localStorage.getItem(SEARCH_INTERESTS_STORAGE_KEY)));
   const [selectedCat, setSelectedCat] = useState<string>("all");
   const [categories, setCategories] = useState<ApiCategory[]>([]);
   const [categoryParentId, setCategoryParentId] = useState<string | null>(null);
@@ -1042,6 +1043,11 @@ export function App() {
   const catalogMoreRequestRef = useRef(false);
   const catalogRequestKeyRef = useRef(0);
   const catalogSentinelRef = useRef<HTMLDivElement>(null);
+  const catalogSingleQueryRef = useRef("");
+  const homeRecommendationQueriesRef = useRef<string[]>([]);
+  const homeQueryNextPagesRef = useRef<Record<string, number>>({});
+  const homeQueryHasMoreRef = useRef<Record<string, boolean>>({});
+  const homeQueryCursorRef = useRef(0);
   const [catalogError, setCatalogError] = useState("");
   const [catalogAttempt, setCatalogAttempt] = useState(0);
   const [detailProduct, setDetailProduct] = useState<ApiProduct | null>(null);
@@ -1122,6 +1128,10 @@ export function App() {
   useEffect(() => {
     localStorage.setItem(LIKED_STORAGE_KEY, JSON.stringify(liked));
   }, [liked]);
+
+  useEffect(() => {
+    localStorage.setItem(SEARCH_INTERESTS_STORAGE_KEY, JSON.stringify(searchInterests));
+  }, [searchInterests]);
 
   useEffect(() => {
     localStorage.setItem("uriona-language", language);
@@ -1263,9 +1273,21 @@ export function App() {
       const isHomeRecommendations = view === "Главная" && selectedCat === "all" && !searchTerm;
       const selectedCategory = categories.find((category) => category.id === selectedCat);
       const categoryKeyword = selectedCat !== "all" ? categoryLabel(selectedCategory)?.trim() : "";
-      const marketplaceKeyword = prepareMarketplaceQuery(searchTerm || categoryKeyword || recommendationKeyword);
-      const load = api.aliexpress.dropshippingProducts({
-        keyWord: marketplaceKeyword,
+      const singleQuery = isHomeRecommendations
+        ? ""
+        : prepareMarketplaceQuery(searchTerm || categoryKeyword || selectHomeRecommendationQueries({})[0]);
+      const requestKeywords = isHomeRecommendations
+        ? selectHomeRecommendationQueries(searchInterests)
+        : [singleQuery];
+      if (!isHomeRecommendations) catalogSingleQueryRef.current = singleQuery;
+      if (isHomeRecommendations) {
+        homeRecommendationQueriesRef.current = requestKeywords;
+        homeQueryNextPagesRef.current = Object.fromEntries(requestKeywords.map((keyword) => [keyword, 1]));
+        homeQueryHasMoreRef.current = Object.fromEntries(requestKeywords.map((keyword) => [keyword, true]));
+        homeQueryCursorRef.current = 0;
+      }
+      const loadProducts = (keyWord: string) => api.aliexpress.dropshippingProducts({
+        keyWord,
         ...(selectedCat !== "all" ? { categoryId: selectedCat } : {}),
         pageIndex: 1,
         pageSize: 20,
@@ -1273,16 +1295,36 @@ export function App() {
         currency: "UZS",
         countryCode: "UZ",
       });
-      load.then((payload) => {
+      Promise.allSettled(requestKeywords.map(loadProducts)).then((results) => {
         if (!active) return;
-        const mappedProducts = mapMarketplaceGoods(payload, "UZS").map((product) => ({
+        const fulfilled = results.flatMap((result, index) => result.status === "fulfilled"
+          ? [{ keyword: requestKeywords[index], payload: result.value }]
+          : []);
+        if (!fulfilled.length) {
+          const failure = results.find((result) => result.status === "rejected");
+          throw failure?.status === "rejected" ? failure.reason : new Error("Product search failed");
+        }
+        const mappedProducts = Array.from(new Map(fulfilled.flatMap(({ payload }) => mapMarketplaceGoods(payload, "UZS"))
+          .map((product) => [product.id, {
           ...product,
           category: categories.find((category) => category.id === product.categoryId)
             ?? categories.find((category) => category.id === selectedCat)
             ?? null,
-        }));
+          }])).values());
         const liveProducts = isHomeRecommendations ? shuffleItems(mappedProducts) : mappedProducts;
-        setCatalogHasMore(mappedProducts.length >= 20);
+        if (isHomeRecommendations) {
+          homeQueryHasMoreRef.current = Object.fromEntries(results.map((result, index) => [
+            requestKeywords[index],
+            result.status === "rejected" || mapMarketplaceGoods(result.value, "UZS").length >= 20,
+          ]));
+          homeQueryNextPagesRef.current = Object.fromEntries(results.map((result, index) => [
+            requestKeywords[index],
+            result.status === "fulfilled" ? 2 : 1,
+          ]));
+          setCatalogHasMore(Object.values(homeQueryHasMoreRef.current).some(Boolean));
+        } else {
+          setCatalogHasMore(mappedProducts.length >= 20);
+        }
         setCatalogPage(1);
         if (!liveProducts.length) {
           setProducts([]);
@@ -1298,6 +1340,7 @@ export function App() {
         setKnownProducts((current) => Array.from(new Map([...current, ...liveProducts].map((product) => [product.id, product])).values()).slice(-100));
       }).catch((error: unknown) => {
         if (!active) return;
+        setCatalogHasMore(false);
         setProducts([]);
         setLiveCatalog(true);
         setCatalogSource("unavailable");
@@ -1310,7 +1353,7 @@ export function App() {
       active = false;
       window.clearTimeout(timer);
     };
-  }, [search, selectedCat, categories, language, catalogAttempt, recommendationKeyword, view]);
+  }, [search, selectedCat, categories, language, catalogAttempt, searchInterests, view]);
   
   useEffect(() => {
     const supportsInfiniteScroll = view === "Главная" || view === "Категории" || view === "Каталог";
@@ -1334,11 +1377,25 @@ export function App() {
       const requestKey = catalogRequestKeyRef.current;
       const requestSearch = search.trim();
       const requestCategory = selectedCat;
-      const requestPage = catalogPage + 1;
+      const isHomeRecommendations = view === "Главная" && !requestSearch && requestCategory === "all";
+      const availableQueries = isHomeRecommendations
+        ? homeRecommendationQueriesRef.current.filter((query) => homeQueryHasMoreRef.current[query])
+        : [];
+      if (isHomeRecommendations && !availableQueries.length) {
+        catalogMoreRequestRef.current = false;
+        setCatalogMoreLoading(false);
+        setCatalogHasMore(false);
+        return;
+      }
+      const nextQuery = isHomeRecommendations
+        ? availableQueries[homeQueryCursorRef.current % availableQueries.length]
+        : "";
+      const requestPage = isHomeRecommendations
+        ? homeQueryNextPagesRef.current[nextQuery] ?? 1
+        : catalogPage + 1;
       const selectedCategory = categories.find((category) => category.id === requestCategory);
-      const searchTerm = requestSearch;
-      const nextKeyword = prepareMarketplaceQuery(
-        searchTerm || (selectedCat !== "all" ? categoryLabel(selectedCategory)?.trim() : "") || recommendationKeyword
+      const nextKeyword = nextQuery || prepareMarketplaceQuery(
+        requestSearch || (requestCategory !== "all" ? categoryLabel(selectedCategory)?.trim() : "") || catalogSingleQueryRef.current
       );
 
       api.aliexpress.dropshippingProducts({
@@ -1362,8 +1419,15 @@ export function App() {
           nextProducts.forEach((product) => merged.set(product.id, product));
           return Array.from(merged.values());
         });
-        setCatalogPage((page) => page + 1);
-        setCatalogHasMore(nextProducts.length >= 20 && nextProducts.some((product) => product.id));
+        if (isHomeRecommendations) {
+          homeQueryCursorRef.current += 1;
+          homeQueryNextPagesRef.current[nextKeyword] = requestPage + 1;
+          homeQueryHasMoreRef.current[nextKeyword] = nextProducts.length >= 20 && nextProducts.some((product) => product.id);
+          setCatalogHasMore(Object.values(homeQueryHasMoreRef.current).some(Boolean));
+        } else {
+          setCatalogPage((page) => page + 1);
+          setCatalogHasMore(nextProducts.length >= 20 && nextProducts.some((product) => product.id));
+        }
         setCatalogMoreError("");
       }).catch((error: unknown) => {
         if (requestKey === catalogRequestKeyRef.current && requestSearch === search.trim() && requestCategory === selectedCat) {
@@ -1381,7 +1445,7 @@ export function App() {
     return () => observer.disconnect();
   }, [
     view, catalogLoading, catalogHasMore, catalogMoreLoading, catalogMoreError,
-    catalogSource, catalogPage, selectedCat, search, categories, recommendationKeyword, language
+    catalogSource, catalogPage, selectedCat, search, categories, searchInterests, language
   ]);
 
 
@@ -1580,6 +1644,11 @@ export function App() {
     setCatalogMenuOpen(false);
     goTo("Главная");
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const rememberCurrentSearch = () => {
+    const query = prepareMarketplaceQuery(search.trim());
+    if (query) setSearchInterests((current) => recordSearchInterest(current, query));
   };
 
   const handleAddToCart = (productId: string) => {
@@ -2764,6 +2833,7 @@ export function App() {
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
                   event.preventDefault();
+                  rememberCurrentSearch();
                   setSelectedCat("all");
                   goTo("Главная");
                 }
@@ -2771,6 +2841,7 @@ export function App() {
               placeholder={text.search}
             />
             <button type="button" aria-label={text.search} onClick={() => {
+              rememberCurrentSearch();
               setSelectedCat("all");
               goTo("Главная");
             }}><Search size={17} /></button>
