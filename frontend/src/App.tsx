@@ -1054,6 +1054,7 @@ export function App() {
   const [detailImage, setDetailImage] = useState("");
   const [detailImageZoomOpen, setDetailImageZoomOpen] = useState(false);
   const [detailPayload, setDetailPayload] = useState<unknown>(null);
+  const [detailLoadedProductId, setDetailLoadedProductId] = useState<string | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
   const [detailAttempt, setDetailAttempt] = useState(0);
@@ -1093,6 +1094,27 @@ export function App() {
     () => detailPayload === null ? null : parseAliExpressProductDetails(detailPayload),
     [detailPayload],
   );
+  const activeProductDetails = detailLoadedProductId === detailProduct?.id ? productDetails : null;
+  const detailVariants = useMemo(
+    () => checkoutVariants(activeProductDetails?.skus ?? []),
+    [activeProductDetails],
+  );
+  const selectedDetailVariant = detailVariants.find((variant) => variant.id === checkoutSkuByProduct[detailProduct?.id ?? ""]) ?? null;
+  const canPurchaseDetailProduct = Boolean(detailProduct && activeProductDetails && !detailLoading && !detailError && selectedDetailVariant);
+
+  useEffect(() => {
+    if (!detailProduct || !activeProductDetails || detailLoading) return;
+    const availableVariants = checkoutVariants(activeProductDetails.skus);
+    setCheckoutSkuByProduct((current) => {
+      const currentSkuId = current[detailProduct.id];
+      if (availableVariants.some((variant) => variant.id === currentSkuId)) return current;
+      if (availableVariants.length === 1) return { ...current, [detailProduct.id]: availableVariants[0].id };
+      if (!currentSkuId) return current;
+      const next = { ...current };
+      delete next[detailProduct.id];
+      return next;
+    });
+  }, [detailProduct, activeProductDetails, detailLoading]);
 
   const clearExpiredSession = (email?: string | null) => {
     localStorage.removeItem("uriona-access-token");
@@ -1229,6 +1251,7 @@ export function App() {
   useEffect(() => {
     if (!detailProduct) {
       setDetailPayload(null);
+      setDetailLoadedProductId(null);
       setDetailError("");
       setDetailLoading(false);
       return;
@@ -1238,6 +1261,7 @@ export function App() {
     setDetailImage(detailProduct.imageUrl ?? "");
     setDetailImageZoomOpen(false);
     setDetailPayload(null);
+    setDetailLoadedProductId(null);
     setDetailError("");
     setDetailLoading(true);
     api.aliexpress.productDetails(detailProduct.id, {
@@ -1246,7 +1270,10 @@ export function App() {
       target_language: "ru_RU",
     })
       .then((payload) => {
-        if (active) setDetailPayload(payload);
+        if (active) {
+          setDetailPayload(payload);
+          setDetailLoadedProductId(detailProduct.id);
+        }
       })
       .catch((error: unknown) => {
         if (active) setDetailError(aliExpressErrorMessage(error, language, "details"));
@@ -1256,6 +1283,18 @@ export function App() {
       });
     return () => { active = false; };
   }, [detailProduct, detailAttempt]);
+
+  useEffect(() => {
+    if (!detailProduct) return;
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousRootOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousRootOverflow;
+    };
+  }, [detailProduct]);
 
   useEffect(() => {
     let active = true;
@@ -1665,6 +1704,7 @@ export function App() {
   };
 
   const openProductDetails = (product: ApiProduct) => {
+    setDetailLoadedProductId(null);
     setDetailProduct(product);
   };
 
@@ -2921,17 +2961,17 @@ export function App() {
             <button type="button" className="product-dialog-close" onClick={() => setDetailProduct(null)} aria-label="Закрыть"><X size={20} /></button>
             <div className="product-dialog-layout">
               <div className="product-dialog-gallery">
-                {(detailImage || productDetails?.images[0] || detailProduct.imageUrl) ? (
+                {(detailImage || activeProductDetails?.images[0] || detailProduct.imageUrl) ? (
                   <button type="button" className="product-dialog-image-button" onClick={() => setDetailImageZoomOpen(true)} aria-label="Открыть фото товара на весь экран">
-                    <img className="product-dialog-image" src={detailImage || productDetails?.images[0] || detailProduct.imageUrl || undefined} alt={productDetails?.subject || productTitle(detailProduct) || ""} referrerPolicy="no-referrer" />
+                    <img className="product-dialog-image" src={detailImage || activeProductDetails?.images[0] || detailProduct.imageUrl || undefined} alt={activeProductDetails?.subject || productTitle(detailProduct) || ""} referrerPolicy="no-referrer" />
                   </button>
                 ) : (
                   <div className="product-dialog-image-placeholder"><ShoppingBag size={44} /><span>Фото товара загружается</span></div>
                 )}
-                {productDetails?.images && productDetails.images.length > 0 && (
+                {activeProductDetails?.images && activeProductDetails.images.length > 0 && (
                   <div className="product-detail-images" aria-label="Фотографии товара">
-                    {productDetails.images.slice(0, 8).map((image) => (
-                      <button type="button" key={image} className={"product-detail-image-thumb " + ((detailImage || productDetails.images[0]) === image ? "selected" : "")} onClick={() => setDetailImage(image)} aria-label="Выбрать фотографию товара">
+                    {activeProductDetails.images.slice(0, 8).map((image) => (
+                      <button type="button" key={image} className={"product-detail-image-thumb " + ((detailImage || activeProductDetails.images[0]) === image ? "selected" : "")} onClick={() => setDetailImage(image)} aria-label="Выбрать фотографию товара">
                         <img src={image} alt="" referrerPolicy="no-referrer" loading="lazy" />
                       </button>
                     ))}
@@ -2940,18 +2980,49 @@ export function App() {
               </div>
               <div className="product-dialog-information">
                 <div className="product-dialog-eyebrow"><span className="product-dialog-dot" />{categoryLabel(detailProduct.category) || (language === "uz" ? "Mahsulot" : language === "en" ? "Product" : "Товар")}</div>
-                <h2 id="product-dialog-title">{productDetails?.subject || productTitle(detailProduct)}</h2>
+                <h2 id="product-dialog-title">{activeProductDetails?.subject || productTitle(detailProduct)}</h2>
                 <div className="product-dialog-price-row"><strong>{formatUzs(detailProduct.priceMinor)}</strong><span className="product-dialog-availability"><CheckCircle2 size={15} /> Доступность уточняется</span></div>
-                <p className="product-dialog-description">{productDetails?.description || productDescription(detailProduct) || (detailLoading ? "Загружаем описание товара…" : "Подробное описание пока не предоставлено поставщиком.")}</p>
+                <p className="product-dialog-description">{activeProductDetails?.description || productDescription(detailProduct) || (detailLoading ? "Загружаем описание товара…" : "Подробное описание пока не предоставлено поставщиком.")}</p>
                 <div className="product-dialog-assurances">
                   <span><ShieldCheck size={17} /> Безопасное оформление</span>
                   <span><Truck size={17} /> Доставка рассчитывается перед заказом</span>
                 </div>
+                {detailVariants.length > 0 ? (
+                  <label className="product-detail-variant-field" htmlFor="product-variant-select">
+                    <span>Модель, цвет, размер</span>
+                    <select
+                      id="product-variant-select"
+                      value={selectedDetailVariant?.id ?? ""}
+                      onChange={(event) => setCheckoutSkuByProduct((current) => ({ ...current, [detailProduct.id]: event.target.value }))}
+                    >
+                      <option value="">Выберите вариант товара</option>
+                      {detailVariants.map((variant) => (
+                        <option key={variant.id} value={variant.id}>
+                          {variant.label}{variant.stock === null ? "" : ` · Остаток: ${variant.stock}`}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <p className="product-dialog-selection-hint" role="status">
+                    {detailLoading ? "Загружаем варианты товара…" : activeProductDetails ? "Нет доступных вариантов этого товара." : "Варианты станут доступны после загрузки товара."}
+                  </p>
+                )}
+                {detailVariants.length > 1 && !selectedDetailVariant && (
+                  <p className="product-dialog-selection-hint">Сначала выберите модель, цвет, размер или другую доступную комбинацию.</p>
+                )}
                 <div className="product-dialog-actions">
-                  <button type="button" className="primary-btn product-dialog-buy" onClick={() => { handleAddToCart(detailProduct.id); setDetailProduct(null); goTo("Корзина", "Товар добавлен — можно продолжить оформление"); }}>
+                  <button type="button" className="primary-btn product-dialog-buy" disabled={!canPurchaseDetailProduct} onClick={() => {
+                    if (!canPurchaseDetailProduct || !selectedDetailVariant) return;
+                    handleAddToCart(detailProduct.id);
+                    setDetailProduct(null);
+                    goTo("Корзина", "Товар добавлен — можно продолжить оформление");
+                  }}>
                     <Zap size={17} /> Купить сейчас
                   </button>
-                  <button type="button" className="secondary-btn product-dialog-add" onClick={() => handleAddToCart(detailProduct.id)}>
+                  <button type="button" className="secondary-btn product-dialog-add" disabled={!canPurchaseDetailProduct} onClick={() => {
+                    if (canPurchaseDetailProduct && selectedDetailVariant) handleAddToCart(detailProduct.id);
+                  }}>
                     <ShoppingBag size={17} /> В корзину
                   </button>
                 </div>
@@ -2960,40 +3031,17 @@ export function App() {
             </div>
             {detailLoading && <p className="product-detail-state" role="status">Загружаем данные AliExpress…</p>}
             {detailError && <div className="product-detail-state" role="alert"><span>{detailError}</span><button type="button" onClick={() => setDetailAttempt((attempt) => attempt + 1)}>Повторить</button></div>}
-            {productDetails && <>
+            {activeProductDetails && <>
               <dl className="product-detail-meta">
-                {productDetails.status && <div><dt>Статус</dt><dd>{productDetails.status}</dd></div>}
-                {productDetails.categoryId && <div><dt>ID категории</dt><dd>{productDetails.categoryId}</dd></div>}
-                {productDetails.storeName && <div><dt>Магазин</dt><dd>{productDetails.storeName}</dd></div>}
-                {productDetails.grossWeight && <div><dt>Вес брутто</dt><dd>{productDetails.grossWeight}</dd></div>}
-                {productDetails.dimensions && <div><dt>Размер упаковки</dt><dd>{productDetails.dimensions}</dd></div>}
-                {productDetails.deliveryTime && <div><dt>Срок отправки</dt><dd>{productDetails.deliveryTime}</dd></div>}
+                {activeProductDetails.status && <div><dt>Статус</dt><dd>{activeProductDetails.status}</dd></div>}
+                {activeProductDetails.categoryId && <div><dt>ID категории</dt><dd>{activeProductDetails.categoryId}</dd></div>}
+                {activeProductDetails.storeName && <div><dt>Магазин</dt><dd>{activeProductDetails.storeName}</dd></div>}
+                {activeProductDetails.grossWeight && <div><dt>Вес брутто</dt><dd>{activeProductDetails.grossWeight}</dd></div>}
+                {activeProductDetails.dimensions && <div><dt>Размер упаковки</dt><dd>{activeProductDetails.dimensions}</dd></div>}
+                {activeProductDetails.deliveryTime && <div><dt>Срок отправки</dt><dd>{activeProductDetails.deliveryTime}</dd></div>}
               </dl>
-              {productDetails.videos.length > 0 && <div className="product-detail-videos">
-                {productDetails.videos.map((video) => <video key={video} src={video} controls preload="none" aria-label="Видео товара" />)}
-              </div>}
-              {productDetails.skus.length > 0 && <div className="product-detail-skus">
-                <h3>Варианты товара</h3>
-                {productDetails.skus.slice(0, 24).map((sku, index) => {
-                  const properties = readRecords(sku.ae_sku_property_dtos)
-                    .map((property) => `${readString(property, "property_name", "sku_property_name", "prop_name")}: ${readString(property, "property_value", "sku_property_value", "prop_value")}`)
-                    .filter((value) => value !== ": ");
-                  const skuId = readString(sku, "sku_id");
-                  const price = readString(sku, "offer_sale_price", "sku_price");
-                  const stock = readString(sku, "sku_available_stock");
-                  const selected = checkoutSkuByProduct[detailProduct.id] === skuId;
-                  return <button
-                    type="button"
-                    className={`product-detail-sku product-detail-sku-option ${selected ? "selected" : ""}`}
-                    key={skuId || index}
-                    disabled={!skuId}
-                    aria-pressed={selected}
-                    onClick={() => skuId && setCheckoutSkuByProduct((current) => ({ ...current, [detailProduct.id]: skuId }))}
-                  >
-                    <span>{properties.join(" · ") || `Вариант ${index + 1}`}</span>
-                    <b>{price ? `${price} USD` : "Цена не указана"}{stock ? ` · Остаток: ${stock}` : ""}</b>
-                  </button>;
-                })}
+              {activeProductDetails.videos.length > 0 && <div className="product-detail-videos">
+                {activeProductDetails.videos.map((video) => <video key={video} src={video} controls preload="none" aria-label="Видео товара" />)}
               </div>}
             </>}
           </section>
@@ -3003,7 +3051,7 @@ export function App() {
       {detailImageZoomOpen && detailImage && (
         <div className="product-image-zoom" role="dialog" aria-modal="true" aria-label="Фото товара на весь экран" onMouseDown={(event) => { if (event.target === event.currentTarget) setDetailImageZoomOpen(false); }}>
           <button type="button" className="product-image-zoom-close" onClick={() => setDetailImageZoomOpen(false)} aria-label="Закрыть фото"><X size={22} /></button>
-          <img src={detailImage} alt={String(productDetails?.subject || (detailProduct ? productTitle(detailProduct) : "") || "")} referrerPolicy="no-referrer" />
+          <img src={detailImage} alt={String(activeProductDetails?.subject || (detailProduct ? productTitle(detailProduct) : "") || "")} referrerPolicy="no-referrer" />
         </div>
       )}
 
