@@ -1736,11 +1736,6 @@ export function App() {
     goTo("Главная");
   };
 
-  const rememberCurrentSearch = () => {
-    const query = prepareMarketplaceQuery(search.trim());
-    if (query) setSearchInterests((current) => recordSearchInterest(current, query));
-  };
-
   const handleAddToCart = (productId: string) => {
     setCartItems((items) => ({ ...items, [productId]: (items[productId] ?? 0) + 1 }));
     setShippingQuotes({});
