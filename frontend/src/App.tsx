@@ -1713,11 +1713,11 @@ export function App() {
         || prepareMarketplaceQuery(title).toLocaleLowerCase().includes(prepareMarketplaceQuery(query).toLocaleLowerCase()))
       .slice(0, 6);
     matchingProducts.forEach(({ title }) => add(title, "product"));
-    const queryTokens = normalizedQuery.split(/\\s+/).filter(Boolean);
+    const queryTokens = normalizedQuery.split(/\s+/).filter(Boolean);
     if (queryTokens.length === 1) {
       const prefixMatches = products
         .map((product) => language === "uz" ? (product.titleUz || product.titleRu || "") : (product.titleRu || product.titleUz || ""))
-        .filter((title) => title.toLocaleLowerCase().split(/[^\\p{L}\\p{N}]+/u).some((token) => token.startsWith(queryTokens[0])))
+        .filter((title) => title.toLocaleLowerCase().split(/[^\p{L}\p{N}]+/u).some((token) => token.startsWith(queryTokens[0])))
         .slice(0, 6);
       prefixMatches.forEach((title) => add(title, "product"));
     }
