@@ -368,7 +368,7 @@ export function tokenizeSearchText(value: string): string[] {
 }
 
 export function prepareMarketplaceQuery(value: string): string {
-  const normalized = normalizeSearchText(value).replace(/\\bt\\s+shirts?\\b/g, "tshirt");
+  const normalized = normalizeSearchText(value).replace(/\bt\s+shirts?\b/g, "tshirt");
   const tokens = normalized
     .split(" ")
     .filter((token) => token && !STOP_WORDS.has(token))
