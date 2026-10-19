@@ -35,7 +35,7 @@ import { createUserWithEmailAndPassword, getIdToken, reload, sendEmailVerificati
 import type { User as FirebaseUser } from "@firebase/auth";
 import { ApiRequestError, api, formatUzs, mapMarketplaceCategories, mapMarketplaceGoods, type ApiCategory, type ApiOrder, type ApiProduct, type ApiShippingQuote, type ApiUser } from "./api";
 import { firebaseAuth, firebaseConfigReady } from "./firebase";
-import { prepareMarketplaceQuery, productPopularity } from "./search";
+import { prepareMarketplaceQuery, productPopularity, suggestCategories } from "./search";
 import { parseSearchInterests, recordSearchInterest, selectHomeRecommendationQueries, type SearchInterests } from "./recommendations";
 
 const navItems = ["Главная", "Категории", "Корзина", "Профиль"] as const;
@@ -1023,6 +1023,8 @@ export function App() {
   };
   const [view, setView] = useState<View>("Главная");
   const [search, setSearch] = useState("");
+  const [searchSuggestionsOpen, setSearchSuggestionsOpen] = useState(false);
+  const [activeSearchSuggestion, setActiveSearchSuggestion] = useState(0);
   const [catalogMenuOpen, setCatalogMenuOpen] = useState(false);
   const catalogMenuRef = useRef<HTMLDivElement>(null);
   const [heroSlide, setHeroSlide] = useState(0);
@@ -1685,9 +1687,53 @@ export function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const rememberCurrentSearch = () => {
-    const query = prepareMarketplaceQuery(search.trim());
-    if (query) setSearchInterests((current) => recordSearchInterest(current, query));
+  const searchSuggestions = useMemo(() => {
+    const query = search.trim();
+    if (query.length < 2) return [];
+    const normalizedQuery = query.toLocaleLowerCase().replace(/ё/g, "е");
+    const seen = new Set<string>();
+    const options: Array<{ label: string; kind: "product" | "category" | "query" }> = [];
+    const add = (label: string, kind: "product" | "category" | "query") => {
+      const clean = label.trim();
+      const key = clean.toLocaleLowerCase();
+      if (!clean || key === normalizedQuery || seen.has(key)) return;
+      seen.add(key);
+      options.push({ label: clean, kind });
+    };
+    const categoryMatches = suggestCategories(categories, query);
+    categoryMatches.forEach((category) => {
+      add(language === "uz" ? category.nameUz : category.nameRu, "category");
+    });
+    const matchingProducts = products
+      .map((product) => ({
+        product,
+        title: language === "uz" ? (product.titleUz || product.titleRu || "") : (product.titleRu || product.titleUz || ""),
+      }))
+      .filter(({ title }) => title.toLocaleLowerCase().includes(normalizedQuery)
+        || prepareMarketplaceQuery(title).toLocaleLowerCase().includes(prepareMarketplaceQuery(query).toLocaleLowerCase()))
+      .slice(0, 6);
+    matchingProducts.forEach(({ title }) => add(title, "product"));
+    const queryTokens = normalizedQuery.split(/\s+/).filter(Boolean);
+    if (queryTokens.length === 1) {
+      const prefixMatches = products
+        .map((product) => language === "uz" ? (product.titleUz || product.titleRu || "") : (product.titleRu || product.titleUz || ""))
+        .filter((title) => title.toLocaleLowerCase().split(/[^\p{L}\p{N}]+/u).some((token) => token.startsWith(queryTokens[0])))
+        .slice(0, 6);
+      prefixMatches.forEach((title) => add(title, "product"));
+    }
+    return options.slice(0, 7);
+  }, [search, products, categories, language]);
+
+  const submitSearch = (query = search) => {
+    setSearch(query);
+    setSearchSuggestionsOpen(false);
+    setSelectedCat("all");
+    const normalized = query.trim();
+    if (normalized) {
+      const marketplaceQuery = prepareMarketplaceQuery(normalized);
+      setSearchInterests((current) => recordSearchInterest(current, marketplaceQuery));
+    }
+    goTo("Главная");
   };
 
   const handleAddToCart = (productId: string) => {
@@ -2865,26 +2911,65 @@ export function App() {
             )}
           </div>
 
-          <div className="search-box">
-            <Search size={18} />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  rememberCurrentSearch();
-                  setSelectedCat("all");
-                  goTo("Главная");
-                }
-              }}
-              placeholder={text.search}
-            />
-            <button type="button" aria-label={text.search} onClick={() => {
-              rememberCurrentSearch();
-              setSelectedCat("all");
-              goTo("Главная");
-            }}><Search size={17} /></button>
+          <div className="search-box-wrap">
+            <div className="search-box">
+              <Search size={18} />
+              <input
+                value={search}
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded={searchSuggestionsOpen && searchSuggestions.length > 0}
+                aria-controls="uriona-search-suggestions"
+                aria-activedescendant={searchSuggestionsOpen && searchSuggestions[activeSearchSuggestion] ? `search-suggestion-${activeSearchSuggestion}` : undefined}
+                onFocus={() => setSearchSuggestionsOpen(true)}
+                onBlur={() => window.setTimeout(() => setSearchSuggestionsOpen(false), 140)}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setActiveSearchSuggestion(0);
+                  setSearchSuggestionsOpen(true);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "ArrowDown" && searchSuggestions.length) {
+                    event.preventDefault();
+                    setSearchSuggestionsOpen(true);
+                    setActiveSearchSuggestion((index) => (index + 1) % searchSuggestions.length);
+                  } else if (event.key === "ArrowUp" && searchSuggestions.length) {
+                    event.preventDefault();
+                    setActiveSearchSuggestion((index) => (index - 1 + searchSuggestions.length) % searchSuggestions.length);
+                  } else if (event.key === "Escape") {
+                    setSearchSuggestionsOpen(false);
+                  } else if (event.key === "Enter") {
+                    event.preventDefault();
+                    submitSearch(searchSuggestionsOpen && searchSuggestions[activeSearchSuggestion]
+                      ? searchSuggestions[activeSearchSuggestion].label
+                      : search);
+                  }
+                }}
+                placeholder={text.search}
+              />
+              <button type="button" aria-label={text.search} onMouseDown={(event) => event.preventDefault()} onClick={() => submitSearch()}><Search size={17} /></button>
+            </div>
+            {searchSuggestionsOpen && searchSuggestions.length > 0 && (
+              <div className="search-suggestions" id="uriona-search-suggestions" role="listbox" aria-label="Варианты поиска">
+                {searchSuggestions.map((suggestion, index) => (
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={index === activeSearchSuggestion}
+                    id={`search-suggestion-${index}`}
+                    className={index === activeSearchSuggestion ? "active" : ""}
+                    key={`${suggestion.kind}-${suggestion.label}`}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onMouseEnter={() => setActiveSearchSuggestion(index)}
+                    onClick={() => submitSearch(suggestion.label)}
+                  >
+                    <Search size={15} />
+                    <span>{suggestion.label}</span>
+                    <small>{suggestion.kind === "category" ? "Категория" : suggestion.kind === "product" ? "Товар" : "Запрос"}</small>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <button className="icon-btn header-orders" type="button" onClick={() => {

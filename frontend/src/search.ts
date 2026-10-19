@@ -368,10 +368,11 @@ export function tokenizeSearchText(value: string): string[] {
 }
 
 export function prepareMarketplaceQuery(value: string): string {
-  const tokens = normalizeSearchText(value)
+  const normalized = normalizeSearchText(value).replace(/\bt\s+shirts?\b/g, "tshirt");
+  const tokens = normalized
     .split(" ")
     .filter((token) => token && !STOP_WORDS.has(token))
-    .map((token) => MARKETPLACE_QUERY_TERMS[token] ?? token);
+    .map((token) => token === "tshirt" ? "t-shirt" : MARKETPLACE_QUERY_TERMS[token] ?? token);
   return tokens.join(" ");
 }
 
