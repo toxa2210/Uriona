@@ -1,3 +1,5 @@
+import { prepareProductImage } from "./imageUpload";
+
 const API_BASE = import.meta.env.DEV
   ? "/api/v1"
   : import.meta.env.VITE_API_URL ?? "https://uriona-api.onrender.com/api/v1";
@@ -11,7 +13,8 @@ export class ApiRequestError extends Error {
   }
 }
 
-export type ApiCategory = { id: string; nameUz: string; nameRu: string; parentId?: string | null };
+export type ApiCategory = { id: string; nameUz: string; nameRu: string; parentId?: string | null; attributes?: Record<string, string> | null };
+export type ApiShippingBranch = { id: string; name: string; region: string; locality: string; address: string; phone?: string | null; workingHours?: string | null };
 export type ApiProduct = {
   id: string;
   categoryId: string | null;
@@ -23,10 +26,23 @@ export type ApiProduct = {
   priceMinor: number;
   status: string;
   imageUrl?: string | null;
+  imageUrls?: string[];
+  attributes?: string | Record<string, string> | null;
+  variants?: Array<{ label: string; stock: number }>;
+  stock?: number;
+  discountPercent?: number | null;
+  sellerCity?: string | null;
+  sellerDistrict?: string | null;
+  pickupMethod?: string;
+  shippingCarrier?: "EMU_EXPRESS" | "UZPOST";
+  shippingPayer?: "SENDER" | "RECIPIENT";
+  dispatchBranchId?: string | null;
+  dispatchPointName?: string | null;
+  dispatchPointAddress?: string | null;
+  moderationNote?: string | null;
   category?: ApiCategory | null;
   orders?: string | null;
   brandName?: string | null;
-  attributes?: string | null;
   inStock?: boolean;
 };
 export type ApiOption = { id: string; name: string; parentId: string | null };
@@ -238,6 +254,21 @@ export const api = {
     updateProfile: (token: string, profile: ApiProfileUpdate) => request<ApiUser>("/auth/profile", { method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(profile) }),
   },
   categories: () => request<ApiCategory[]>("/categories"),
+  shippingBranches: (carrier?: "EMU_EXPRESS" | "UZPOST") => request<ApiShippingBranch[]>(carrier ? `/shipping-branches?carrier=${encodeURIComponent(carrier)}` : "/shipping-branches"),
+  seller: {
+    products: (token: string) => request<ApiProduct[]>("/seller/products", { headers: bearerHeaders(token) }),
+    billing: (token: string) => request<{ orderItems: number; grossMinor: number; awaitingPaymentMinor: number; confirmedSalesMinor: number; deliveredSalesMinor: number; currency: string }>("/seller/billing", { headers: bearerHeaders(token) }),
+    financialActions: (token: string) => request<Array<{ id: string; type: string; status: string; amountMinor: number; currency: string; description: string; reviewNote?: string | null; createdAt: string }>>("/seller/financial-actions", { headers: bearerHeaders(token) }),
+    requestFinancialAction: (token: string, input: { type: "PAYOUT" | "REFUND" | "EXPENSE"; amountMinor: number; description: string; reference?: string }) => request<{ id: string; type: string; status: string }>("/seller/financial-actions", { method: "POST", headers: bearerHeaders(token), body: JSON.stringify(input) }),
+    saveProduct: (token: string, product: Partial<ApiProduct> & { titleUz: string; priceMinor: number }) => request<ApiProduct>("/seller/products", { method: "POST", headers: bearerHeaders(token), body: JSON.stringify(product) }),
+    archiveProduct: (token: string, productId: string) => request<ApiProduct>(`/seller/products/${encodeURIComponent(productId)}/archive`, { method: "PATCH", headers: bearerHeaders(token) }),
+    uploadImage: async (token: string, file: File) => {
+      const body = new FormData();
+      body.append("file", await prepareProductImage(file));
+      return request<{ imageUrl: string }>("/seller/images", { method: "POST", headers: bearerHeaders(token), body });
+    },
+    deleteImage: (token: string, imageUrl: string) => request<{ deleted: true }>("/seller/images", { method: "DELETE", headers: bearerHeaders(token), body: JSON.stringify({ imageUrl }) }),
+  },
   products: (params: { search?: string; categoryId?: string; page?: number; limit?: number } = {}) => {
     const query = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => value !== undefined && query.set(key, String(value)));
