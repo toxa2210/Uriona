@@ -37,6 +37,7 @@ import { ApiRequestError, api, formatUzs, mapMarketplaceCategories, mapMarketpla
 import { firebaseAuth, firebaseConfigReady } from "./firebase";
 import { prepareMarketplaceQuery, productPopularity } from "./search";
 import { parseSearchInterests, recordSearchInterest, selectHomeRecommendationQueries, type SearchInterests } from "./recommendations";
+import { SellerDashboard } from "./SellerDashboard";
 
 const navItems = ["Главная", "Категории", "Корзина", "Профиль"] as const;
 type Language = "ru" | "en" | "uz";
@@ -791,7 +792,7 @@ type DemoPayment = {
     unitPriceMinor: number;
   }>;
 };
-type ProfileSection = "overview" | "orders" | "wishlist" | "stores" | "reviews" | "questions" | "coupons" | "addresses" | "payments" | "settings" | "support";
+type ProfileSection = "overview" | "orders" | "wishlist" | "stores" | "reviews" | "questions" | "coupons" | "addresses" | "payments" | "settings" | "support" | "seller";
 
 const orderStatusLabels: Record<string, string> = {
   CREATED: "Создан",
@@ -2660,6 +2661,7 @@ export function App() {
       { key: "payments", label: "Способы оплаты", Icon: CreditCard },
       { key: "settings", label: "Настройки", Icon: ShieldCheck },
       { key: "support", label: "Служба поддержки", Icon: MessageCircle },
+      ...(profile?.role === "SELLER" || profile?.role === "ADMIN" ? [{ key: "seller" as const, label: "Магазин продавца", Icon: Store }] : []),
     ];
     return (
     <section className="screen-panel">
@@ -2727,6 +2729,7 @@ export function App() {
                 </div>
                 <div className="profile-actions"><button type="button" className="primary-btn" disabled={profileBusy} onClick={() => void saveProfile()}>Сохранить профиль</button></div>
               </>}
+              {profileSection === "seller" && authToken && (profile.role === "SELLER" || profile.role === "ADMIN") && <SellerDashboard token={authToken} />}
               {profileSection === "orders" && <>
                 <div className="profile-section-heading"><div><small>История покупок</small><h3>Мои заказы</h3></div><button type="button" className="text-action" onClick={() => setOrdersAttempt((attempt) => attempt + 1)} disabled={ordersLoading}>Обновить</button></div>
                 <div className="profile-filter-row" role="group" aria-label="Фильтр заказов">

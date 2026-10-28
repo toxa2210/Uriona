@@ -414,8 +414,15 @@ function categorySearchText(product: ApiProduct, categories: ApiCategory[]): str
   return names.filter(Boolean).join(" ");
 }
 
-function fieldTokens(value: string | null | undefined): string[] {
-  return value ? tokenizeSearchText(value) : [];
+function attributeText(value: string | Record<string, string> | null | undefined): string {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  return Object.values(value).filter(Boolean).join(" ");
+}
+
+function fieldTokens(value: string | Record<string, string> | null | undefined): string[] {
+  const normalized = attributeText(value);
+  return normalized ? tokenizeSearchText(normalized) : [];
 }
 
 export function productPopularity(product: ApiProduct): number {
@@ -438,7 +445,7 @@ export function scoreProductSearch(
     { weight: 10, tokens: fieldTokens(`${product.titleRu ?? ""} ${product.titleUz}`) },
     { weight: 5, tokens: fieldTokens(categorySearchText(product, categories)) },
     { weight: 3, tokens: fieldTokens(product.brandName) },
-    { weight: 2, tokens: fieldTokens(product.attributes) },
+    { weight: 2, tokens: fieldTokens(attributeText(product.attributes)) },
     { weight: 1, tokens: fieldTokens(`${product.descriptionRu ?? ""} ${product.descriptionUz ?? ""}`) },
   ];
 

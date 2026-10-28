@@ -9,13 +9,41 @@ datasource db {
 
 enum UserRole {
   CUSTOMER
+  SELLER
   ADMIN
 }
 
 enum ProductStatus {
   DRAFT
+  PENDING_REVIEW
   ACTIVE
   ARCHIVED
+}
+
+enum ProductCondition {
+  NEW
+}
+
+enum ShippingCarrier {
+  EMU_EXPRESS
+  UZPOST
+}
+
+enum ShippingPayer {
+  SENDER
+  RECIPIENT
+}
+
+enum FinancialActionType {
+  PAYOUT
+  REFUND
+  EXPENSE
+}
+
+enum FinancialActionStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum OrderStatus {
@@ -101,6 +129,9 @@ model User {
   cart          Cart?
   trackingEvents OrderTrackingEvent[] @relation("TrackingEventActor")
   financeEntries FinanceEntry[]       @relation("FinanceEntryActor")
+  sellerProducts Product[]            @relation("SellerProducts")
+  productImageAssets ProductImageAsset[]
+  financialActionRequests FinancialActionRequest[]
 }
 
 model OtpChallenge {
@@ -154,20 +185,70 @@ model CartItem {
 
 model Category {
   id        String    @id @default(cuid())
+  parentId  String?
+  parent    Category? @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children  Category[] @relation("CategoryTree")
   nameUz    String
   nameRu    String
+  attributes Json     @default("{}")
   products  Product[]
   createdAt DateTime  @default(now())
+
+  @@index([parentId])
+}
+
+model ShippingBranch {
+  id            String          @id @default(cuid())
+  externalId    String          @unique
+  carrier       ShippingCarrier @default(EMU_EXPRESS)
+  name          String
+  region        String
+  locality      String
+  address       String
+  phone         String?
+  workingHours  String?
+  acceptsCash   Boolean         @default(false)
+  acceptsCard   Boolean         @default(false)
+  latitude      Float?
+  longitude     Float?
+  mapUrl        String?
+  isActive      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  products      Product[]       @relation("ProductDispatchBranch")
+
+  @@index([carrier, region, locality])
+  @@index([isActive])
 }
 
 model Product {
   id                String        @id @default(cuid())
+  sellerId          String?
+  seller            User?         @relation("SellerProducts", fields: [sellerId], references: [id], onDelete: SetNull)
   categoryId        String?
   category          Category?     @relation(fields: [categoryId], references: [id])
   titleUz           String
   titleRu           String?
   descriptionUz     String?
   descriptionRu     String?
+  imageUrl          String?
+  imageUrls         Json              @default("[]")
+  attributes        Json              @default("{}")
+  variants          Json              @default("[]")
+  stock             Int               @default(1)
+  discountPercent   Int?
+  condition         ProductCondition @default(NEW)
+  sellerCity        String?
+  sellerDistrict    String?
+  pickupMethod      String            @default("SELLER_DELIVERY")
+  shippingCarrier   ShippingCarrier   @default(EMU_EXPRESS)
+  shippingPayer     ShippingPayer     @default(RECIPIENT)
+  dispatchBranchId  String?
+  dispatchBranch    ShippingBranch?   @relation("ProductDispatchBranch", fields: [dispatchBranchId], references: [id], onDelete: SetNull)
+  dispatchPointName String?
+  dispatchPointAddress String?
+  publicationRulesAcceptedAt DateTime?
+  restrictedGoodsConfirmedAt DateTime?
+  moderationNote     String?
   currency          String        @default("CNY")
   priceMinor        Int
   status            ProductStatus @default(DRAFT)
@@ -178,7 +259,39 @@ model Product {
   cartItems         CartItem[]
 
   @@index([categoryId])
+  @@index([sellerId])
+  @@index([dispatchBranchId])
   @@index([status])
+}
+
+model ProductImageAsset {
+  id        String   @id @default(cuid())
+  sellerId  String
+  seller    User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  imageUrl  String   @unique
+  objectKey String   @unique
+  createdAt DateTime @default(now())
+
+  @@index([sellerId])
+}
+
+model FinancialActionRequest {
+  id          String               @id @default(cuid())
+  sellerId    String
+  seller      User                 @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  type        FinancialActionType
+  status      FinancialActionStatus @default(PENDING)
+  amountMinor Int
+  currency    String               @default("UZS")
+  description String
+  reference   String?
+  reviewNote  String?
+  reviewedAt  DateTime?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@index([sellerId, createdAt])
+  @@index([status, createdAt])
 }
 
 model Order {

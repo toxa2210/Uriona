@@ -3,6 +3,7 @@ import { ConfigModule } from "@nestjs/config";
 import { PrismaModule } from "./database/prisma.module";
 import { HealthController } from "./health.controller";
 import { CatalogModule } from "./modules/catalog/catalog.module";
+import { SellerCatalogModule } from "./modules/catalog/seller-catalog.module";
 import { OrdersModule } from "./modules/orders/orders.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { CartModule } from "./modules/cart/cart.module";
@@ -19,6 +20,7 @@ import { RequestIdMiddleware } from "./common/request-id.middleware";
     PrismaModule,
     AuthModule,
     CatalogModule,
+    SellerCatalogModule,
     CartModule,
     OrdersModule,
     CheckoutModule,
