@@ -41,6 +41,11 @@ import { SellerDashboard } from "./SellerDashboard";
 
 const navItems = ["Главная", "Категории", "Корзина", "Профиль"] as const;
 type Language = "ru" | "en" | "uz";
+const locationMessages: Record<Language, { button: string; locating: string; located: string; denied: string; unavailable: string; failed: string }> = {
+  ru: { button: "Моё местоположение", locating: "Определяем…", located: "Моё местоположение", denied: "Разрешите доступ к геолокации в браузере", unavailable: "Браузер не поддерживает геолокацию", failed: "Не удалось определить местоположение" },
+  en: { button: "My location", locating: "Locating…", located: "My location", denied: "Allow location access in your browser", unavailable: "Geolocation is not supported by this browser", failed: "Could not determine your location" },
+  uz: { button: "Joylashuvim", locating: "Aniqlanmoqda…", located: "Joylashuvim", denied: "Brauzerda joylashuvga ruxsat bering", unavailable: "Brauzer geolokatsiyani qo‘llab-quvvatlamaydi", failed: "Joylashuvni aniqlab bo‘lmadi" },
+};
 const CATEGORY_PHOTOS = [
   "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=640&q=80",
   "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=640&q=80",
@@ -1006,6 +1011,8 @@ export function App() {
     return description && !/^https?:\/\//i.test(description.trim()) ? description : "";
   };
   const [view, setView] = useState<View>("Главная");
+  const [visitorCoordinates, setVisitorCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locationPending, setLocationPending] = useState(false);
   const [search, setSearch] = useState("");
   const [catalogMenuOpen, setCatalogMenuOpen] = useState(false);
   const catalogMenuRef = useRef<HTMLDivElement>(null);
@@ -1534,6 +1541,26 @@ export function App() {
     setCatalogMenuOpen(false);
     goTo("Главная");
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const locateVisitor = () => {
+    if (!navigator.geolocation) {
+      setNotice(locationMessages[language].unavailable);
+      return;
+    }
+
+    setLocationPending(true);
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setVisitorCoordinates({ latitude: coords.latitude, longitude: coords.longitude });
+        setLocationPending(false);
+      },
+      (error) => {
+        setLocationPending(false);
+        setNotice(error.code === error.PERMISSION_DENIED ? locationMessages[language].denied : locationMessages[language].failed);
+      },
+      { enableHighAccuracy: false, maximumAge: 60_000, timeout: 10_000 },
+    );
   };
 
   const rememberCurrentSearch = () => {
@@ -2802,7 +2829,25 @@ export function App() {
             </nav>
           )}
           <div className="top-sub-tools">
-            <span className="home-delivery-chip"><MapPin size={15} /><span>Ташкентский р-н</span></span>
+            <button
+              className="home-delivery-chip"
+              type="button"
+              onClick={locateVisitor}
+              disabled={locationPending}
+              aria-label={locationPending
+                ? locationMessages[language].locating
+                : visitorCoordinates
+                  ? `${locationMessages[language].located}: ${visitorCoordinates.latitude.toFixed(5)}, ${visitorCoordinates.longitude.toFixed(5)}`
+                  : locationMessages[language].button}
+              title={visitorCoordinates ? `${visitorCoordinates.latitude.toFixed(5)}, ${visitorCoordinates.longitude.toFixed(5)}` : locationMessages[language].button}
+            >
+              <MapPin size={15} />
+              <span>{locationPending
+                ? locationMessages[language].locating
+                : visitorCoordinates
+                  ? `${visitorCoordinates.latitude.toFixed(3)}, ${visitorCoordinates.longitude.toFixed(3)}`
+                  : locationMessages[language].button}</span>
+            </button>
             <label className="home-language-chip">
               <span className="visually-hidden">{text.lang}</span>
               <select aria-label={text.lang} value={language} onChange={(event) => setLanguage(event.target.value as Language)}>

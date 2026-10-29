@@ -2280,6 +2280,10 @@ input {
   color: #fff;
 }
 
+.home-delivery-chip { cursor: pointer; }
+.home-delivery-chip:hover:not(:disabled),
+.home-delivery-chip:focus-visible { border-color: var(--cyan); }
+.home-delivery-chip:disabled { cursor: wait; opacity: .75; }
 .home-delivery-chip svg { color: var(--cyan); }
 .home-language-chip { padding: 0 4px; }
 .home-language-chip select {
@@ -3587,7 +3591,6 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
   .top-row { gap: 7px; }
   .brand { font-size: 1.2rem; gap: 7px; }
   .brand-mark { width: 31px; height: 31px; }
-  .top-sub-tools .home-delivery-chip { display: none; }
   .category-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .product-body { padding: 8px; }
   .price-row strong { font-size: .9rem; }
