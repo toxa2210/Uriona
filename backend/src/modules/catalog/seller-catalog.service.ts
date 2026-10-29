@@ -166,9 +166,68 @@ export class SellerCatalogService {
       if (!existing) throw new NotFoundException("Product not found");
       if (existing.sellerId !== sellerId) throw new ForbiddenException("You can only edit your own products");
       if (existing.status === "ACTIVE" && !requestingPublication) data.status = "PENDING_REVIEW";
-      return this.prisma.product.update({ where: { id: input.id }, data, include: { category: true } });
+      const updated = await this.prisma.product.update({
+        where: { id: input.id },
+        data,
+        include: {
+          category: true,
+          seller: { select: { name: true, email: true, phone: true } }
+        }
+      });
+      if (updated.status === "PENDING_REVIEW" && existing.status !== "PENDING_REVIEW") {
+        await this.notifyTelegramModeration(updated);
+      }
+      return updated;
     }
-    return this.prisma.product.create({ data: { ...data, sellerId }, include: { category: true } });
+    const created = await this.prisma.product.create({
+      data: { ...data, sellerId },
+      include: {
+        category: true,
+        seller: { select: { name: true, email: true, phone: true } }
+      }
+    });
+    if (created.status === "PENDING_REVIEW") await this.notifyTelegramModeration(created);
+    return created;
+  }
+
+  private async notifyTelegramModeration(product: {
+    id: string;
+    titleRu: string | null;
+    titleUz: string;
+    priceMinor: number;
+    sellerCity: string | null;
+    seller?: { name: string | null; email: string | null; phone: string | null } | null;
+  }) {
+    const botToken = this.config.get<string>("TELEGRAM_BOT_TOKEN");
+    const chatId = this.config.get<string>("TELEGRAM_CHAT_ID");
+    if (!botToken || !chatId) {
+      console.warn("Telegram moderation alert skipped: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is not configured");
+      return;
+    }
+    const text = [
+      "🔔 URIONA — новый товар на модерации",
+      `Товар: ${product.titleRu || product.titleUz}`,
+      `Цена: ${new Intl.NumberFormat("ru-RU").format(Math.round(product.priceMinor / 100))} сум`,
+      `Продавец: ${product.seller?.name || "Не указано"}`,
+      `Email: ${product.seller?.email || "не указан"}`,
+      `Телефон: ${product.seller?.phone || "не указан"}`,
+      `Город: ${product.sellerCity || "не указан"}`,
+      `ID товара: ${product.id}`,
+      "Откройте CRM → Модерация, чтобы одобрить товар или вернуть продавцу."
+    ].join("\n");
+    try {
+      const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true })
+      });
+      const result = await response.json().catch(() => null) as { ok?: boolean; description?: string } | null;
+      if (!response.ok || !result?.ok) {
+        console.error("Telegram moderation alert failed:", result?.description || `HTTP ${response.status}`);
+      }
+    } catch (error) {
+      console.error("Telegram moderation alert failed:", error instanceof Error ? error.message : "Unknown error");
+    }
   }
 
   archiveProduct(sellerId: string, id: string) {
