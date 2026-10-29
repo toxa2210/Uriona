@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   ForbiddenException,
   Get,
   Headers,
@@ -273,7 +274,7 @@ export class CrmController {
   }
 
   private async requireAdmin(authorization?: string) {
-    const token = authorization?.replace(/^Bearer\s+/i, "").trim();
+    const token = authorization?.replace(/^Bearer\\s+/i, "").trim();
     if (!token) throw new UnauthorizedException("Authorization token is required");
     const user = await this.auth.validateSession(token);
     if (user.role !== "ADMIN") throw new ForbiddenException("CRM access is restricted to administrators");
