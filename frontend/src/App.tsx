@@ -1583,12 +1583,8 @@ export function App() {
   const handleAddToCart = (productId: string) => {
     const product = knownProducts.find((item) => item.id === productId)
       ?? products.find((item) => item.id === productId);
-    if (product?.sellerId) {
-      setNotice(language === "en"
-        ? "Seller checkout is not available yet"
-        : language === "uz"
-          ? "Sotuvchi mahsulotlarini xarid qilish hali mavjud emas"
-          : "Покупка товаров продавцов пока недоступна");
+    if (product && typeof product.stock === "number" && product.stock <= 0) {
+      setNotice(language === "en" ? "This product is out of stock" : language === "uz" ? "Mahsulot omborda qolmagan" : "Товар закончился");
       return;
     }
     setCartItems((items) => ({ ...items, [productId]: (items[productId] ?? 0) + 1 }));
@@ -2964,12 +2960,16 @@ export function App() {
                 {detailVariants.length > 1 && !selectedDetailVariant && (
                   <p className="product-dialog-selection-hint">Сначала выберите модель, цвет, размер или другую доступную комбинацию.</p>
                 )}
-                {detailProduct.sellerId ? (
-                  <p className="product-dialog-selection-hint" role="status">
-                    {language === "en" ? "Seller checkout is not available yet." : language === "uz" ? "Sotuvchi mahsulotlarini xarid qilish hali mavjud emas." : "Покупка товаров продавцов пока недоступна."}
-                  </p>
-                ) : <div className="product-dialog-actions">
-                  <button type="button" className="primary-btn product-dialog-buy" disabled={!canPurchaseDetailProduct} onClick={() => {
+                <div className="product-dialog-actions">
+                  <button type="button" className="primary-btn product-dialog-buy" disabled={detailProduct.sellerId ? (detailProduct.stock ?? 0) <= 0 : !canPurchaseDetailProduct} onClick={() => {
+                    if (detailProduct.sellerId) {
+                      if ((detailProduct.stock ?? 0) <= 0) return;
+                      handleAddToCart(detailProduct.id);
+                      setDetailProduct(null);
+                      goTo("Корзина", "Товар добавлен в корзину");
+                      setNotice(language === "en" ? "Added to cart. Seller checkout is being connected." : language === "uz" ? "Savatga qo‘shildi. Sotuvchi to‘lovi ulanmoqda." : "Товар добавлен в корзину. Оформление покупки у продавца ещё подключается.");
+                      return;
+                    }
                     if (!canPurchaseDetailProduct || !selectedDetailVariant) return;
                     handleAddToCart(detailProduct.id);
                     setDetailProduct(null);
@@ -2977,12 +2977,16 @@ export function App() {
                   }}>
                     <Zap size={17} /> Купить сейчас
                   </button>
-                  <button type="button" className="secondary-btn product-dialog-add" disabled={!canPurchaseDetailProduct} onClick={() => {
+                  <button type="button" className="secondary-btn product-dialog-add" disabled={detailProduct.sellerId ? (detailProduct.stock ?? 0) <= 0 : !canPurchaseDetailProduct} onClick={() => {
+                    if (detailProduct.sellerId) {
+                      if ((detailProduct.stock ?? 0) > 0) handleAddToCart(detailProduct.id);
+                      return;
+                    }
                     if (canPurchaseDetailProduct && selectedDetailVariant) handleAddToCart(detailProduct.id);
                   }}>
                     <ShoppingBag size={17} /> В корзину
                   </button>
-                </div>}
+                </div>
                 <div className="product-dialog-meta-line"><span>Артикул</span><code>{detailProduct.id}</code></div>
               </div>
             </div>
