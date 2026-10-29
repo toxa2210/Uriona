@@ -59,7 +59,7 @@ type Customer = {
   orders: Array<{ createdAt: string; totalMinor: number; currency: string; status: string }>;
 };
 type CustomerDetail = Omit<Customer, "orders"> & { address?: string | null; language: string; orders: Array<{ id: string; status: string; totalMinor: number; currency: string; deliveryAddress: string; deliveryCity?: string | null; createdAt: string; items: Array<{ id: string; quantity: number; unitPriceMinor: number; productTitle?: string | null; variantLabel?: string | null; imageUrl?: string | null; product?: { titleRu?: string | null; titleUz: string; imageUrl?: string | null } }>; payments: Array<{ id: string; provider: string; status: string; amountMinor: number; currency: string; createdAt: string }>; trackingEvents: Array<{ id: string; status: string; description: string; location?: string | null; occurredAt: string }> }> };
-type ManagedProduct = { id: string; titleRu?: string | null; titleUz: string; descriptionRu?: string | null; priceMinor: number; currency: string; imageUrl?: string | null; stock: number; status: string; createdAt: string; updatedAt: string; category?: { nameRu: string; nameUz: string } | null; seller?: { id: string; name?: string | null; email?: string | null; phone?: string | null; city?: string | null } | null; _count: { orderItems: number; cartItems: number } };
+type ManagedProduct = { id: string; titleRu?: string | null; titleUz: string; descriptionRu?: string | null; descriptionUz?: string | null; priceMinor: number; currency: string; imageUrl?: string | null; imageUrls?: string[]; stock: number; status: string; createdAt: string; updatedAt: string; discountPercent?: number | null; condition?: string; shippingCarrier?: string; shippingPayer?: string; pickupMethod?: string; sellerCity?: string | null; sellerDistrict?: string | null; dispatchPointName?: string | null; dispatchPointAddress?: string | null; moderationNote?: string | null; category?: { id?: string; nameRu: string; nameUz: string } | null; seller?: { id: string; name?: string | null; email?: string | null; phone?: string | null; city?: string | null } | null; _count: { orderItems: number; cartItems: number } };
 type Overview = {
   customers: number;
   orders: number;
@@ -163,6 +163,7 @@ export function App() {
   const [customerDetail, setCustomerDetail] = useState<CustomerDetail | null>(null);
   const [customerDetailBusy, setCustomerDetailBusy] = useState(false);
   const [products, setProducts] = useState<ManagedProduct[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<ManagedProduct | null>(null);
   const [productStatus, setProductStatus] = useState("");
   const [entries, setEntries] = useState<FinanceEntry[]>([]);
   const [moderationProducts, setModerationProducts] = useState<ModerationProduct[]>([]);
@@ -467,7 +468,7 @@ export function App() {
           {page === "overview" && <OverviewPage overview={overview} orders={orders} currency={currency} date={date} onOrders={() => setPage("orders")} />}
           {page === "orders" && <OrdersPage orders={filteredOrders} search={search} setSearch={setSearch} onSearch={() => void loadPage(page, search)} busy={busy} currency={currency} date={date} onShipping={(order) => openOrderAction(order, "shipping")} onStatus={(order) => openOrderAction(order, "status")} />}
           {page === "customers" && <CustomersPage customers={customers} search={search} setSearch={setSearch} onSearch={() => void loadPage(page, search)} busy={busy} date={date} onOpen={(customer) => void openCustomer(customer.id)} />}
-          {page === "products" && <ProductsPage products={products} search={search} setSearch={setSearch} onSearch={() => void loadPage("products", search)} busy={busy} status={productStatus} setStatus={setProductStatus} currency={currency} date={date} onStatus={updateManagedProduct} onDelete={deleteManagedProduct} /> }
+          {page === "products" && <ProductsPage products={products} search={search} setSearch={setSearch} onSearch={() => void loadPage("products", search)} busy={busy} status={productStatus} setStatus={setProductStatus} currency={currency} date={date} onStatus={updateManagedProduct} onDelete={deleteManagedProduct} onOpen={setSelectedProduct} /> }
           {page === "finance" && <FinancePage overview={overview} entries={entries} currency={currency} date={date} />}
           {page === "moderation" && <ModerationPage
             products={moderationProducts}
@@ -486,6 +487,7 @@ export function App() {
         </div>
       </main>
       {customerDetail && <CustomerDetailModal customer={customerDetail} busy={customerDetailBusy} currency={currency} date={date} onClose={() => setCustomerDetail(null)} />}
+      {selectedProduct && <ProductDetailModal product={selectedProduct} currency={currency} date={date} onClose={() => setSelectedProduct(null)} />}
       {modal && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setModal(null); }}><section className="modal">
         <div className="modal-header"><div><p className="eyebrow">{selectedOrder ? `ЗАКАЗ ${selectedOrder.id.slice(0, 8).toUpperCase()}` : "ФИНАНСОВАЯ ОПЕРАЦИЯ"}</p><h2>{modal === "shipping" ? "Обновить доставку" : modal === "status" ? "Изменить статус" : modal === "income" ? "Новый доход" : "Новый расход"}</h2></div><button className="icon-button" aria-label="Закрыть" onClick={() => setModal(null)}><X size={19} /></button></div>
         <form className="modal-form" onSubmit={(event) => void submitAction(event)}>
@@ -574,10 +576,10 @@ function CustomersPage({ customers, search, setSearch, onSearch, busy, date: for
 }
 
 
-function ProductsPage({ products, search, setSearch, onSearch, busy, status, setStatus, currency: money, date: formatDate, onStatus, onDelete }: {
+function ProductsPage({ products, search, setSearch, onSearch, busy, status, setStatus, currency: money, date: formatDate, onStatus, onDelete, onOpen }: {
   products: ManagedProduct[]; search: string; setSearch: (value: string) => void; onSearch: () => void; busy: boolean;
   status: string; setStatus: (value: string) => void; currency: (value: number, code?: string) => string; date: (value: string) => string;
-  onStatus: (id: string, status: "ACTIVE" | "ARCHIVED" | "DRAFT") => void; onDelete: (id: string) => void;
+  onStatus: (id: string, status: "ACTIVE" | "ARCHIVED" | "DRAFT") => void; onDelete: (id: string) => void; onOpen: (product: ManagedProduct) => void;
 }) {
   const labels: Record<string,string> = { ACTIVE: "Опубликован", ARCHIVED: "Заморожен", DRAFT: "Черновик", PENDING_REVIEW: "На модерации" };
   return <section className="panel">
@@ -586,20 +588,79 @@ function ProductsPage({ products, search, setSearch, onSearch, busy, status, set
       <select aria-label="Фильтр статуса товара" value={status} onChange={(event) => setStatus(event.target.value)}><option value="">Все статусы</option><option value="ACTIVE">Опубликованные</option><option value="ARCHIVED">Замороженные</option><option value="DRAFT">Черновики</option><option value="PENDING_REVIEW">На модерации</option></select>
       <span className="result-count">{busy ? "Обновляем..." : `${products.length} товаров`}</span>
     </div>
-    {products.length ? <div className="managed-products">{products.map((product) => <article className="managed-product" key={product.id}>
+    {products.length ? <div className="managed-products">{products.map((product) => <article className="managed-product managed-product-clickable" key={product.id} role="button" tabIndex={0} title="Открыть карточку товара" onClick={() => onOpen(product)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpen(product); } }}>
       <div className="managed-product-image">{product.imageUrl ? <img src={product.imageUrl} alt="" /> : <PackageSearch size={25} />}</div>
       <div className="managed-product-main"><div className="managed-product-heading"><div><span className={`product-status status-${product.status.toLowerCase()}`}>{labels[product.status] || product.status}</span><h3>{product.titleRu || product.titleUz}</h3><p>{product.category?.nameRu || product.category?.nameUz || "Без категории"} · Создан {formatDate(product.createdAt)}</p></div><strong>{money(product.priceMinor, product.currency || "UZS")}</strong></div>
         <div className="managed-product-meta"><span>Продавец: <b>{product.seller?.name || "Не указан"}</b></span><span>Телефон: <b>{product.seller?.phone || "—"}</b></span><span>Остаток: <b>{product.stock}</b></span><span>Заказов с товаром: <b>{product._count.orderItems}</b></span></div>
         <div className="managed-product-actions">
-          {product.status === "ACTIVE" && <button className="secondary-button" disabled={busy} onClick={() => onStatus(product.id, "ARCHIVED")}><Archive size={15} /> Заморозить</button>}
-          {product.status === "ARCHIVED" && <button className="primary-button" disabled={busy} onClick={() => onStatus(product.id, "ACTIVE")}><RotateCcw size={15} /> Возобновить</button>}
+          {product.status === "ACTIVE" && <button className="secondary-button" disabled={busy} onClick={(event) => { event.stopPropagation(); onStatus(product.id, "ARCHIVED"); }}><Archive size={15} /> Заморозить</button>}
+          {product.status === "ARCHIVED" && <button className="primary-button" disabled={busy} onClick={(event) => { event.stopPropagation(); onStatus(product.id, "ACTIVE"); }}><RotateCcw size={15} /> Возобновить</button>}
           {product.status === "DRAFT" && <button className="secondary-button" disabled={busy} onClick={() => onStatus(product.id, "ACTIVE")}><RotateCcw size={15} /> Опубликовать</button>}
           {product.status === "PENDING_REVIEW" && <span className="muted">Решение доступно в разделе «Модерация»</span>}
-          {product.status !== "PENDING_REVIEW" && <button className="danger-button" disabled={busy || product._count.orderItems > 0 || product.status === "ACTIVE"} title={product._count.orderItems > 0 ? "Нельзя удалить товар с историей заказов" : product.status === "ACTIVE" ? "Сначала заморозьте товар" : "Удалить товар"} onClick={() => onDelete(product.id)}><Trash2 size={15} /> Удалить</button>}
+          {product.status !== "PENDING_REVIEW" && <button className="danger-button" disabled={busy || product._count.orderItems > 0 || product.status === "ACTIVE"} title={product._count.orderItems > 0 ? "Нельзя удалить товар с историей заказов" : product.status === "ACTIVE" ? "Сначала заморозьте товар" : "Удалить товар"} onClick={(event) => { event.stopPropagation(); onDelete(product.id); }}><Trash2 size={15} /> Удалить</button>}
         </div>
       </div>
     </article>)}</div> : <EmptyTable icon={PackageSearch} title="Товары не найдены" copy="Измените поиск или фильтр статуса." />}
   </section>;
+}
+
+
+function ProductDetailModal({ product, currency: money, date: formatDate, onClose }: {
+  product: ManagedProduct;
+  currency: (value: number, code?: string) => string;
+  date: (value: string) => string;
+  onClose: () => void;
+}) {
+  const images = Array.from(new Set([product.imageUrl, ...(Array.isArray(product.imageUrls) ? product.imageUrls : [])].filter((value): value is string => Boolean(value?.trim()))));
+  const statusNames: Record<string, string> = { ACTIVE: "Опубликован", ARCHIVED: "Заморожен", DRAFT: "Черновик", PENDING_REVIEW: "На модерации" };
+  const shippingNames: Record<string, string> = { EMU_EXPRESS: "EMU Express", UZPOST: "UzPost" };
+  return <div className="modal-backdrop detail-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <section className="modal product-detail-modal" role="dialog" aria-modal="true" aria-label="Карточка товара">
+      <div className="modal-header"><div><p className="eyebrow">КАРТОЧКА ТОВАРА · {product.id.slice(0, 10)}</p><h2>{product.titleRu || product.titleUz}</h2></div><button className="icon-button" aria-label="Закрыть" onClick={onClose}><X size={19} /></button></div>
+      <div className="product-detail-content">
+        <div className="product-detail-gallery">
+          {images.length ? images.map((src, index) => <img key={src} className={index === 0 ? "product-detail-image-main" : "product-detail-image-thumb"} src={src} alt={`${product.titleRu || product.titleUz} — фото ${index + 1}`} loading={index === 0 ? "eager" : "lazy"} />) : <div className="product-detail-no-image"><PackageSearch size={32} /><span>Фотографии не добавлены</span></div>}
+        </div>
+        <div className="product-detail-summary">
+          <span className={`product-status status-${product.status.toLowerCase()}`}>{statusNames[product.status] || product.status}</span>
+          <strong className="product-detail-price">{money(product.priceMinor, product.currency || "UZS")}</strong>
+          {product.discountPercent ? <p className="product-detail-discount">Скидка: {product.discountPercent}%</p> : null}
+          <p className="product-detail-description">{product.descriptionRu || product.descriptionUz || "Описание товара не заполнено."}</p>
+          <div className="product-detail-grid">
+            <div><small>Категория</small><b>{product.category?.nameRu || product.category?.nameUz || "Не указана"}</b></div>
+            <div><small>Остаток</small><b>{product.stock} шт.</b></div>
+            <div><small>Заказов с товаром</small><b>{product._count.orderItems}</b></div>
+            <div><small>В корзинах</small><b>{product._count.cartItems}</b></div>
+            <div><small>Условие</small><b>{product.condition === "NEW" ? "Новый" : product.condition || "—"}</b></div>
+            <div><small>Создан</small><b>{formatDate(product.createdAt)}</b></div>
+            <div><small>Обновлён</small><b>{formatDate(product.updatedAt)}</b></div>
+            <div><small>ID товара</small><b className="product-detail-id">{product.id}</b></div>
+          </div>
+        </div>
+        <section className="product-detail-section">
+          <h3>Продавец</h3>
+          <div className="product-detail-grid">
+            <div><small>Имя</small><b>{product.seller?.name || "Не указано"}</b></div>
+            <div><small>Email</small><b>{product.seller?.email || "—"}</b></div>
+            <div><small>Телефон</small><b>{product.seller?.phone || "—"}</b></div>
+            <div><small>Город</small><b>{product.sellerCity || product.seller?.city || "—"}{product.sellerDistrict ? `, ${product.sellerDistrict}` : ""}</b></div>
+          </div>
+        </section>
+        <section className="product-detail-section">
+          <h3>Доставка и выдача</h3>
+          <div className="product-detail-grid">
+            <div><small>Служба доставки</small><b>{shippingNames[product.shippingCarrier || ""] || product.shippingCarrier || "—"}</b></div>
+            <div><small>Кто оплачивает</small><b>{product.shippingPayer === "SENDER" ? "Продавец" : product.shippingPayer === "RECIPIENT" ? "Покупатель" : "—"}</b></div>
+            <div><small>Способ передачи</small><b>{product.pickupMethod === "SELLER_DELIVERY" ? "Доставка продавцом" : product.pickupMethod || "—"}</b></div>
+            <div><small>Пункт отправки</small><b>{product.dispatchPointName || "—"}</b></div>
+            {product.dispatchPointAddress && <div className="product-detail-full"><small>Адрес пункта</small><b>{product.dispatchPointAddress}</b></div>}
+          </div>
+        </section>
+        {product.moderationNote && <section className="product-detail-section"><h3>Комментарий модерации</h3><p>{product.moderationNote}</p></section>}
+      </div>
+      <div className="modal-actions"><button className="primary-button" onClick={onClose}>Закрыть карточку</button></div>
+    </section>
+  </div>;
 }
 
 function CustomerDetailModal({ customer, busy, currency: money, date: formatDate, onClose }: {
