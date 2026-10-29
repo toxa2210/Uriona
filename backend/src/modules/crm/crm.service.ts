@@ -266,6 +266,56 @@ export class CrmService {
     });
   }
 
+  async moderationProducts(searchValue?: string, pageValue?: string, limitValue?: string) {
+    const { page, limit, skip } = pagination(pageValue, limitValue);
+    const search = searchValue?.trim();
+    const where = {
+      status: "PENDING_REVIEW" as const,
+      ...(search ? {
+        OR: [
+          { titleRu: { contains: search, mode: "insensitive" as const } },
+          { titleUz: { contains: search, mode: "insensitive" as const } },
+          { seller: { is: { name: { contains: search, mode: "insensitive" as const } } } },
+          { seller: { is: { email: { contains: search, mode: "insensitive" as const } } } }
+        ]
+      } : {})
+    };
+    const [items, total] = await Promise.all([
+      this.prisma.product.findMany({
+        where,
+        orderBy: { updatedAt: "asc" },
+        skip,
+        take: limit,
+        include: {
+          category: { select: { id: true, nameRu: true, nameUz: true } },
+          seller: { select: { id: true, name: true, email: true, phone: true, city: true } }
+        }
+      }),
+      this.prisma.product.count({ where })
+    ]);
+    return { items, page, limit, total, pages: Math.ceil(total / limit) };
+  }
+
+  async moderateProduct(id: string, status: "ACTIVE" | "DRAFT", moderationNote?: string) {
+    const product = await this.prisma.product.findUnique({ where: { id }, select: { id: true, status: true } });
+    if (!product) throw new NotFoundException("Product not found");
+    if (product.status !== "PENDING_REVIEW") {
+      throw new ConflictException("Only products pending review can be moderated");
+    }
+    const note = moderationNote?.trim() || "";
+    if (status === "DRAFT" && !note) {
+      throw new BadRequestException("Add a reason when returning a product to the seller");
+    }
+    return this.prisma.product.update({
+      where: { id },
+      data: { status, moderationNote: status === "ACTIVE" ? null : note },
+      include: {
+        category: { select: { id: true, nameRu: true, nameUz: true } },
+        seller: { select: { id: true, name: true, email: true, phone: true, city: true } }
+      }
+    });
+  }
+
   async financeSummary(fromValue?: string, toValue?: string) {
     const occurredAt = dateRange(fromValue, toValue);
     const [income, expenses] = await Promise.all([
