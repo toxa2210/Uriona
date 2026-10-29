@@ -163,6 +163,24 @@ td small { display: block; margin-top: 4px; color: #9aa3b1; font-size: 9px; }
 .login-footnote { margin: 17px 0 0; color: #a0a8b4; font-size: 9px; line-height: 1.5; text-align: center; }
 .mobile-menu, .mobile-close, .mobile-backdrop { display: none; }
 
+.moderation-panel { overflow: visible; }
+.moderation-list { display: grid; gap: 12px; padding: 0 18px 18px; }
+.moderation-card { display: grid; grid-template-columns: 145px minmax(0,1fr); gap: 18px; padding: 17px; border: 1px solid #edf0f5; border-radius: 10px; background: #fff; }
+.moderation-image { display: grid; min-height: 145px; place-items: center; overflow: hidden; border-radius: 8px; color: #a7a0ec; background: #f6f5ff; }
+.moderation-image img { width: 100%; height: 100%; max-height: 210px; object-fit: contain; }
+.moderation-main { min-width: 0; }
+.moderation-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.moderation-title-row h2 { margin: 8px 0 4px; color: #263147; font: 700 15px Manrope,sans-serif; }
+.moderation-title-row p { margin: 0; color: #929bab; font-size: 10px; }
+.moderation-title-row > strong { color: #202a3d; font-size: 13px; white-space: nowrap; }
+.moderation-description { margin: 12px 0; color: #687488; font-size: 11px; line-height: 1.6; white-space: pre-wrap; }
+.moderation-meta { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-bottom: 12px; color: #758095; font-size: 10px; }
+.moderation-meta b { color: #455168; }
+.moderation-note-label { display: grid; gap: 6px; color: #758095; font-size: 10px; font-weight: 600; }
+.moderation-note-label textarea { width: 100%; min-height: 55px; resize: vertical; padding: 9px 10px; border: 1px solid #e5e8ef; border-radius: 7px; outline: 0; color: #27334a; background: #fff; font: inherit; line-height: 1.5; }
+.moderation-note-label textarea:focus { border-color: #bfb4ff; box-shadow: 0 0 0 3px #705ce810; }
+.moderation-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.moderation-actions button:disabled { cursor: not-allowed; opacity: .55; }
 @media (max-width: 1100px) {
   .content { padding: 27px 23px; }
   .topbar { padding: 0 23px; }
@@ -189,6 +207,11 @@ td small { display: block; margin-top: 4px; color: #9aa3b1; font-size: 9px; }
   .stat-card { min-height: 132px; padding: 13px; }
   .stat-card strong { font-size: 18px; }
   .finance-stats { grid-template-columns: 1fr; gap: 9px; }
+  .moderation-card { grid-template-columns: 1fr; }
+  .moderation-image { min-height: 170px; max-height: 230px; }
+  .moderation-title-row { flex-direction: column; }
+  .moderation-actions { justify-content: stretch; }
+  .moderation-actions button { flex: 1; }
   .finance-card { padding: 14px; }
   .finance-card strong { margin-top: 10px; font-size: 19px; }
   .toolbar { align-items: flex-start; flex-direction: column; padding: 13px; }
