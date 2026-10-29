@@ -595,7 +595,7 @@ function ProductsPage({ products, search, setSearch, onSearch, busy, status, set
         <div className="managed-product-actions">
           {product.status === "ACTIVE" && <button className="secondary-button" disabled={busy} onClick={(event) => { event.stopPropagation(); onStatus(product.id, "ARCHIVED"); }}><Archive size={15} /> Заморозить</button>}
           {product.status === "ARCHIVED" && <button className="primary-button" disabled={busy} onClick={(event) => { event.stopPropagation(); onStatus(product.id, "ACTIVE"); }}><RotateCcw size={15} /> Возобновить</button>}
-          {product.status === "DRAFT" && <button className="secondary-button" disabled={busy} onClick={() => onStatus(product.id, "ACTIVE")}><RotateCcw size={15} /> Опубликовать</button>}
+          {product.status === "DRAFT" && <button className="secondary-button" disabled={busy} onClick={(event) => { event.stopPropagation(); onStatus(product.id, "ACTIVE"); }}><RotateCcw size={15} /> Опубликовать</button>}
           {product.status === "PENDING_REVIEW" && <span className="muted">Решение доступно в разделе «Модерация»</span>}
           {product.status !== "PENDING_REVIEW" && <button className="danger-button" disabled={busy || product._count.orderItems > 0 || product.status === "ACTIVE"} title={product._count.orderItems > 0 ? "Нельзя удалить товар с историей заказов" : product.status === "ACTIVE" ? "Сначала заморозьте товар" : "Удалить товар"} onClick={(event) => { event.stopPropagation(); onDelete(product.id); }}><Trash2 size={15} /> Удалить</button>}
         </div>
