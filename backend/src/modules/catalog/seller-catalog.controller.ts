@@ -94,7 +94,7 @@ export class SellerCatalogController {
   }
 
   @Post("seller/images")
-  @UseInterceptors(FileInterceptor("file", { storage: memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 1 } }))
+  @UseInterceptors(FileInterceptor("file", { storage: memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 1 } }))
   async uploadSellerImage(@Headers("authorization") authorization: string | undefined, @UploadedFile() file: ProductImageUpload) {
     const sellerId = await this.sellerId(authorization);
     const uploaded = await this.catalog.uploadImage(sellerId, file);

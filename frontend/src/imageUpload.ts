@@ -1,4 +1,4 @@
-const MAX_UPLOAD_BYTES = 4.5 * 1024 * 1024;
+const MAX_UPLOAD_BYTES = 9 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 1920;
 
 function canvasToBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
