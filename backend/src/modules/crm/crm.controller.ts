@@ -14,6 +14,7 @@ import {
   IsDateString,
   IsEnum,
   IsInt,
+  IsIn,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -53,6 +54,14 @@ class CreateTrackingEventDto {
 
   @IsOptional() @IsDateString()
   occurredAt?: string;
+}
+
+class ModerateProductDto {
+  @IsIn(["ACTIVE", "DRAFT"])
+  status!: "ACTIVE" | "DRAFT";
+
+  @IsOptional() @IsString() @MaxLength(1000)
+  moderationNote?: string;
 }
 
 class CreateExpenseDto {
@@ -162,6 +171,27 @@ export class CrmController {
   ) {
     const admin = await this.requireAdmin(authorization);
     return this.crm.addTrackingEvent(id, { ...body, actorId: admin.id });
+  }
+
+  @Get("moderation/products")
+  async moderationProducts(
+    @Headers("authorization") authorization: string | undefined,
+    @Query("search") search?: string,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string
+  ) {
+    await this.requireAdmin(authorization);
+    return this.crm.moderationProducts(search, page, limit);
+  }
+
+  @Patch("moderation/products/:id")
+  async moderateProduct(
+    @Headers("authorization") authorization: string | undefined,
+    @Param("id") id: string,
+    @Body() body: ModerateProductDto
+  ) {
+    await this.requireAdmin(authorization);
+    return this.crm.moderateProduct(id, body.status, body.moderationNote);
   }
 
   @Get("finance/summary")
