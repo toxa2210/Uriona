@@ -1,5 +1,6 @@
 import {
   Activity,
+  Archive,
   ArrowDownLeft,
   ArrowUpRight,
   Box,
@@ -13,6 +14,8 @@ import {
   LogOut,
   Menu,
   PackageSearch,
+  Trash2,
+  RotateCcw,
   Plus,
   Search,
   Settings2,
@@ -31,7 +34,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 const API_URL = (import.meta.env.VITE_API_URL ?? "https://uriona-api.onrender.com/api/v1").replace(/\/$/, "");
 const SESSION_KEY = "uriona.crm.session";
 type User = { id: string; name?: string | null; email?: string | null; role: string };
-type Page = "overview" | "orders" | "customers" | "finance" | "moderation";
+type Page = "overview" | "orders" | "customers" | "products" | "finance" | "moderation";
 type Order = {
   id: string;
   status: string;
@@ -55,6 +58,8 @@ type Customer = {
   _count: { orders: number };
   orders: Array<{ createdAt: string; totalMinor: number; currency: string; status: string }>;
 };
+type CustomerDetail = Customer & { address?: string | null; language: string; orders: Array<{ id: string; status: string; totalMinor: number; currency: string; deliveryAddress: string; deliveryCity?: string | null; createdAt: string; items: Array<{ id: string; quantity: number; unitPriceMinor: number; productTitle?: string | null; variantLabel?: string | null; imageUrl?: string | null; product?: { titleRu?: string | null; titleUz: string; imageUrl?: string | null } }>; payments: Array<{ id: string; provider: string; status: string; amountMinor: number; currency: string; createdAt: string }>; trackingEvents: Array<{ id: string; status: string; description: string; location?: string | null; occurredAt: string }> }> };
+type ManagedProduct = { id: string; titleRu?: string | null; titleUz: string; descriptionRu?: string | null; priceMinor: number; currency: string; imageUrl?: string | null; stock: number; status: string; createdAt: string; updatedAt: string; category?: { nameRu: string; nameUz: string } | null; seller?: { id: string; name?: string | null; email?: string | null; phone?: string | null; city?: string | null } | null; _count: { orderItems: number; cartItems: number } };
 type Overview = {
   customers: number;
   orders: number;
@@ -98,6 +103,7 @@ const navItems: Array<{ id: Page; label: string; icon: typeof LayoutDashboard }>
   { id: "overview", label: "Обзор", icon: LayoutDashboard },
   { id: "orders", label: "Заказы", icon: Box },
   { id: "customers", label: "Клиенты", icon: Users },
+  { id: "products", label: "Товары", icon: PackageSearch },
   { id: "finance", label: "Финансы", icon: CircleDollarSign },
   { id: "moderation", label: "Модерация", icon: ClipboardCheck },
 ];
@@ -154,6 +160,10 @@ export function App() {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customerDetail, setCustomerDetail] = useState<CustomerDetail | null>(null);
+  const [customerDetailBusy, setCustomerDetailBusy] = useState(false);
+  const [products, setProducts] = useState<ManagedProduct[]>([]);
+  const [productStatus, setProductStatus] = useState("");
   const [entries, setEntries] = useState<FinanceEntry[]>([]);
   const [moderationProducts, setModerationProducts] = useState<ModerationProduct[]>([]);
   const [moderationNotes, setModerationNotes] = useState<Record<string, string>>({});
@@ -192,6 +202,10 @@ export function App() {
       } else if (activePage === "customers") {
         const result = await api<PageResult<Customer>>(`/crm/customers?limit=100${query ? `&search=${encodeURIComponent(query)}` : ""}`);
         setCustomers(result.items);
+      } else if (activePage === "products") {
+        const statusParam = productStatus ? `&status=${encodeURIComponent(productStatus)}` : "";
+        const result = await api<PageResult<ManagedProduct>>(`/crm/products?limit=100${query ? `&search=${encodeURIComponent(query)}` : ""}${statusParam}`);
+        setProducts(result.items);
       } else if (activePage === "moderation") {
         const result = await api<PageResult<ModerationProduct>>(`/crm/moderation/products?limit=100${query ? `&search=${encodeURIComponent(query)}` : ""}`);
         setModerationProducts(result.items);
@@ -217,7 +231,7 @@ export function App() {
     } finally {
       setBusy(false);
     }
-  }, [api]);
+  }, [api, productStatus]);
 
   useEffect(() => {
     if (!token) return;
@@ -265,6 +279,40 @@ export function App() {
     } finally {
       setBusy(false);
     }
+  }
+
+
+  async function openCustomer(id: string) {
+    setCustomerDetailBusy(true);
+    setError("");
+    try {
+      const detail = await api<CustomerDetail>(`/crm/customers/${encodeURIComponent(id)}`);
+      setCustomerDetail(detail);
+    } catch (reason) { setError(getErrorMessage(reason)); }
+    finally { setCustomerDetailBusy(false); }
+  }
+
+  async function updateManagedProduct(id: string, status: "ACTIVE" | "ARCHIVED" | "DRAFT") {
+    const message = status === "ARCHIVED" ? "Заморозить товар? Он исчезнет из каталога, но сохранится в CRM." : status === "ACTIVE" ? "Возобновить публикацию товара?" : "Снять товар с публикации и перевести в черновик?";
+    if (!window.confirm(message)) return;
+    setBusy(true); setError("");
+    try {
+      await api(`/crm/products/${encodeURIComponent(id)}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
+      setNotice(status === "ARCHIVED" ? "Товар заморожен." : status === "ACTIVE" ? "Товар снова опубликован." : "Товар переведён в черновик.");
+      await loadPage("products", search);
+    } catch (reason) { setError(getErrorMessage(reason)); }
+    finally { setBusy(false); }
+  }
+
+  async function deleteManagedProduct(id: string) {
+    if (!window.confirm("Удалить товар безвозвратно? Товары с историей заказов удалить нельзя — их можно только заморозить.")) return;
+    setBusy(true); setError("");
+    try {
+      await api(`/crm/products/${encodeURIComponent(id)}`, { method: "DELETE" });
+      setNotice("Товар удалён.");
+      await loadPage("products", search);
+    } catch (reason) { setError(getErrorMessage(reason)); }
+    finally { setBusy(false); }
   }
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
@@ -411,14 +459,15 @@ export function App() {
         </header>
         <div className="content">
           <div className="page-heading">
-            <div><p className="eyebrow">УПРАВЛЕНИЕ МАГАЗИНОМ</p><h1>{page === "overview" ? "Добро пожаловать" : currentTitle}</h1><p>{page === "overview" ? "Краткая сводка по работе вашего магазина." : page === "orders" ? "Заказы, статусы и информация о доставке." : page === "customers" ? "Клиентская база вашего магазина." : "Доходы, расходы и движение средств."}</p></div>
+            <div><p className="eyebrow">УПРАВЛЕНИЕ МАГАЗИНОМ</p><h1>{page === "overview" ? "Добро пожаловать" : currentTitle}</h1><p>{page === "overview" ? "Краткая сводка по работе вашего магазина." : page === "orders" ? "Заказы, статусы и информация о доставке." : page === "customers" ? "Клиентская база и история каждого покупателя." : page === "products" ? "Управление публикациями и состоянием товаров." : "Доходы, расходы и движение средств."}</p></div>
             {page === "finance" && <div className="heading-actions"><button className="secondary-button" onClick={() => { setForm({ carrier: "", trackingNumber: "", status: "PROCESSING", category: "", description: "", amount: "" }); setModal("expense"); }}><ArrowUpRight size={16} /> Добавить расход</button><button className="primary-button" onClick={() => { setForm({ carrier: "", trackingNumber: "", status: "PROCESSING", category: "", description: "", amount: "" }); setModal("income"); }}><Plus size={17} /> Добавить доход</button></div>}
           </div>
           {error && <div className="alert page-alert">{error}<button className="icon-button" onClick={() => setError("")} aria-label="Закрыть"><X size={16} /></button></div>}
           {notice && <div className="notice">{notice}</div>}
           {page === "overview" && <OverviewPage overview={overview} orders={orders} currency={currency} date={date} onOrders={() => setPage("orders")} />}
           {page === "orders" && <OrdersPage orders={filteredOrders} search={search} setSearch={setSearch} onSearch={() => void loadPage(page, search)} busy={busy} currency={currency} date={date} onShipping={(order) => openOrderAction(order, "shipping")} onStatus={(order) => openOrderAction(order, "status")} />}
-          {page === "customers" && <CustomersPage customers={customers} search={search} setSearch={setSearch} onSearch={() => void loadPage(page, search)} busy={busy} date={date} />}
+          {page === "customers" && <CustomersPage customers={customers} search={search} setSearch={setSearch} onSearch={() => void loadPage(page, search)} busy={busy} date={date} onOpen={(customer) => void openCustomer(customer.id)} />}
+          {page === "products" && <ProductsPage products={products} search={search} setSearch={setSearch} onSearch={() => void loadPage("products", search)} busy={busy} status={productStatus} setStatus={setProductStatus} currency={currency} date={date} onStatus={updateManagedProduct} onDelete={deleteManagedProduct} /> }
           {page === "finance" && <FinancePage overview={overview} entries={entries} currency={currency} date={date} />}
           {page === "moderation" && <ModerationPage
             products={moderationProducts}
@@ -436,6 +485,7 @@ export function App() {
           {busy && <div className="loading-bar" />}
         </div>
       </main>
+      {customerDetail && <CustomerDetailModal customer={customerDetail} busy={customerDetailBusy} currency={currency} date={date} onClose={() => setCustomerDetail(null)} />}
       {modal && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setModal(null); }}><section className="modal">
         <div className="modal-header"><div><p className="eyebrow">{selectedOrder ? `ЗАКАЗ ${selectedOrder.id.slice(0, 8).toUpperCase()}` : "ФИНАНСОВАЯ ОПЕРАЦИЯ"}</p><h2>{modal === "shipping" ? "Обновить доставку" : modal === "status" ? "Изменить статус" : modal === "income" ? "Новый доход" : "Новый расход"}</h2></div><button className="icon-button" aria-label="Закрыть" onClick={() => setModal(null)}><X size={19} /></button></div>
         <form className="modal-form" onSubmit={(event) => void submitAction(event)}>
@@ -515,12 +565,68 @@ function OrdersTable({ orders, currency: money, date: formatDate, onShipping, on
   return <div className="table-wrap"><table><thead><tr><th>ЗАКАЗ</th><th>КЛИЕНТ</th><th>ДАТА</th><th>СТАТУС</th><th>ДОСТАВКА</th><th>СУММА</th>{onShipping && <th />}</tr></thead><tbody>{orders.map((order) => <tr key={order.id}><td><b className="order-id">#{order.id.slice(0, 8).toUpperCase()}</b><small>{order._count?.items ?? 0} товаров</small></td><td><b>{order.recipientName || order.user?.name || "Клиент"}</b><small>{order.recipientPhone || order.user?.email || order.user?.phone || "—"}</small></td><td>{formatDate(order.createdAt)}</td><td><span className={`badge ${order.status.toLowerCase()}`}>{statusLabel(order.status)}</span></td><td>{order.trackingNumber ? <><b>{order.shippingCarrier || "Перевозчик"}</b><small>{order.trackingNumber}</small></> : <span className="muted">Не назначена</span>}</td><td><b>{money(order.totalMinor, order.currency)}</b></td>{onShipping && <td><div className="row-actions"><button className="small-button" onClick={() => onShipping(order)} title="Добавить перевозчика и трек-номер"><Truck size={15} /></button>{onStatus && <button className="small-button" onClick={() => onStatus(order)} title="Изменить статус"><Settings2 size={15} /></button>}</div></td>}</tr>)}</tbody></table></div>;
 }
 
-function CustomersPage({ customers, search, setSearch, onSearch, busy, date: formatDate }: {
-  customers: Customer[]; search: string; setSearch: (value: string) => void; onSearch: () => void; busy: boolean; date: (value: string) => string;
+function CustomersPage({ customers, search, setSearch, onSearch, busy, date: formatDate, onOpen }: {
+  customers: Customer[]; search: string; setSearch: (value: string) => void; onSearch: () => void; busy: boolean; date: (value: string) => string; onOpen: (customer: Customer) => void;
 }) {
   return <section className="panel"><div className="toolbar"><div className="search-box"><Search size={17} /><input value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") onSearch(); }} placeholder="Имя, email или телефон" /><button onClick={onSearch} aria-label="Искать"><Search size={16} /></button></div><span className="result-count">{busy ? "Обновляем..." : `${customers.length} клиентов`}</span></div>
-    {customers.length ? <div className="table-wrap"><table><thead><tr><th>КЛИЕНТ</th><th>КОНТАКТЫ</th><th>ГОРОД</th><th>ЗАКАЗОВ</th><th>ПОСЛЕДНИЙ ЗАКАЗ</th><th>С НАМИ С</th></tr></thead><tbody>{customers.map((customer) => <tr key={customer.id}><td><div className="customer-cell"><div className="customer-avatar">{(customer.name || customer.email || "К").slice(0, 1).toUpperCase()}</div><div><b>{customer.name || "Без имени"}</b><small>#{customer.id.slice(0, 8)}</small></div></div></td><td><b>{customer.email || "—"}</b><small>{customer.phone || "Телефон не указан"}</small></td><td>{customer.city || "—"}</td><td><span className="count-pill">{customer._count.orders}</span></td><td>{customer.orders[0] ? formatDate(customer.orders[0].createdAt) : <span className="muted">Пока нет</span>}</td><td>{formatDate(customer.createdAt)}</td></tr>)}</tbody></table></div> : <EmptyTable icon={Users} title="Клиенты не найдены" copy="Попробуйте изменить запрос или проверьте подключение к базе." />}
+    {customers.length ? <div className="table-wrap"><table><thead><tr><th>КЛИЕНТ</th><th>КОНТАКТЫ</th><th>ГОРОД</th><th>ЗАКАЗОВ</th><th>ПОСЛЕДНИЙ ЗАКАЗ</th><th>С НАМИ С</th></tr></thead><tbody>{customers.map((customer) => <tr key={customer.id} className="clickable-row" onClick={() => onOpen(customer)} title="Открыть карточку клиента"><td><div className="customer-cell"><div className="customer-avatar">{(customer.name || customer.email || "К").slice(0, 1).toUpperCase()}</div><div><b>{customer.name || "Без имени"}</b><small>#{customer.id.slice(0, 8)}</small></div></div></td><td><b>{customer.email || "—"}</b><small>{customer.phone || "Телефон не указан"}</small></td><td>{customer.city || "—"}</td><td><span className="count-pill">{customer._count.orders}</span></td><td>{customer.orders[0] ? formatDate(customer.orders[0].createdAt) : <span className="muted">Пока нет</span>}</td><td>{formatDate(customer.createdAt)}</td></tr>)}</tbody></table></div> : <EmptyTable icon={Users} title="Клиенты не найдены" copy="Попробуйте изменить запрос или проверьте подключение к базе." />}
   </section>;
+}
+
+
+function ProductsPage({ products, search, setSearch, onSearch, busy, status, setStatus, currency: money, date: formatDate, onStatus, onDelete }: {
+  products: ManagedProduct[]; search: string; setSearch: (value: string) => void; onSearch: () => void; busy: boolean;
+  status: string; setStatus: (value: string) => void; currency: (value: number, code?: string) => string; date: (value: string) => string;
+  onStatus: (id: string, status: "ACTIVE" | "ARCHIVED" | "DRAFT") => void; onDelete: (id: string) => void;
+}) {
+  const labels: Record<string,string> = { ACTIVE: "Опубликован", ARCHIVED: "Заморожен", DRAFT: "Черновик", PENDING_REVIEW: "На модерации" };
+  return <section className="panel">
+    <div className="toolbar product-toolbar">
+      <div className="search-box"><Search size={17} /><input value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") onSearch(); }} placeholder="Название товара или продавец" /><button onClick={onSearch} aria-label="Искать"><Search size={16} /></button></div>
+      <select aria-label="Фильтр статуса товара" value={status} onChange={(event) => setStatus(event.target.value)}><option value="">Все статусы</option><option value="ACTIVE">Опубликованные</option><option value="ARCHIVED">Замороженные</option><option value="DRAFT">Черновики</option><option value="PENDING_REVIEW">На модерации</option></select>
+      <span className="result-count">{busy ? "Обновляем..." : `${products.length} товаров`}</span>
+    </div>
+    {products.length ? <div className="managed-products">{products.map((product) => <article className="managed-product" key={product.id}>
+      <div className="managed-product-image">{product.imageUrl ? <img src={product.imageUrl} alt="" /> : <PackageSearch size={25} />}</div>
+      <div className="managed-product-main"><div className="managed-product-heading"><div><span className={`product-status status-${product.status.toLowerCase()}`}>{labels[product.status] || product.status}</span><h3>{product.titleRu || product.titleUz}</h3><p>{product.category?.nameRu || product.category?.nameUz || "Без категории"} · Создан {formatDate(product.createdAt)}</p></div><strong>{money(product.priceMinor, product.currency || "UZS")}</strong></div>
+        <div className="managed-product-meta"><span>Продавец: <b>{product.seller?.name || "Не указан"}</b></span><span>Телефон: <b>{product.seller?.phone || "—"}</b></span><span>Остаток: <b>{product.stock}</b></span><span>Заказов с товаром: <b>{product._count.orderItems}</b></span></div>
+        <div className="managed-product-actions">
+          {product.status === "ACTIVE" && <button className="secondary-button" disabled={busy} onClick={() => onStatus(product.id, "ARCHIVED")}><Archive size={15} /> Заморозить</button>}
+          {product.status === "ARCHIVED" && <button className="primary-button" disabled={busy} onClick={() => onStatus(product.id, "ACTIVE")}><RotateCcw size={15} /> Возобновить</button>}
+          {product.status === "DRAFT" && <button className="secondary-button" disabled={busy} onClick={() => onStatus(product.id, "ACTIVE")}><RotateCcw size={15} /> Опубликовать</button>}
+          {product.status === "PENDING_REVIEW" && <span className="muted">Решение доступно в разделе «Модерация»</span>}
+          {product.status !== "PENDING_REVIEW" && <button className="danger-button" disabled={busy || product._count.orderItems > 0 || product.status === "ACTIVE"} title={product._count.orderItems > 0 ? "Нельзя удалить товар с историей заказов" : product.status === "ACTIVE" ? "Сначала заморозьте товар" : "Удалить товар"} onClick={() => onDelete(product.id)}><Trash2 size={15} /> Удалить</button>}
+        </div>
+      </div>
+    </article>)}</div> : <EmptyTable icon={PackageSearch} title="Товары не найдены" copy="Измените поиск или фильтр статуса." />}
+  </section>;
+}
+
+function CustomerDetailModal({ customer, busy, currency: money, date: formatDate, onClose }: {
+  customer: CustomerDetail; busy: boolean; currency: (value: number, code?: string) => string; date: (value: string) => string; onClose: () => void;
+}) {
+  return <div className="modal-backdrop detail-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <section className="modal customer-detail-modal">
+      <div className="modal-header"><div><p className="eyebrow">КАРТОЧКА КЛИЕНТА · {customer.id.slice(0, 10)}</p><h2>{customer.name || "Клиент без имени"}</h2></div><button className="icon-button" aria-label="Закрыть" onClick={onClose}><X size={19} /></button></div>
+      <div className="customer-detail-content">
+        <div className="customer-detail-grid">
+          <div><small>Email</small><b>{customer.email || "Не указан"}</b></div><div><small>Телефон</small><b>{customer.phone || "Не указан"}</b></div>
+          <div><small>Город</small><b>{customer.city || "Не указан"}</b></div><div><small>Адрес профиля</small><b>{customer.address || "Не указан"}</b></div>
+          <div><small>Язык</small><b>{customer.language}</b></div><div><small>Регистрация</small><b>{formatDate(customer.createdAt)}</b></div>
+        </div>
+        <h3>История заказов ({customer.orders.length})</h3>
+        {customer.orders.length ? customer.orders.map((order) => <article className="customer-order-card" key={order.id}>
+          <div className="customer-order-heading"><div><b>Заказ #{order.id.slice(0, 8).toUpperCase()}</b><small>{formatDate(order.createdAt)} · {statusLabel(order.status)}</small></div><strong>{money(order.totalMinor, order.currency)}</strong></div>
+          <p className="customer-order-address">Доставка: {order.deliveryCity || ""} {order.deliveryAddress}</p>
+          <div className="customer-order-items">{order.items.map((item) => <div key={item.id}>{item.imageUrl || item.product?.imageUrl ? <img src={item.imageUrl || item.product?.imageUrl || ""} alt="" /> : null}<span>{item.productTitle || item.product?.titleRu || item.product?.titleUz || "Товар"}{item.variantLabel ? ` · ${item.variantLabel}` : ""} × {item.quantity}</span><b>{money(item.unitPriceMinor * item.quantity, order.currency)}</b></div>)}</div>
+          {order.payments.length > 0 && <div className="customer-detail-subsection"><b>Платежи</b>{order.payments.map((payment) => <p key={payment.id}>{payment.provider} · {payment.status} · {money(payment.amountMinor, payment.currency)} · {formatDate(payment.createdAt)}</p>)}</div>}
+          {order.trackingEvents.length > 0 && <div className="customer-detail-subsection"><b>История доставки</b>{order.trackingEvents.map((event) => <p key={event.id}>{formatDate(event.occurredAt)} · {event.status}: {event.description}{event.location ? ` · ${event.location}` : ""}</p>)}</div>}
+        </article>) : <p className="muted">У клиента пока нет заказов.</p>}
+        {busy && <p className="muted">Загрузка данных...</p>}
+      </div>
+      <div className="modal-actions"><button className="primary-button" onClick={onClose}>Закрыть карточку</button></div>
+    </section>
+  </div>;
 }
 
 function FinancePage({ overview, entries, currency: money, date: formatDate }: {
