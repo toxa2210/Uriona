@@ -159,6 +159,7 @@ export class SellerCatalogService {
       publicationRulesAcceptedAt: input.publicationRulesAccepted ? new Date() : null,
       restrictedGoodsConfirmedAt: input.restrictedGoodsConfirmed ? new Date() : null,
       status: requestingPublication ? "PENDING_REVIEW" as const : input.status ?? "DRAFT" as const,
+      ...(requestingPublication ? { moderationNote: null } : {}),
     };
 
     if (input.id) {
