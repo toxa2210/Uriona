@@ -64,3 +64,54 @@
 .seller-payout-request button { min-height: 37px; padding: 0 12px; border: 1px solid #78ba9f; border-radius: 5px; color: var(--ink); font: inherit; font-size: 11px; cursor: pointer; }
 @media (max-width: 800px) { .seller-dashboard { padding: 16px; } .seller-dashboard-layout { grid-template-columns: 1fr; } .seller-product-list { border-right: 0; border-bottom: 1px solid var(--line); padding: 0 0 14px; } .seller-billing-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 520px) { .seller-dashboard-heading { align-items: flex-start; flex-direction: column; } .seller-dashboard-heading h2 { font-size: 20px; } .seller-form-grid, .seller-payout-request { grid-template-columns: 1fr; } .seller-form-actions > button { flex: 1 1 auto; } }
+
+.light-mode .seller-product-form input:not([type="checkbox"]),
+.light-mode .seller-product-form select,
+.light-mode .seller-product-form textarea,
+.light-mode .seller-payout-request input {
+	border-color: rgba(55, 91, 162, .28);
+	background: #fff;
+	color: #102044;
+	color-scheme: light;
+}
+.light-mode .seller-attributes,
+.light-mode .seller-billing-grid > div,
+.light-mode .seller-financial-history > div,
+.light-mode .seller-photo-grid figure {
+	border-color: rgba(55, 91, 162, .2);
+	background: rgba(255, 255, 255, .72);
+}
+.light-mode .seller-product-row:hover { background: rgba(8, 124, 201, .08); }
+.light-mode .seller-upload-button,
+.light-mode .seller-form-actions > button:not(:nth-child(2)),
+.light-mode .seller-photo-grid figure button,
+.light-mode .seller-photo-grid figure label {
+	border: 1px solid rgba(35, 67, 125, .32);
+	background: #fff;
+	color: #102044;
+}
+.light-mode .seller-upload-button {
+	box-shadow: 0 1px 3px rgba(16, 32, 68, .12);
+	font-weight: 700;
+}
+.light-mode .seller-upload-button:hover,
+.light-mode .seller-photo-grid figure button:hover:not(:disabled),
+.light-mode .seller-photo-grid figure label:hover {
+	border-color: #087cc9;
+	background: #edf7ff;
+}
+.light-mode .seller-upload-button:focus-within,
+.light-mode .seller-form-actions > button:focus-visible,
+.light-mode .seller-photo-grid figure button:focus-visible,
+.light-mode .seller-photo-grid figure label:focus-within {
+	outline: 3px solid rgba(8, 124, 201, .3);
+	outline-offset: 2px;
+}
+.light-mode .seller-form-actions > button:nth-child(2),
+.light-mode .seller-payout-request button {
+	border-color: #176345;
+	background: #176345;
+	color: #fff;
+}
+.light-mode .seller-error { color: #a12d4d; }
+.light-mode .seller-notice { color: #176345; }

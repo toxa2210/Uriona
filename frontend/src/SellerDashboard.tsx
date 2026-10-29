@@ -148,11 +148,24 @@ export function SellerDashboard({ token }: SellerDashboardProps) {
     }
     setUploading(true);
     setError("");
+    setNotice("");
+    const uploadedUrls: string[] = [];
+    const failedFiles: string[] = [];
     try {
-      const uploads = await Promise.all(files.map((file) => api.seller.uploadImage(token, file)));
-      setDraft((current) => ({ ...current, photos: [...current.photos, ...uploads.map((upload) => upload.imageUrl)] }));
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Не удалось загрузить фотографии.");
+      for (const file of files) {
+        try {
+          const upload = await api.seller.uploadImage(token, file);
+          uploadedUrls.push(upload.imageUrl);
+        } catch (reason) {
+          const message = reason instanceof Error ? reason.message : "ошибка загрузки";
+          failedFiles.push(`${file.name}: ${message}`);
+        }
+      }
+      if (uploadedUrls.length) {
+        setDraft((current) => ({ ...current, photos: [...current.photos, ...uploadedUrls] }));
+        setNotice(`Загружено фотографий: ${uploadedUrls.length}.`);
+      }
+      if (failedFiles.length) setError(`Не удалось загрузить: ${failedFiles.join("; ")}`);
     } finally {
       setUploading(false);
     }
@@ -245,7 +258,7 @@ export function SellerDashboard({ token }: SellerDashboardProps) {
           {categoryFields.length > 0 && <fieldset className="seller-attributes"><legend>Характеристики · {selectedCategory?.nameRu}</legend><div className="seller-form-grid">{categoryFields.map(([key, label]) => <label key={key}>{label}<input value={draft.attributes[key] ?? ""} onChange={(event) => setDraft({ ...draft, attributes: { ...draft.attributes, [key]: event.target.value } })} /></label>)}</div></fieldset>}
           <label className="seller-description">Описание<textarea required maxLength={5000} rows={4} value={draft.descriptionRu} onChange={(event) => setDraft({ ...draft, descriptionRu: event.target.value, descriptionUz: draft.descriptionUz || event.target.value })} /></label>
           <label className="seller-description">Варианты размера, цвета или комплектации <span>(необязательно, по одному на строку: Название|Количество)</span><textarea rows={2} value={draft.variants} onChange={(event) => setDraft({ ...draft, variants: event.target.value })} placeholder="Чёрный, 128 ГБ|3" /></label>
-          <div className="seller-photos-heading"><div><h4>Фотографии</h4><span>Минимум 1 · рекомендуется 3–5</span></div><label className="seller-upload-button"><ImagePlus size={17} />{uploading ? "Загружаем…" : "Добавить"}<input type="file" accept="image/jpeg,image/png,image/webp" multiple hidden onChange={(event) => void uploadPhotos(event)} disabled={uploading || draft.photos.length >= 10} /></label></div>
+          <div className="seller-photos-heading"><div><h4>Фотографии</h4><span>Минимум 1 · рекомендуется 3–5</span></div><label className="seller-upload-button"><ImagePlus size={17} />{uploading ? "Загружаем…" : "Добавить"}<input type="file" accept="image/*" multiple hidden onChange={(event) => void uploadPhotos(event)} disabled={uploading || draft.photos.length >= 10} /></label></div>
           <div className="seller-photo-grid">{draft.photos.map((url, index) => <figure key={`${url}-${index}`} className={index === 0 ? "main-photo" : ""}><img src={url} alt={`Фото товара ${index + 1}`} /><figcaption>{index === 0 ? "Главное фото" : `Фото ${index + 1}`}</figcaption><div><button type="button" title="Переместить выше / сделать главным" disabled={index === 0} onClick={() => setDraft({ ...draft, photos: draft.photos.map((item, current) => current === index - 1 ? url : current === index ? draft.photos[index - 1] : item) })}><ArrowUp size={15} /></button><button type="button" title="Переместить ниже" disabled={index === draft.photos.length - 1} onClick={() => setDraft({ ...draft, photos: draft.photos.map((item, current) => current === index + 1 ? url : current === index ? draft.photos[index + 1] : item) })}><ArrowDown size={15} /></button><label title="Заменить фото"><Upload size={15} /><input type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(event) => { const replacement = event.target.files?.[0]; if (!replacement) return; void api.seller.uploadImage(token, replacement).then(({ imageUrl }) => setDraft((current) => ({ ...current, photos: current.photos.map((photo, currentIndex) => currentIndex === index ? imageUrl : photo) }))).catch((reason) => setError(reason instanceof Error ? reason.message : "Не удалось заменить фото.")); event.target.value = ""; }} /></label><button type="button" title="Удалить фото" onClick={() => removePhoto(index)}><Trash2 size={15} /></button></div></figure>)}</div>
           <div className="seller-confirmations"><label><input type="checkbox" checked={draft.publicationRulesAccepted} onChange={(event) => setDraft({ ...draft, publicationRulesAccepted: event.target.checked })} />Подтверждаю соответствие информации товару и правилам Uriona.</label><label><input type="checkbox" checked={draft.restrictedGoodsConfirmed} onChange={(event) => setDraft({ ...draft, restrictedGoodsConfirmed: event.target.checked })} />Подтверждаю, что товар разрешён к продаже.</label></div>
           {error && <p className="seller-error" role="alert">{error}</p>}{notice && <p className="seller-notice" role="status">{notice}</p>}

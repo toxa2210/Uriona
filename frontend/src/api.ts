@@ -266,7 +266,14 @@ export const api = {
     uploadImage: async (token: string, file: File) => {
       const body = new FormData();
       body.append("file", await prepareProductImage(file));
-      return request<{ imageUrl: string }>("/seller/images", { method: "POST", headers: bearerHeaders(token), body });
+      try {
+        return await request<{ imageUrl: string }>("/seller/images", { method: "POST", headers: bearerHeaders(token), body });
+      } catch (error) {
+        if (error instanceof ApiRequestError && error.message.includes("Product image storage is not configured")) {
+          throw new ApiRequestError("Хранилище фотографий не настроено. Администратору нужно подключить Cloudflare R2 в настройках backend.", error.status);
+        }
+        throw error;
+      }
     },
     deleteImage: (token: string, imageUrl: string) => request<{ deleted: true }>("/seller/images", { method: "DELETE", headers: bearerHeaders(token), body: JSON.stringify({ imageUrl }) }),
   },

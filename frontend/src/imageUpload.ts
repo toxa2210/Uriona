@@ -1,5 +1,16 @@
 const MAX_UPLOAD_BYTES = 9 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 1920;
+const SUPPORTED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+export function validateProductImage(file: Pick<File, "name" | "size" | "type">): string | null {
+  if (file.size <= 0) return "Файл пустой. Выберите другую фотографию.";
+  if (SUPPORTED_IMAGE_TYPES.has(file.type)) return null;
+  if (/\.(jpe?g|png|webp)$/i.test(file.name) && !file.type) return null;
+  if (file.type === "image/heic" || file.type === "image/heif" || /\.(heic|heif)$/i.test(file.name)) {
+    return "Формат HEIC/HEIF не поддерживается. Сохраните фото как JPG, PNG или WebP.";
+  }
+  return "Поддерживаются только фотографии JPG, PNG или WebP.";
+}
 
 function canvasToBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
   return new Promise((resolve, reject) => {
@@ -11,13 +22,20 @@ function canvasToBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob>
 }
 
 export async function prepareProductImage(file: File): Promise<File> {
-  if (file.size <= MAX_UPLOAD_BYTES) return file;
+  const validationError = validateProductImage(file);
+  if (validationError) throw new Error(validationError);
+
+  const normalizedFile = file.type ? file : new File([file], file.name, {
+    type: /\.png$/i.test(file.name) ? "image/png" : /\.webp$/i.test(file.name) ? "image/webp" : "image/jpeg",
+    lastModified: file.lastModified,
+  });
+  if (normalizedFile.size <= MAX_UPLOAD_BYTES) return normalizedFile;
 
   let bitmap: ImageBitmap;
   try {
-    bitmap = await createImageBitmap(file);
+    bitmap = await createImageBitmap(normalizedFile);
   } catch {
-    throw new Error("Не удалось обработать фотографию. Выберите другое изображение.");
+    throw new Error("Не удалось открыть фотографию. Выберите JPG, PNG или WebP.");
   }
 
   try {
@@ -36,8 +54,8 @@ export async function prepareProductImage(file: File): Promise<File> {
       const blob = await canvasToBlob(canvas, quality);
       if (blob.size <= MAX_UPLOAD_BYTES) {
         const extension = blob.type === "image/webp" ? "webp" : blob.type === "image/png" ? "png" : "jpg";
-        const baseName = file.name.replace(/\.[^.]+$/, "") || "product-image";
-        return new File([blob], `${baseName}.${extension}`, { type: blob.type, lastModified: file.lastModified });
+        const baseName = normalizedFile.name.replace(/\.[^.]+$/, "") || "product-image";
+        return new File([blob], `${baseName}.${extension}`, { type: blob.type, lastModified: normalizedFile.lastModified });
       }
       const reduction = Math.min(0.8, Math.sqrt(MAX_UPLOAD_BYTES / blob.size) * 0.9);
       width = Math.max(1, Math.floor(width * reduction));
