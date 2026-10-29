@@ -136,60 +136,6 @@ export class CrmService {
     return customer;
   }
 
-
-  async products(searchValue?: string, statusValue?: string, pageValue?: string, limitValue?: string) {
-    const { page, limit, skip } = pagination(pageValue, limitValue);
-    const allowedStatuses = ["DRAFT", "PENDING_REVIEW", "ACTIVE", "ARCHIVED"];
-    if (statusValue && !allowedStatuses.includes(statusValue)) throw new BadRequestException("status is not a valid product status");
-    const search = searchValue?.trim();
-    const where = {
-      ...(statusValue ? { status: statusValue as "DRAFT" | "PENDING_REVIEW" | "ACTIVE" | "ARCHIVED" } : {}),
-      ...(search ? { OR: [
-        { titleRu: { contains: search, mode: "insensitive" as const } },
-        { titleUz: { contains: search, mode: "insensitive" as const } },
-        { seller: { is: { name: { contains: search, mode: "insensitive" as const } } } },
-        { seller: { is: { email: { contains: search, mode: "insensitive" as const } } } }
-      ] } : {})
-    };
-    const [items, total] = await Promise.all([
-      this.prisma.product.findMany({
-        where, orderBy: { updatedAt: "desc" }, skip, take: limit,
-        include: {
-          category: { select: { id: true, nameRu: true, nameUz: true } },
-          seller: { select: { id: true, name: true, email: true, phone: true, city: true } },
-          _count: { select: { orderItems: true, cartItems: true } }
-        }
-      }),
-      this.prisma.product.count({ where })
-    ]);
-    return { items, page, limit, total, pages: Math.ceil(total / limit) };
-  }
-
-  async updateProductStatus(id: string, status: "ACTIVE" | "ARCHIVED" | "DRAFT") {
-    const product = await this.prisma.product.findUnique({ where: { id }, select: { id: true, status: true } });
-    if (!product) throw new NotFoundException("Product not found");
-    if (product.status === "PENDING_REVIEW") throw new ConflictException("Products awaiting review must be handled in Moderation");
-    return this.prisma.product.update({
-      where: { id }, data: { status },
-      include: { category: { select: { id: true, nameRu: true, nameUz: true } }, seller: { select: { id: true, name: true, email: true, phone: true } } }
-    });
-  }
-
-  async deleteProduct(id: string) {
-    const product = await this.prisma.product.findUnique({
-      where: { id },
-      select: { id: true, status: true, _count: { select: { orderItems: true } } }
-    });
-    if (!product) throw new NotFoundException("Product not found");
-    if (product.status === "ACTIVE") throw new ConflictException("Freeze the product before deleting it");
-    if (product._count.orderItems > 0) throw new ConflictException("This product is linked to order history; freeze it instead of deleting it");
-    await this.prisma.$transaction(async (tx) => {
-      await tx.cartItem.deleteMany({ where: { productId: id } });
-      await tx.product.delete({ where: { id } });
-    });
-    return { deleted: true, id };
-  }
-
   async orders(searchValue?: string, statusValue?: string, pageValue?: string, limitValue?: string) {
     const { page, limit, skip } = pagination(pageValue, limitValue);
     if (statusValue && !Object.values(OrderStatus).includes(statusValue as OrderStatus)) {
