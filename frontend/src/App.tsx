@@ -2738,9 +2738,13 @@ export function App() {
               aria-expanded={catalogMenuOpen}
               aria-haspopup="menu"
               onClick={() => {
-                setCatalogMenuOpen(false);
-                setSelectedCat("all");
-                goTo("Категории", "Каталог открыт");
+                if (window.matchMedia("(max-width: 760px)").matches) {
+                  setCatalogMenuOpen(false);
+                  setSelectedCat("all");
+                  goTo("Категории", "Каталог открыт");
+                } else {
+                  setCatalogMenuOpen((open) => !open);
+                }
               }}
             >
               <Store size={18} />
