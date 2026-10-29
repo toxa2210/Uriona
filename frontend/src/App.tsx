@@ -2737,7 +2737,11 @@ export function App() {
               aria-label={text.catalog}
               aria-expanded={catalogMenuOpen}
               aria-haspopup="menu"
-              onClick={() => setCatalogMenuOpen((open) => !open)}
+              onClick={() => {
+                setCatalogMenuOpen(false);
+                setSelectedCat("all");
+                goTo("Категории", "Каталог открыт");
+              }}
             >
               <Store size={18} />
               <span>{text.catalog}</span>
