@@ -17,6 +17,7 @@ export type ApiCategory = { id: string; nameUz: string; nameRu: string; parentId
 export type ApiShippingBranch = { id: string; name: string; region: string; locality: string; address: string; phone?: string | null; workingHours?: string | null };
 export type ApiProduct = {
   id: string;
+  sellerId?: string | null;
   categoryId: string | null;
   titleUz: string;
   titleRu?: string | null;

@@ -33,7 +33,7 @@ import {
 } from "lucide-react";
 import { createUserWithEmailAndPassword, getIdToken, reload, sendEmailVerification, sendPasswordResetEmail, signInWithEmailAndPassword, signOut } from "@firebase/auth";
 import type { User as FirebaseUser } from "@firebase/auth";
-import { ApiRequestError, api, formatUzs, mapMarketplaceCategories, mapMarketplaceGoods, type ApiCategory, type ApiOrder, type ApiProduct, type ApiShippingQuote, type ApiUser } from "./api";
+import { ApiRequestError, api, formatUzs, type ApiCategory, type ApiOrder, type ApiProduct, type ApiShippingQuote, type ApiUser } from "./api";
 import { firebaseAuth, firebaseConfigReady } from "./firebase";
 import { prepareMarketplaceQuery, productPopularity } from "./search";
 import { parseSearchInterests, recordSearchInterest, selectHomeRecommendationQueries, type SearchInterests } from "./recommendations";
@@ -683,13 +683,13 @@ const translations = {
     best: "Лучшие предложения", popular: "Популярные товары", forYou: "Случайная подборка для вас",
     searchResults: (query: string) => `Товары по запросу «${query}»`, seeAll: "Смотреть всё", payments: "Платежи", shipping: "Доставка",
     catalogPdd: "Категория каталога", all: "Все категории", tags: "Все теги", goods: "Товары", allGoods: "Все товары",
-    add: "Добавить", buy: "Купить", details: "Подробнее", loading: "Загружаем товары", noGoods: "Реальные товары не найдены.",
+    add: "Добавить", buy: "Купить", details: "Подробнее", loading: "Загружаем товары", noGoods: "Пока нет товаров от продавцов.",
     lang: "Язык", light: "Светлая тема", dark: "Тёмная тема", loadingCatalog: "Загружаем каталог", apiError: "Ошибка каталога",
     china: "Международный каталог", hot: "Горячие товары", showAll: "Показать всё", sale: "Акции недели", discount: "Скидка",
     emptyCart: "Корзина пуста", addFromCatalog: "Добавьте товары из каталога и вернитесь сюда.", shop: "К покупкам",
     retry: "Повторить",
     emptyCategories: "Категории пока не загружены.", localCatalogLabel: "Каталог URIONA",
-    localCatalogNote: "Показаны товары из каталога URIONA. Данные AliExpress сейчас недоступны.",
+    localCatalogNote: "Здесь отображаются товары, добавленные продавцами URIONA.",
     affiliatePermissionError: "AliExpress пока не разрешил приложению доступ к каталогу товаров. Проверьте права Affiliate API в Open Platform.",
     dropshippingAuthorizationError: "Для подробностей товара не подключена авторизация Dropshipping API.",
     dropshippingPermissionError: "У приложения нет разрешения Dropshipping API для поиска и просмотра товаров.",
@@ -707,13 +707,13 @@ const translations = {
     best: "Best offers", popular: "Popular products", forYou: "A random selection for you",
     searchResults: (query: string) => `Products for “${query}”`, seeAll: "View all", payments: "Payments", shipping: "Delivery",
     catalogPdd: "Catalog category", all: "All categories", tags: "All tags", goods: "Products", allGoods: "All products",
-    add: "Add", buy: "Buy", details: "Details", loading: "Loading products", noGoods: "No real products found.",
+    add: "Add", buy: "Buy", details: "Details", loading: "Loading products", noGoods: "No seller products yet.",
     lang: "Language", light: "Light theme", dark: "Dark theme", loadingCatalog: "Loading catalog", apiError: "Catalog error",
     china: "Global catalog", hot: "Trending products", showAll: "Show all", sale: "Weekly deals", discount: "Sale",
     emptyCart: "Your cart is empty", addFromCatalog: "Add products from the catalog and come back here.", shop: "Start shopping",
     retry: "Retry",
     emptyCategories: "Categories are not available yet.", localCatalogLabel: "URIONA catalog",
-    localCatalogNote: "Showing products saved in the URIONA catalog. AliExpress data is currently unavailable.",
+    localCatalogNote: "Products added by URIONA sellers appear here.",
     affiliatePermissionError: "AliExpress has not granted this app access to its product catalog. Check Affiliate API permissions in Open Platform.",
     dropshippingAuthorizationError: "Dropshipping API authorization is not connected for product details.",
     dropshippingPermissionError: "This app does not have Dropshipping API permission to search for and view products.",
@@ -731,13 +731,13 @@ const translations = {
     best: "Eng yaxshi takliflar", popular: "Mashhur mahsulotlar", forYou: "Siz uchun tasodifiy tanlov",
     searchResults: (query: string) => `“${query}” so‘rovi bo‘yicha mahsulotlar`, seeAll: "Barchasini ko‘rish", payments: "To‘lovlar", shipping: "Yetkazib berish",
     catalogPdd: "Katalog kategoriyasi", all: "Barcha kategoriyalar", tags: "Barcha teglar", goods: "Mahsulotlar", allGoods: "Barcha mahsulotlar",
-    add: "Qo‘shish", buy: "Sotib olish", details: "Batafsil", loading: "Mahsulotlar yuklanmoqda", noGoods: "Haqiqiy mahsulotlar topilmadi.",
+    add: "Qo‘shish", buy: "Sotib olish", details: "Batafsil", loading: "Mahsulotlar yuklanmoqda", noGoods: "Hozircha sotuvchilar mahsulotlari yo‘q.",
     lang: "Til", light: "Yorug‘ rejim", dark: "Qorong‘i rejim", loadingCatalog: "Katalog yuklanmoqda", apiError: "Katalog xatosi",
     china: "Xalqaro katalog", hot: "Ommabop mahsulotlar", showAll: "Barchasini ko‘rsatish", sale: "Haftalik chegirmalar", discount: "Chegirma",
     emptyCart: "Savat bo‘sh", addFromCatalog: "Katalogdan mahsulot qo‘shing va bu yerga qayting.", shop: "Xaridga o‘tish",
     retry: "Qayta urinish",
     emptyCategories: "Kategoriyalar hozircha mavjud emas.", localCatalogLabel: "URIONA katalogi",
-    localCatalogNote: "URIONA katalogida saqlangan mahsulotlar ko‘rsatilmoqda. AliExpress ma’lumotlari hozir mavjud emas.",
+    localCatalogNote: "Bu yerda URIONA sotuvchilari qo‘shgan mahsulotlar ko‘rsatiladi.",
     affiliatePermissionError: "AliExpress ilovaga mahsulot katalogidan foydalanishga ruxsat bermagan. Open Platform'da Affiliate API huquqlarini tekshiring.",
     dropshippingAuthorizationError: "Mahsulot tafsilotlari uchun Dropshipping API avtorizatsiyasi ulanmagan.",
     dropshippingPermissionError: "Ilovada mahsulotlarni qidirish va ko‘rish uchun Dropshipping API ruxsati yo‘q.",
@@ -770,7 +770,6 @@ const topMenuItems = [
 ];
 
 const CART_STORAGE_KEY = "uriona-cart";
-const PRODUCTS_STORAGE_KEY = "uriona-cart-products";
 const LIKED_STORAGE_KEY = "uriona-liked-products";
 const SEARCH_INTERESTS_STORAGE_KEY = "uriona-search-interests";
 const DEMO_PAYMENT_STORAGE_KEY = "uriona-demo-payment";
@@ -848,17 +847,6 @@ function readStoredValue(key: string): unknown {
   }
 }
 
-function isApiProduct(value: unknown): value is ApiProduct {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  const product = value as Record<string, unknown>;
-  return typeof product.id === "string"
-    && typeof product.titleUz === "string"
-    && typeof product.currency === "string"
-    && typeof product.priceMinor === "number"
-    && Number.isFinite(product.priceMinor)
-    && typeof product.status === "string";
-}
-
 function readStoredCart(): Record<string, number> {
   const stored = readStoredValue(CART_STORAGE_KEY);
   if (!stored || typeof stored !== "object" || Array.isArray(stored)) return {};
@@ -868,11 +856,6 @@ function readStoredCart(): Record<string, number> {
       return typeof quantity === "number" && Number.isSafeInteger(quantity) && quantity > 0;
     }),
   );
-}
-
-function readStoredProducts(): ApiProduct[] {
-  const stored = readStoredValue(PRODUCTS_STORAGE_KEY);
-  return Array.isArray(stored) ? stored.filter(isApiProduct).slice(-100) : [];
 }
 
 function readStoredLiked(): string[] {
@@ -1033,9 +1016,8 @@ export function App() {
   const [categories, setCategories] = useState<ApiCategory[]>([]);
   const [categoryParentId, setCategoryParentId] = useState<string | null>(null);
   const [categorySearch, setCategorySearch] = useState("");
-  const [products, setProducts] = useState<ApiProduct[]>(() => readStoredProducts());
-  const [liveCatalog, setLiveCatalog] = useState(false);
-  const [catalogSource, setCatalogSource] = useState<"loading" | "aliexpress" | "local" | "unavailable">("loading");
+  const [products, setProducts] = useState<ApiProduct[]>([]);
+  const [catalogSource, setCatalogSource] = useState<"loading" | "local" | "unavailable">("loading");
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogPage, setCatalogPage] = useState(1);
   const [catalogHasMore, setCatalogHasMore] = useState(true);
@@ -1044,11 +1026,6 @@ export function App() {
   const catalogMoreRequestRef = useRef(false);
   const catalogRequestKeyRef = useRef(0);
   const catalogSentinelRef = useRef<HTMLDivElement>(null);
-  const catalogSingleQueryRef = useRef("");
-  const homeRecommendationQueriesRef = useRef<string[]>([]);
-  const homeQueryNextPagesRef = useRef<Record<string, number>>({});
-  const homeQueryHasMoreRef = useRef<Record<string, boolean>>({});
-  const homeQueryCursorRef = useRef(0);
   const [catalogError, setCatalogError] = useState("");
   const [catalogAttempt, setCatalogAttempt] = useState(0);
   const [detailProduct, setDetailProduct] = useState<ApiProduct | null>(null);
@@ -1070,7 +1047,7 @@ export function App() {
   const [notice, setNotice] = useState("");
   const [authToken, setAuthToken] = useState(() => localStorage.getItem("uriona-access-token") || "");
   const [profile, setProfile] = useState<ApiUser | null>(null);
-  const [knownProducts, setKnownProducts] = useState<ApiProduct[]>(readStoredProducts);
+  const [knownProducts, setKnownProducts] = useState<ApiProduct[]>([]);
   const [profileForm, setProfileForm] = useState({ name: "", email: "", phone: "", city: "", address: "" });
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
@@ -1145,10 +1122,6 @@ export function App() {
   }, [demoPayment]);
 
   useEffect(() => {
-    localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(knownProducts.slice(-100)));
-  }, [knownProducts]);
-
-  useEffect(() => {
     localStorage.setItem(LIKED_STORAGE_KEY, JSON.stringify(liked));
   }, [liked]);
 
@@ -1215,39 +1188,22 @@ export function App() {
     let active = true;
     setCategoriesLoading(true);
     setCategoriesError("");
-    api.aliexpress.dropshippingCategories({ language: language === "ru" ? "ru" : "en" })
-      .then((payload) => {
+    api.categories()
+      .then((localCategories) => {
         if (!active) return;
-        const liveCategories = mapMarketplaceCategories(payload);
-        if (liveCategories.length) {
-          setCategories(liveCategories);
-          setCategoriesError("");
-          return;
-        }
-        return api.categories().then((localCategories) => {
-          if (!active) return;
-          setCategories(localCategories);
-          setCategoriesError(localCategories.length ? "" : text.emptyCategories);
-        });
+        setCategories(localCategories);
+        setCategoriesError(localCategories.length ? "" : text.emptyCategories);
       })
-      .catch(async (error: unknown) => {
+      .catch(() => {
         if (!active) return;
-        try {
-          const localCategories = await api.categories();
-          if (!active) return;
-          setCategories(localCategories);
-          setCategoriesError(localCategories.length ? "" : aliExpressErrorMessage(error, language, "catalog"));
-        } catch {
-          if (!active) return;
-          setCategories([]);
-          setCategoriesError(text.localCatalogUnavailable);
-        }
+        setCategories([]);
+        setCategoriesError(text.localCatalogUnavailable);
       })
       .finally(() => {
         if (active) setCategoriesLoading(false);
       });
     return () => { active = false; };
-  }, [language, catalogAttempt]);
+  }, [catalogAttempt]);
 
   useEffect(() => {
     if (!detailProduct) {
@@ -1262,28 +1218,11 @@ export function App() {
     setDetailImage(detailProduct.imageUrl ?? "");
     setDetailImageZoomOpen(false);
     setDetailPayload(null);
-    setDetailLoadedProductId(null);
+    setDetailLoadedProductId(detailProduct.id);
     setDetailError("");
-    setDetailLoading(true);
-    api.aliexpress.productDetails(detailProduct.id, {
-      ship_to_country: "UZ",
-      target_currency: "USD",
-      target_language: "ru_RU",
-    })
-      .then((payload) => {
-        if (active) {
-          setDetailPayload(payload);
-          setDetailLoadedProductId(detailProduct.id);
-        }
-      })
-      .catch((error: unknown) => {
-        if (active) setDetailError(aliExpressErrorMessage(error, language, "details"));
-      })
-      .finally(() => {
-        if (active) setDetailLoading(false);
-      });
+    setDetailLoading(false);
     return () => { active = false; };
-  }, [detailProduct, detailAttempt]);
+  }, [detailProduct]);
 
   useEffect(() => {
     if (!detailProduct) return;
@@ -1310,90 +1249,35 @@ export function App() {
     setCatalogSource("loading");
     const timer = window.setTimeout(() => {
       const searchTerm = search.trim();
-      const isHomeRecommendations = view === "Главная" && selectedCat === "all" && !searchTerm;
-      const selectedCategory = categories.find((category) => category.id === selectedCat);
-      const categoryKeyword = selectedCat !== "all" ? categoryLabel(selectedCategory)?.trim() : "";
-      const singleQuery = isHomeRecommendations
-        ? ""
-        : prepareMarketplaceQuery(searchTerm || categoryKeyword || selectHomeRecommendationQueries({})[0]);
-      const requestKeywords = isHomeRecommendations
-        ? selectHomeRecommendationQueries(searchInterests)
-        : [singleQuery];
-      if (!isHomeRecommendations) catalogSingleQueryRef.current = singleQuery;
-      if (isHomeRecommendations) {
-        homeRecommendationQueriesRef.current = requestKeywords;
-        homeQueryNextPagesRef.current = Object.fromEntries(requestKeywords.map((keyword) => [keyword, 1]));
-        homeQueryHasMoreRef.current = Object.fromEntries(requestKeywords.map((keyword) => [keyword, true]));
-        homeQueryCursorRef.current = 0;
-      }
-      const loadProducts = (keyWord: string) => api.aliexpress.dropshippingProducts({
-        keyWord,
+      api.products({
         ...(selectedCat !== "all" ? { categoryId: selectedCat } : {}),
-        pageIndex: 1,
-        pageSize: 20,
-        ...(selectedCat !== "all" ? { sortBy: "orders,desc" } : {}),
-        currency: "UZS",
-        countryCode: "UZ",
-      });
-      Promise.allSettled(requestKeywords.map(loadProducts)).then((results) => {
+        ...(searchTerm ? { search: searchTerm } : {}),
+        page: 1,
+        limit: 20,
+      }).then((result) => {
         if (!active) return;
-        const fulfilled = results.flatMap((result, index) => result.status === "fulfilled"
-          ? [{ keyword: requestKeywords[index], payload: result.value }]
-          : []);
-        if (!fulfilled.length) {
-          const failure = results.find((result) => result.status === "rejected");
-          throw failure?.status === "rejected" ? failure.reason : new Error("Product search failed");
-        }
-        const mappedProducts = Array.from(new Map(fulfilled.flatMap(({ payload }) => mapMarketplaceGoods(payload, "UZS"))
-          .map((product) => [product.id, {
-          ...product,
-          category: categories.find((category) => category.id === product.categoryId)
-            ?? categories.find((category) => category.id === selectedCat)
-            ?? null,
-          }])).values());
-        const liveProducts = isHomeRecommendations ? shuffleItems(mappedProducts) : mappedProducts;
-        if (isHomeRecommendations) {
-          homeQueryHasMoreRef.current = Object.fromEntries(results.map((result, index) => [
-            requestKeywords[index],
-            result.status === "rejected" || mapMarketplaceGoods(result.value, "UZS").length >= 20,
-          ]));
-          homeQueryNextPagesRef.current = Object.fromEntries(results.map((result, index) => [
-            requestKeywords[index],
-            result.status === "fulfilled" ? 2 : 1,
-          ]));
-          setCatalogHasMore(Object.values(homeQueryHasMoreRef.current).some(Boolean));
-        } else {
-          setCatalogHasMore(mappedProducts.length >= 20);
-        }
+        const localProducts = result.items;
         setCatalogPage(1);
-        if (!liveProducts.length) {
-          setProducts([]);
-          setLiveCatalog(true);
-          setCatalogSource("aliexpress");
-          setCatalogError("");
-          return;
-        }
-        setProducts(liveProducts);
-        setLiveCatalog(true);
-        setCatalogSource("aliexpress");
-        setCatalogLoading(false);
-        setKnownProducts((current) => Array.from(new Map([...current, ...liveProducts].map((product) => [product.id, product])).values()).slice(-100));
+        setCatalogHasMore(result.page < result.pages);
+        setProducts(localProducts);
+        setKnownProducts(localProducts);
+        setCatalogSource("local");
       }).catch((error: unknown) => {
         if (!active) return;
         setCatalogHasMore(false);
         setProducts([]);
-        setLiveCatalog(true);
+        setKnownProducts([]);
         setCatalogSource("unavailable");
-        setCatalogError(aliExpressErrorMessage(error, language, "dropshipping"));
+        setCatalogError(error instanceof Error ? error.message : text.localCatalogUnavailable);
       }).finally(() => {
         if (active) setCatalogLoading(false);
       });
-    }, search.trim() ? 400 : 0);
+    }, search.trim() ? 250 : 0);
     return () => {
       active = false;
       window.clearTimeout(timer);
     };
-  }, [search, selectedCat, categories, language, catalogAttempt, searchInterests, view]);
+  }, [search, selectedCat, catalogAttempt]);
   
   useEffect(() => {
     const supportsInfiniteScroll = view === "Главная" || view === "Категории" || view === "Каталог";
@@ -1403,7 +1287,7 @@ export function App() {
       || !catalogHasMore
       || catalogMoreLoading
       || catalogMoreError
-      || catalogSource !== "aliexpress"
+      || catalogSource !== "local"
     ) return;
 
     const sentinel = catalogSentinelRef.current;
@@ -1417,61 +1301,27 @@ export function App() {
       const requestKey = catalogRequestKeyRef.current;
       const requestSearch = search.trim();
       const requestCategory = selectedCat;
-      const isHomeRecommendations = view === "Главная" && !requestSearch && requestCategory === "all";
-      const availableQueries = isHomeRecommendations
-        ? homeRecommendationQueriesRef.current.filter((query) => homeQueryHasMoreRef.current[query])
-        : [];
-      if (isHomeRecommendations && !availableQueries.length) {
-        catalogMoreRequestRef.current = false;
-        setCatalogMoreLoading(false);
-        setCatalogHasMore(false);
-        return;
-      }
-      const nextQuery = isHomeRecommendations
-        ? availableQueries[homeQueryCursorRef.current % availableQueries.length]
-        : "";
-      const requestPage = isHomeRecommendations
-        ? homeQueryNextPagesRef.current[nextQuery] ?? 1
-        : catalogPage + 1;
-      const selectedCategory = categories.find((category) => category.id === requestCategory);
-      const nextKeyword = nextQuery || prepareMarketplaceQuery(
-        requestSearch || (requestCategory !== "all" ? categoryLabel(selectedCategory)?.trim() : "") || catalogSingleQueryRef.current
-      );
-
-      api.aliexpress.dropshippingProducts({
-        keyWord: nextKeyword,
-        ...(selectedCat !== "all" ? { categoryId: selectedCat } : {}),
-        pageIndex: requestPage,
-        pageSize: 20,
-        ...(selectedCat !== "all" ? { sortBy: "orders,desc" } : {}),
-        currency: "UZS",
-        countryCode: "UZ",
-      }).then((payload) => {
+      const requestPage = catalogPage + 1;
+      api.products({
+        ...(requestCategory !== "all" ? { categoryId: requestCategory } : {}),
+        ...(requestSearch ? { search: requestSearch } : {}),
+        page: requestPage,
+        limit: 20,
+      }).then((result) => {
         if (requestKey !== catalogRequestKeyRef.current || requestSearch !== search.trim() || requestCategory !== selectedCat) return;
-        const nextProducts = mapMarketplaceGoods(payload, "UZS").map((product) => ({
-          ...product,
-          category: categories.find((category) => category.id === product.categoryId)
-            ?? categories.find((category) => category.id === selectedCat)
-            ?? null,
-        }));
+        const nextProducts = result.items;
         setProducts((current) => {
           const merged = new Map(current.map((product) => [product.id, product]));
           nextProducts.forEach((product) => merged.set(product.id, product));
           return Array.from(merged.values());
         });
-        if (isHomeRecommendations) {
-          homeQueryCursorRef.current += 1;
-          homeQueryNextPagesRef.current[nextKeyword] = requestPage + 1;
-          homeQueryHasMoreRef.current[nextKeyword] = nextProducts.length >= 20 && nextProducts.some((product) => product.id);
-          setCatalogHasMore(Object.values(homeQueryHasMoreRef.current).some(Boolean));
-        } else {
-          setCatalogPage((page) => page + 1);
-          setCatalogHasMore(nextProducts.length >= 20 && nextProducts.some((product) => product.id));
-        }
+        setKnownProducts((current) => Array.from(new Map([...current, ...nextProducts].map((product) => [product.id, product])).values()));
+        setCatalogPage(requestPage);
+        setCatalogHasMore(result.page < result.pages);
         setCatalogMoreError("");
       }).catch((error: unknown) => {
         if (requestKey === catalogRequestKeyRef.current && requestSearch === search.trim() && requestCategory === selectedCat) {
-          setCatalogMoreError(aliExpressErrorMessage(error, language, "dropshipping"));
+          setCatalogMoreError(error instanceof Error ? error.message : text.localCatalogUnavailable);
         }
       }).finally(() => {
         if (requestKey === catalogRequestKeyRef.current) {
@@ -1485,7 +1335,7 @@ export function App() {
     return () => observer.disconnect();
   }, [
     view, catalogLoading, catalogHasMore, catalogMoreLoading, catalogMoreError,
-    catalogSource, catalogPage, selectedCat, search, categories, searchInterests, language
+    catalogSource, catalogPage, selectedCat, search
   ]);
 
 
@@ -1494,7 +1344,7 @@ export function App() {
     const filtered = products.filter((product) => {
       const title = `${product.titleUz ?? ""} ${product.titleRu ?? ""}`.toLowerCase();
       const categoryName = `${product.category?.nameUz ?? ""} ${product.category?.nameRu ?? ""}`.toLowerCase();
-      const matchesQuery = !term || liveCatalog || title.includes(term) || categoryName.includes(term);
+      const matchesQuery = !term || title.includes(term) || categoryName.includes(term);
       return matchesQuery;
     });
     if (!term) return filtered;
@@ -1509,7 +1359,7 @@ export function App() {
       })
       .sort((first, second) => second.score - first.score || first.index - second.index)
       .map(({ product }) => product);
-  }, [products, search, liveCatalog]);
+  }, [products, search]);
   const homeProducts = useMemo(() => {
     if (homeSort === "deals") {
       return visibleProducts
@@ -1692,6 +1542,16 @@ export function App() {
   };
 
   const handleAddToCart = (productId: string) => {
+    const product = knownProducts.find((item) => item.id === productId)
+      ?? products.find((item) => item.id === productId);
+    if (product?.sellerId) {
+      setNotice(language === "en"
+        ? "Seller checkout is not available yet"
+        : language === "uz"
+          ? "Sotuvchi mahsulotlarini xarid qilish hali mavjud emas"
+          : "Покупка товаров продавцов пока недоступна");
+      return;
+    }
     setCartItems((items) => ({ ...items, [productId]: (items[productId] ?? 0) + 1 }));
     setShippingQuotes({});
     setShippingOptionByProduct({});
@@ -2232,14 +2092,18 @@ export function App() {
                       </button>
                       <div className="price-row">
                         <strong>{formatUzs(product.priceMinor)}</strong>
-                        <button
+                        {product.sellerId ? (
+                          <span className="product-dialog-selection-hint">
+                            {language === "en" ? "Seller checkout coming soon" : language === "uz" ? "Sotuvchi xaridi tez orada" : "Продажи скоро откроются"}
+                          </span>
+                        ) : <button
                           type="button"
                           className="mini-cart"
                           onClick={() => handleAddToCart(product.id)}
                           aria-label={`${text.buy}: ${productTitle(product)}`}
                         >
                           <ShoppingBag size={15} /><span>{text.buy}</span>
-                        </button>
+                        </button>}
                       </div>
                     </div>
                   </article>
@@ -2277,10 +2141,12 @@ export function App() {
               <div className="product-body">
                 <span className="product-category">{categoryLabel(product.category)}</span>
                 <h3>{productTitle(product)}</h3>
-                {catalogSource === "aliexpress" && <button type="button" className="product-details-btn" onClick={() => void openProductDetails(product)}>Подробнее</button>}
+                <button type="button" className="product-details-btn" onClick={() => void openProductDetails(product)}>Подробнее</button>
                 <div className="price-row">
                   <strong>{formatUzs(product.priceMinor)}</strong>
-                  <button type="button" className="mini-cart" onClick={() => handleAddToCart(product.id)}><Plus size={14} />Добавить</button>
+                  {product.sellerId
+                    ? <span className="product-dialog-selection-hint">Продажи скоро откроются</span>
+                    : <button type="button" className="mini-cart" onClick={() => handleAddToCart(product.id)}><Plus size={14} />Добавить</button>}
                 </div>
               </div>
             </article>
@@ -2314,10 +2180,12 @@ export function App() {
             <div className="product-body">
               <span className="product-category">{categoryLabel(product.category)}</span>
               <h3>{productTitle(product)}</h3>
-              {catalogSource === "aliexpress" && <button type="button" className="product-details-btn" onClick={() => void openProductDetails(product)}>Подробнее</button>}
+              <button type="button" className="product-details-btn" onClick={() => void openProductDetails(product)}>Подробнее</button>
               <div className="price-row">
                 <strong>{formatUzs(product.priceMinor)}</strong>
-                <button type="button" className="mini-cart" onClick={() => handleAddToCart(product.id)}><Plus size={14} />Купить</button>
+                {product.sellerId
+                  ? <span className="product-dialog-selection-hint">Продажи скоро откроются</span>
+                  : <button type="button" className="mini-cart" onClick={() => handleAddToCart(product.id)}><Plus size={14} />Купить</button>}
               </div>
             </div>
           </article>
@@ -2984,13 +2852,17 @@ export function App() {
               <div className="product-dialog-information">
                 <div className="product-dialog-eyebrow"><span className="product-dialog-dot" />{categoryLabel(detailProduct.category) || (language === "uz" ? "Mahsulot" : language === "en" ? "Product" : "Товар")}</div>
                 <h2 id="product-dialog-title">{activeProductDetails?.subject || productTitle(detailProduct)}</h2>
-                <div className="product-dialog-price-row"><strong>{formatUzs(detailProduct.priceMinor)}</strong><span className="product-dialog-availability"><CheckCircle2 size={15} /> Доступность уточняется</span></div>
+                <div className="product-dialog-price-row"><strong>{formatUzs(detailProduct.priceMinor)}</strong><span className="product-dialog-availability">{detailProduct.sellerId ? `В наличии: ${detailProduct.stock ?? 0}` : <><CheckCircle2 size={15} /> Доступность уточняется</>}</span></div>
                 <p className="product-dialog-description">{activeProductDetails?.description || productDescription(detailProduct) || (detailLoading ? "Загружаем описание товара…" : "Подробное описание пока не предоставлено поставщиком.")}</p>
-                <div className="product-dialog-assurances">
+                {!detailProduct.sellerId && <div className="product-dialog-assurances">
                   <span><ShieldCheck size={17} /> Безопасное оформление</span>
                   <span><Truck size={17} /> Доставка рассчитывается перед заказом</span>
-                </div>
-                {detailVariants.length > 0 ? (
+                </div>}
+                {detailProduct.sellerId ? (
+                  <p className="product-dialog-selection-hint" role="status">
+                    {language === "en" ? `In stock: ${detailProduct.stock ?? 0}` : language === "uz" ? `Qoldiq: ${detailProduct.stock ?? 0}` : `В наличии: ${detailProduct.stock ?? 0}`}
+                  </p>
+                ) : detailVariants.length > 0 ? (
                   <label className="product-detail-variant-field" htmlFor="product-variant-select">
                     <span>Модель, цвет, размер</span>
                     <select
@@ -3014,7 +2886,11 @@ export function App() {
                 {detailVariants.length > 1 && !selectedDetailVariant && (
                   <p className="product-dialog-selection-hint">Сначала выберите модель, цвет, размер или другую доступную комбинацию.</p>
                 )}
-                <div className="product-dialog-actions">
+                {detailProduct.sellerId ? (
+                  <p className="product-dialog-selection-hint" role="status">
+                    {language === "en" ? "Seller checkout is not available yet." : language === "uz" ? "Sotuvchi mahsulotlarini xarid qilish hali mavjud emas." : "Покупка товаров продавцов пока недоступна."}
+                  </p>
+                ) : <div className="product-dialog-actions">
                   <button type="button" className="primary-btn product-dialog-buy" disabled={!canPurchaseDetailProduct} onClick={() => {
                     if (!canPurchaseDetailProduct || !selectedDetailVariant) return;
                     handleAddToCart(detailProduct.id);
@@ -3028,7 +2904,7 @@ export function App() {
                   }}>
                     <ShoppingBag size={17} /> В корзину
                   </button>
-                </div>
+                </div>}
                 <div className="product-dialog-meta-line"><span>Артикул</span><code>{detailProduct.id}</code></div>
               </div>
             </div>
