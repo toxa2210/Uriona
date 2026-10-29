@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   ForbiddenException,
   Get,
   Headers,
@@ -54,6 +55,12 @@ class CreateTrackingEventDto {
 
   @IsOptional() @IsDateString()
   occurredAt?: string;
+}
+
+
+class UpdateProductStatusDto {
+  @IsIn(["ACTIVE", "ARCHIVED", "DRAFT"])
+  status!: "ACTIVE" | "ARCHIVED" | "DRAFT";
 }
 
 class ModerateProductDto {
@@ -173,6 +180,38 @@ export class CrmController {
     return this.crm.addTrackingEvent(id, { ...body, actorId: admin.id });
   }
 
+
+  @Get("products")
+  async products(
+    @Headers("authorization") authorization: string | undefined,
+    @Query("search") search?: string,
+    @Query("status") status?: string,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string
+  ) {
+    await this.requireAdmin(authorization);
+    return this.crm.products(search, status, page, limit);
+  }
+
+  @Patch("products/:id/status")
+  async updateProductStatus(
+    @Headers("authorization") authorization: string | undefined,
+    @Param("id") id: string,
+    @Body() body: UpdateProductStatusDto
+  ) {
+    await this.requireAdmin(authorization);
+    return this.crm.updateProductStatus(id, body.status);
+  }
+
+  @Delete("products/:id")
+  async deleteProduct(
+    @Headers("authorization") authorization: string | undefined,
+    @Param("id") id: string
+  ) {
+    await this.requireAdmin(authorization);
+    return this.crm.deleteProduct(id);
+  }
+
   @Get("moderation/products")
   async moderationProducts(
     @Headers("authorization") authorization: string | undefined,
@@ -235,7 +274,7 @@ export class CrmController {
   }
 
   private async requireAdmin(authorization?: string) {
-    const token = authorization?.replace(/^Bearer\s+/i, "").trim();
+    const token = authorization?.replace(/^Bearer\\s+/i, "").trim();
     if (!token) throw new UnauthorizedException("Authorization token is required");
     const user = await this.auth.validateSession(token);
     if (user.role !== "ADMIN") throw new ForbiddenException("CRM access is restricted to administrators");
