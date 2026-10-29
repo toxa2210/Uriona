@@ -3698,3 +3698,64 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
   color: white;
   background: rgba(0,0,0,.5);
 }
+
+.pickup-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(1, 4, 16, .72);
+}
+.pickup-dialog {
+  position: relative;
+  width: min(100%, 560px);
+  max-height: min(82vh, 760px);
+  overflow: auto;
+  padding: 26px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--page-bg, #0b1531);
+  color: var(--ink);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .38);
+}
+.pickup-dialog-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--ink);
+  cursor: pointer;
+}
+.pickup-dialog-heading { display: flex; align-items: center; gap: 10px; padding-right: 42px; }
+.pickup-dialog-heading svg { flex: 0 0 auto; color: var(--cyan); }
+.pickup-dialog-heading h2 { margin: 0; font-size: 21px; }
+.pickup-branch-list { margin-top: 12px; }
+.pickup-branch { padding: 16px 0; border-top: 1px solid var(--line); }
+.pickup-branch-topline { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.pickup-branch-topline h3 { margin: 0; font-size: 16px; }
+.pickup-branch-topline span { flex: 0 0 auto; color: var(--cyan); font-size: 13px; font-weight: 700; }
+.pickup-branch p { margin: 7px 0 0; overflow-wrap: anywhere; line-height: 1.45; }
+.pickup-branch-locality,
+.pickup-branch-hours { color: var(--muted); font-size: 13px; }
+.pickup-branch-phone,
+.pickup-branch-map { display: inline-flex; align-items: center; gap: 6px; margin: 10px 14px 0 0; color: var(--cyan); font-size: 13px; font-weight: 700; text-decoration: none; }
+.pickup-branch-map:hover,
+.pickup-branch-phone:hover { text-decoration: underline; }
+.light-mode .pickup-dialog { background: #fff; }
+@media (max-width: 560px) {
+  .pickup-dialog-backdrop { align-items: end; padding: 0; }
+  .pickup-dialog {
+    width: 100%;
+    max-height: 88vh;
+    padding: 22px 18px calc(22px + env(safe-area-inset-bottom));
+    border-radius: 18px 18px 0 0;
+  }
+}

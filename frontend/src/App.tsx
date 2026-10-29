@@ -37,14 +37,15 @@ import { ApiRequestError, api, formatUzs, type ApiCategory, type ApiOrder, type 
 import { firebaseAuth, firebaseConfigReady } from "./firebase";
 import { prepareMarketplaceQuery, productPopularity } from "./search";
 import { parseSearchInterests, recordSearchInterest, selectHomeRecommendationQueries, type SearchInterests } from "./recommendations";
+import { findNearestBranches, type BranchWithDistance } from "./nearestBranches";
 import { SellerDashboard } from "./SellerDashboard";
 
 const navItems = ["Главная", "Категории", "Корзина", "Профиль"] as const;
 type Language = "ru" | "en" | "uz";
-const locationMessages: Record<Language, { button: string; locating: string; located: string; denied: string; unavailable: string; failed: string }> = {
-  ru: { button: "Моё местоположение", locating: "Определяем…", located: "Моё местоположение", denied: "Разрешите доступ к геолокации в браузере", unavailable: "Браузер не поддерживает геолокацию", failed: "Не удалось определить местоположение" },
-  en: { button: "My location", locating: "Locating…", located: "My location", denied: "Allow location access in your browser", unavailable: "Geolocation is not supported by this browser", failed: "Could not determine your location" },
-  uz: { button: "Joylashuvim", locating: "Aniqlanmoqda…", located: "Joylashuvim", denied: "Brauzerda joylashuvga ruxsat bering", unavailable: "Brauzer geolokatsiyani qo‘llab-quvvatlamaydi", failed: "Joylashuvni aniqlab bo‘lmadi" },
+const locationMessages: Record<Language, { button: string; locating: string; title: string; denied: string; unavailable: string; failed: string; noBranches: string; close: string; route: string; distance: string }> = {
+  ru: { button: "Пункты EMU рядом", locating: "Ищем рядом…", title: "Ближайшие пункты EMU", denied: "Разрешите доступ к геолокации в браузере", unavailable: "Браузер не поддерживает геолокацию", failed: "Не удалось определить местоположение", noBranches: "Рядом не найдены пункты EMU.", close: "Закрыть", route: "Открыть карту", distance: "км" },
+  en: { button: "Nearby EMU points", locating: "Finding nearby…", title: "Nearest EMU points", denied: "Allow location access in your browser", unavailable: "Geolocation is not supported by this browser", failed: "Could not determine your location", noBranches: "No nearby EMU points were found.", close: "Close", route: "Open map", distance: "km" },
+  uz: { button: "Yaqin EMU punktlari", locating: "Qidirilmoqda…", title: "Eng yaqin EMU punktlari", denied: "Brauzerda joylashuvga ruxsat bering", unavailable: "Brauzer geolokatsiyani qo‘llab-quvvatlamaydi", failed: "Joylashuvni aniqlab bo‘lmadi", noBranches: "Yaqin atrofda EMU punktlari topilmadi.", close: "Yopish", route: "Xaritani ochish", distance: "km" },
 };
 const CATEGORY_PHOTOS = [
   "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=640&q=80",
@@ -1011,7 +1012,8 @@ export function App() {
     return description && !/^https?:\/\//i.test(description.trim()) ? description : "";
   };
   const [view, setView] = useState<View>("Главная");
-  const [visitorCoordinates, setVisitorCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [nearbyBranches, setNearbyBranches] = useState<BranchWithDistance[]>([]);
+  const [pickupDialogOpen, setPickupDialogOpen] = useState(false);
   const [locationPending, setLocationPending] = useState(false);
   const [search, setSearch] = useState("");
   const [catalogMenuOpen, setCatalogMenuOpen] = useState(false);
@@ -1552,8 +1554,18 @@ export function App() {
     setLocationPending(true);
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
-        setVisitorCoordinates({ latitude: coords.latitude, longitude: coords.longitude });
-        setLocationPending(false);
+        void api.shippingBranches("EMU_EXPRESS")
+          .then((branches) => {
+            const nearest = findNearestBranches(branches, coords.latitude, coords.longitude);
+            setNearbyBranches(nearest);
+            setLocationPending(false);
+            if (nearest.length > 0) setPickupDialogOpen(true);
+            else setNotice(locationMessages[language].noBranches);
+          })
+          .catch(() => {
+            setLocationPending(false);
+            setNotice(locationMessages[language].failed);
+          });
       },
       (error) => {
         setLocationPending(false);
@@ -2834,19 +2846,11 @@ export function App() {
               type="button"
               onClick={locateVisitor}
               disabled={locationPending}
-              aria-label={locationPending
-                ? locationMessages[language].locating
-                : visitorCoordinates
-                  ? `${locationMessages[language].located}: ${visitorCoordinates.latitude.toFixed(5)}, ${visitorCoordinates.longitude.toFixed(5)}`
-                  : locationMessages[language].button}
-              title={visitorCoordinates ? `${visitorCoordinates.latitude.toFixed(5)}, ${visitorCoordinates.longitude.toFixed(5)}` : locationMessages[language].button}
+              aria-label={locationPending ? locationMessages[language].locating : locationMessages[language].button}
+              title={locationMessages[language].button}
             >
               <MapPin size={15} />
-              <span>{locationPending
-                ? locationMessages[language].locating
-                : visitorCoordinates
-                  ? `${visitorCoordinates.latitude.toFixed(3)}, ${visitorCoordinates.longitude.toFixed(3)}`
-                  : locationMessages[language].button}</span>
+              <span>{locationPending ? locationMessages[language].locating : locationMessages[language].button}</span>
             </button>
             <label className="home-language-chip">
               <span className="visually-hidden">{text.lang}</span>
@@ -2869,6 +2873,35 @@ export function App() {
       </header>
 
       <main className="page">{renderMain()}</main>
+
+      {pickupDialogOpen && (
+        <div className="pickup-dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setPickupDialogOpen(false); }}>
+          <section className="pickup-dialog" role="dialog" aria-modal="true" aria-labelledby="pickup-dialog-title">
+            <button type="button" className="pickup-dialog-close" onClick={() => setPickupDialogOpen(false)} aria-label={locationMessages[language].close}><X size={20} /></button>
+            <div className="pickup-dialog-heading">
+              <MapPin size={20} />
+              <h2 id="pickup-dialog-title">{locationMessages[language].title}</h2>
+            </div>
+            <div className="pickup-branch-list">
+              {nearbyBranches.map((branch) => (
+                <article className="pickup-branch" key={branch.id}>
+                  <div className="pickup-branch-topline">
+                    <h3>{branch.name}</h3>
+                    <span>{branch.distanceKm < 1
+                      ? `${Math.round(branch.distanceKm * 1000)} м`
+                      : `${branch.distanceKm.toFixed(1)} ${locationMessages[language].distance}`}</span>
+                  </div>
+                  <p>{branch.address}</p>
+                  <p className="pickup-branch-locality">{branch.locality}, {branch.region}</p>
+                  {branch.workingHours && <p className="pickup-branch-hours">{branch.workingHours}</p>}
+                  {branch.phone && <a className="pickup-branch-phone" href={`tel:${branch.phone.split(",")[0].replace(/[^+\d]/g, "")}`}>{branch.phone}</a>}
+                  {branch.mapUrl && <a className="pickup-branch-map" href={branch.mapUrl} target="_blank" rel="noreferrer">{locationMessages[language].route}<ArrowRight size={15} /></a>}
+                </article>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
 
 
       {detailProduct && (

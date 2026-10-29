@@ -14,7 +14,7 @@ export class ApiRequestError extends Error {
 }
 
 export type ApiCategory = { id: string; nameUz: string; nameRu: string; parentId?: string | null; attributes?: Record<string, string> | null };
-export type ApiShippingBranch = { id: string; name: string; region: string; locality: string; address: string; phone?: string | null; workingHours?: string | null };
+export type ApiShippingBranch = { id: string; name: string; region: string; locality: string; address: string; phone?: string | null; workingHours?: string | null; latitude?: number | null; longitude?: number | null; mapUrl?: string | null };
 export type ApiProduct = {
   id: string;
   sellerId?: string | null;
