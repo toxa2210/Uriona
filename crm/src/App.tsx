@@ -5,6 +5,9 @@ import {
   Box,
   ChevronDown,
   CircleDollarSign,
+  ClipboardCheck,
+  Check,
+  XCircle,
   Command,
   LayoutDashboard,
   LogOut,
@@ -28,7 +31,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 const API_URL = (import.meta.env.VITE_API_URL ?? "https://uriona-api.onrender.com/api/v1").replace(/\/$/, "");
 const SESSION_KEY = "uriona.crm.session";
 type User = { id: string; name?: string | null; email?: string | null; role: string };
-type Page = "overview" | "orders" | "customers" | "finance";
+type Page = "overview" | "orders" | "customers" | "finance" | "moderation";
 type Order = {
   id: string;
   status: string;
@@ -73,6 +76,22 @@ type FinanceEntry = {
   occurredAt: string;
   order?: { id: string; status: string } | null;
 };
+type ModerationProduct = {
+  id: string;
+  titleRu?: string | null;
+  titleUz: string;
+  descriptionRu?: string | null;
+  priceMinor: number;
+  currency: string;
+  imageUrl?: string | null;
+  sellerCity?: string | null;
+  sellerDistrict?: string | null;
+  moderationNote?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  category?: { nameRu: string; nameUz: string } | null;
+  seller?: { id: string; name?: string | null; email?: string | null; phone?: string | null; city?: string | null } | null;
+};
 type PageResult<T> = { items: T[]; total: number; pages: number; page: number };
 
 const navItems: Array<{ id: Page; label: string; icon: typeof LayoutDashboard }> = [
@@ -80,6 +99,7 @@ const navItems: Array<{ id: Page; label: string; icon: typeof LayoutDashboard }>
   { id: "orders", label: "Заказы", icon: Box },
   { id: "customers", label: "Клиенты", icon: Users },
   { id: "finance", label: "Финансы", icon: CircleDollarSign },
+  { id: "moderation", label: "Модерация", icon: ClipboardCheck },
 ];
 
 const firebaseConfig = {
@@ -135,6 +155,8 @@ export function App() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [entries, setEntries] = useState<FinanceEntry[]>([]);
+  const [moderationProducts, setModerationProducts] = useState<ModerationProduct[]>([]);
+  const [moderationNotes, setModerationNotes] = useState<Record<string, string>>({});
   const [modal, setModal] = useState<"shipping" | "status" | "income" | "expense" | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [form, setForm] = useState({ carrier: "", trackingNumber: "", status: "PROCESSING", category: "", description: "", amount: "" });
@@ -170,6 +192,9 @@ export function App() {
       } else if (activePage === "customers") {
         const result = await api<PageResult<Customer>>(`/crm/customers?limit=100${query ? `&search=${encodeURIComponent(query)}` : ""}`);
         setCustomers(result.items);
+      } else if (activePage === "moderation") {
+        const result = await api<PageResult<ModerationProduct>>(`/crm/moderation/products?limit=100${query ? `&search=${encodeURIComponent(query)}` : ""}`);
+        setModerationProducts(result.items);
       } else {
         const [summary, result] = await Promise.all([
           api<{ incomeMinor: number; expenseMinor: number; balanceMinor: number; currency: string }>("/crm/finance/summary"),
@@ -219,6 +244,28 @@ export function App() {
 
   const currentTitle = navItems.find((item) => item.id === page)?.label ?? "Обзор";
   const filteredOrders = useMemo(() => orders, [orders]);
+
+  async function moderateProduct(productId: string, status: "ACTIVE" | "DRAFT", note = "") {
+    if (status === "DRAFT" && !note.trim()) {
+      setError("Укажи причину возврата товара продавцу.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      await api(`/crm/moderation/products/${encodeURIComponent(productId)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status, moderationNote: note.trim() }),
+      });
+      setNotice(status === "ACTIVE" ? "Товар одобрен и опубликован." : "Товар возвращён продавцу с замечанием.");
+      setModerationNotes((current) => ({ ...current, [productId]: "" }));
+      await loadPage("moderation", search);
+    } catch (reason) {
+      setError(getErrorMessage(reason));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -373,6 +420,19 @@ export function App() {
           {page === "orders" && <OrdersPage orders={filteredOrders} search={search} setSearch={setSearch} onSearch={() => void loadPage(page, search)} busy={busy} currency={currency} date={date} onShipping={(order) => openOrderAction(order, "shipping")} onStatus={(order) => openOrderAction(order, "status")} />}
           {page === "customers" && <CustomersPage customers={customers} search={search} setSearch={setSearch} onSearch={() => void loadPage(page, search)} busy={busy} date={date} />}
           {page === "finance" && <FinancePage overview={overview} entries={entries} currency={currency} date={date} />}
+          {page === "moderation" && <ModerationPage
+            products={moderationProducts}
+            notes={moderationNotes}
+            setNote={(id, value) => setModerationNotes((current) => ({ ...current, [id]: value }))}
+            busy={busy}
+            search={search}
+            setSearch={setSearch}
+            onSearch={() => void loadPage("moderation", search)}
+            onApprove={(id) => void moderateProduct(id, "ACTIVE")}
+            onReturn={(id) => void moderateProduct(id, "DRAFT", moderationNotes[id] ?? "")}
+            currency={currency}
+            date={date}
+          />}
           {busy && <div className="loading-bar" />}
         </div>
       </main>
@@ -388,6 +448,37 @@ export function App() {
       </section></div>}
     </div>
   );
+}
+
+function ModerationPage({ products, notes, setNote, busy, search, setSearch, onSearch, onApprove, onReturn, currency: money, date: formatDate }: {
+  products: ModerationProduct[];
+  notes: Record<string, string>;
+  setNote: (id: string, value: string) => void;
+  busy: boolean;
+  search: string;
+  setSearch: (value: string) => void;
+  onSearch: () => void;
+  onApprove: (id: string) => void;
+  onReturn: (id: string) => void;
+  currency: (value: number, code?: string) => string;
+  date: (value: string) => string;
+}) {
+  return <section className="panel moderation-panel">
+    <div className="toolbar">
+      <div className="search-box"><Search size={17} /><input value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") onSearch(); }} placeholder="Поиск по товару или продавцу" /><button onClick={onSearch} aria-label="Искать"><Search size={16} /></button></div>
+      <span className="result-count">{busy ? "Обновляем..." : `${products.length} на модерации`}</span>
+    </div>
+    {products.length ? <div className="moderation-list">{products.map((product) => <article className="moderation-card" key={product.id}>
+      <div className="moderation-image">{product.imageUrl ? <img src={product.imageUrl} alt="" /> : <PackageSearch size={25} />}</div>
+      <div className="moderation-main">
+        <div className="moderation-title-row"><div><span className="badge awaiting_payment">На проверке</span><h2>{product.titleRu || product.titleUz}</h2><p>{product.category?.nameRu || product.category?.nameUz || "Категория не указана"} · {formatDate(product.createdAt)}</p></div><strong>{money(product.priceMinor, product.currency || "UZS")}</strong></div>
+        <p className="moderation-description">{product.descriptionRu || "Описание не заполнено"}</p>
+        <div className="moderation-meta"><span><b>Продавец:</b> {product.seller?.name || "Без имени"}</span><span><b>Email:</b> {product.seller?.email || "—"}</span><span><b>Телефон:</b> {product.seller?.phone || "—"}</span><span><b>Город:</b> {product.sellerCity || product.seller?.city || "—"}{product.sellerDistrict ? `, ${product.sellerDistrict}` : ""}</span></div>
+        <label className="moderation-note-label">Причина возврата продавцу<textarea rows={2} value={notes[product.id] ?? ""} onChange={(event) => setNote(product.id, event.target.value)} placeholder="Например: добавьте более чёткие фотографии или уточните описание" /></label>
+        <div className="moderation-actions"><button className="secondary-button" disabled={busy || !(notes[product.id] ?? "").trim()} onClick={() => onReturn(product.id)}><XCircle size={16} /> Вернуть продавцу</button><button className="primary-button" disabled={busy} onClick={() => onApprove(product.id)}><Check size={16} /> Одобрить и опубликовать</button></div>
+      </div>
+    </article>)}</div> : <EmptyTable icon={ClipboardCheck} title="Новых товаров нет" copy="Когда продавец отправит товар на модерацию, он появится здесь." />}
+  </section>;
 }
 
 function OverviewPage({ overview, orders, currency: money, date: formatDate, onOrders }: {
