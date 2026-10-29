@@ -122,3 +122,87 @@
     position: static;
   }
 }
+
+
+/* Mobile homepage header: compact, aligned and touch-friendly. */
+@media (max-width: 760px) {
+  .topbar { padding: 0; }
+  .top-row {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto auto auto !important;
+    grid-template-rows: 44px 44px !important;
+    align-items: center;
+    gap: 8px !important;
+    padding: 10px 14px 8px !important;
+  }
+  .top-row > .brand {
+    grid-column: 1 !important; grid-row: 1 !important; justify-self: start;
+    min-width: 0; font-size: clamp(18px, 5vw, 22px) !important; gap: 7px;
+  }
+  .top-row > .brand .brand-mark { width: 34px !important; height: 34px !important; border-radius: 10px; }
+  .top-row > .catalog-menu-wrap { grid-column: 2 !important; grid-row: 1 !important; justify-self: end; }
+  .catalog-trigger { min-height: 38px !important; padding: 0 9px !important; gap: 5px !important; border-radius: 12px !important; font-size: 12px !important; }
+  .catalog-trigger > svg:first-child { width: 16px; height: 16px; }
+  .catalog-trigger > svg:last-child { display: none; }
+  .top-row > .header-orders { display: none !important; }
+  .top-row > .header-profile {
+    grid-column: 3 !important; grid-row: 1 !important; justify-self: end;
+    width: 38px !important; height: 38px !important; min-width: 38px !important; min-height: 38px !important; padding: 0 !important;
+  }
+  .top-row > .cart {
+    grid-column: 4 !important; grid-row: 1 !important; justify-self: end;
+    width: 38px !important; height: 38px !important; min-width: 38px !important; min-height: 38px !important; padding: 0 !important;
+  }
+  .top-row > .search-box {
+    grid-column: 1 / -1 !important; grid-row: 2 !important; display: flex !important;
+    width: 100% !important; min-width: 0 !important; height: 42px !important; min-height: 42px !important;
+    padding: 0 6px 0 12px !important; gap: 8px !important; border-radius: 12px !important; justify-self: stretch;
+  }
+  .top-row > .search-box > svg { display: block !important; flex: 0 0 18px; }
+  .top-row > .search-box input {
+    display: block !important; flex: 1 1 auto !important; width: 100% !important; min-width: 0 !important;
+    height: 38px; font-size: 14px !important;
+  }
+  .top-row > .search-box button {
+    display: grid !important; place-items: center; flex: 0 0 34px !important;
+    width: 34px !important; min-width: 34px !important; height: 34px !important; padding: 0 !important; border-radius: 9px !important;
+  }
+  .top-sub-row {
+    display: grid !important; grid-template-columns: minmax(0, 1fr) !important;
+    gap: 9px !important; padding: 2px 14px 11px !important;
+  }
+  .top-sub-tools {
+    order: 1 !important; display: grid !important; grid-template-columns: minmax(0, 1fr) 58px !important;
+    align-items: center; justify-content: stretch !important; gap: 8px !important; width: 100%;
+  }
+  .home-delivery-chip {
+    width: 100%; min-width: 0 !important; max-width: none !important; min-height: 36px !important;
+    justify-content: center; padding: 0 9px !important; font-size: 12px !important;
+  }
+  .home-language-chip {
+    width: 58px; min-width: 58px; min-height: 36px !important; justify-content: center; padding: 0 5px !important;
+  }
+  .home-language-chip select { width: 42px !important; text-align: center; }
+  .home-currency-chip, .home-theme-chip { display: none !important; }
+  .home-promo-tabs {
+    order: 2 !important; display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    width: 100% !important; gap: 7px !important;
+  }
+  .home-promo-tabs button {
+    min-width: 0; min-height: 38px !important; padding: 7px 5px !important;
+    font-size: 11px !important; line-height: 1.2; white-space: normal; border-radius: 11px !important;
+  }
+  .catalog-dropdown { display: none !important; }
+}
+@media (max-width: 390px) {
+  .top-row { padding-inline: 10px !important; gap: 6px !important; }
+  .top-row > .brand { font-size: 17px !important; gap: 5px; }
+  .top-row > .brand .brand-mark { width: 31px !important; height: 31px !important; }
+  .catalog-trigger { min-height: 36px !important; padding-inline: 7px !important; font-size: 11px !important; }
+  .top-row > .header-profile, .top-row > .cart {
+    width: 36px !important; height: 36px !important; min-width: 36px !important; min-height: 36px !important;
+  }
+  .top-sub-row { padding-inline: 10px !important; }
+  .home-promo-tabs { gap: 5px !important; }
+  .home-promo-tabs button { font-size: 10px !important; }
+}
