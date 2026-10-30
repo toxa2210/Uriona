@@ -135,3 +135,10 @@
 .light-mode .seller-workspace { background:#f5f8fc; }
 .light-mode .seller-workspace-tabs { background:#f5f8fc; }
 @media(max-width:560px) { .seller-workspace { padding:12px; } .seller-workspace-tabs { display:grid; grid-template-columns:1fr; } .seller-workspace-tabs button { justify-content:flex-start; } .seller-workspace-close span { display:none; } }
+
+.seller-workspace-header-actions { display:flex; align-items:center; gap:8px; }
+.seller-workspace-refresh { display:inline-flex; align-items:center; gap:8px; min-height:40px; padding:8px 13px; border:1px solid var(--line); border-radius:7px; background:transparent; color:var(--ink); cursor:pointer; }
+.seller-workspace-refresh:disabled { opacity:.6; cursor:wait; }
+.seller-refresh-spinning { animation:seller-refresh-spin 1s linear infinite; }
+@keyframes seller-refresh-spin { to { transform:rotate(360deg); } }
+@media(max-width:560px) { .seller-workspace-header-actions { gap:5px; } .seller-workspace-refresh { padding:8px; } .seller-workspace-refresh span { display:none; } }
