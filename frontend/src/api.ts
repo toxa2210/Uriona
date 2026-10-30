@@ -258,6 +258,8 @@ export const api = {
   categories: () => request<ApiCategory[]>("/categories"),
   shippingBranches: (carrier?: "EMU_EXPRESS" | "UZPOST") => request<ApiShippingBranch[]>(carrier ? `/shipping-branches?carrier=${encodeURIComponent(carrier)}` : "/shipping-branches"),
   seller: {
+    application: (token: string) => request<ApiSellerApplication | null>("/seller/application", { headers: bearerHeaders(token) }),
+    submitApplication: (token: string, input: { storeName: string; logoUrl?: string; description: string; categoryIds: string[]; region: string; city: string; address?: string }) => request<ApiSellerApplication>("/seller/application", { method: "POST", headers: bearerHeaders(token), body: JSON.stringify(input) }),
     products: (token: string) => request<ApiProduct[]>("/seller/products", { headers: bearerHeaders(token) }),
     billing: (token: string) => request<{ orderItems: number; grossMinor: number; awaitingPaymentMinor: number; confirmedSalesMinor: number; deliveredSalesMinor: number; currency: string }>("/seller/billing", { headers: bearerHeaders(token) }),
     financialActions: (token: string) => request<Array<{ id: string; type: string; status: string; amountMinor: number; currency: string; description: string; reviewNote?: string | null; createdAt: string }>>("/seller/financial-actions", { headers: bearerHeaders(token) }),
