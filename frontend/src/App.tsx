@@ -2623,7 +2623,7 @@ export function App() {
                 </div>
                 <div className="profile-actions"><button type="button" className="primary-btn" disabled={profileBusy} onClick={() => void saveProfile()}>Сохранить профиль</button></div>
               </>}
-              {profileSection === "seller" && authToken && (profile.role === "SELLER" || profile.role === "ADMIN") && <SellerDashboard token={authToken} />}
+              {profileSection === "seller" && authToken && (profile.role === "SELLER" || profile.role === "ADMIN") && <SellerDashboard token={authToken} onClose={() => setProfileSection("overview")} />}
               {profileSection === "orders" && <>
                 <div className="profile-section-heading"><div><small>История покупок</small><h3>Мои заказы</h3></div><button type="button" className="text-action" onClick={() => setOrdersAttempt((attempt) => attempt + 1)} disabled={ordersLoading}>Обновить</button></div>
                 <div className="profile-filter-row" role="group" aria-label="Фильтр заказов">
