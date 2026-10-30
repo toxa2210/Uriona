@@ -428,7 +428,14 @@ export class CrmService {
       }),
       this.prisma.product.count({ where })
     ]);
-    return { items, page, limit, total, pages: Math.ceil(total / limit) };
+    const normalizedItems = items.map((product) => {
+      const storedUrls = Array.isArray(product.imageUrls)
+        ? product.imageUrls.filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+        : [];
+      const imageUrls = Array.from(new Set([product.imageUrl, ...storedUrls].filter((value): value is string => typeof value === "string" && value.trim().length > 0)));
+      return { ...product, imageUrls };
+    });
+    return { items: normalizedItems, page, limit, total, pages: Math.ceil(total / limit) };
   }
 
   async moderateProduct(id: string, status: "ACTIVE" | "DRAFT", moderationNote?: string) {
