@@ -227,13 +227,20 @@ export class OrdersService {
         }
 
         const product = await tx.product.findFirst({
-          where: { id: item.productId, status: "ACTIVE" },
+          where: { id: item.productId, status: "ACTIVE", sellerId: { not: null } },
         });
-        if (!product) throw new BadRequestException("One or more products are unavailable");
+        if (!product) throw new BadRequestException("One or more local seller products are unavailable");
+        if (product.stock < item.quantity) throw new ConflictException("Not enough stock for " + (product.titleRu || product.titleUz));
+        const stockUpdate = await tx.product.updateMany({
+          where: { id: product.id, status: "ACTIVE", stock: { gte: item.quantity } },
+          data: { stock: { decrement: item.quantity } },
+        });
+        if (stockUpdate.count !== 1) throw new ConflictException("Product stock changed. Refresh your cart.");
         orderItems.push({
           productId: product.id,
           quantity: item.quantity,
           unitPriceMinor: product.priceMinor,
+          productTitle: product.titleRu || product.titleUz,
         });
         subtotalMinor += product.priceMinor * item.quantity;
       }

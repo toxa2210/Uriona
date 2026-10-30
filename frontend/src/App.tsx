@@ -33,7 +33,7 @@ import {
 } from "lucide-react";
 import { createUserWithEmailAndPassword, getIdToken, reload, sendEmailVerification, sendPasswordResetEmail, signInWithEmailAndPassword, signOut } from "@firebase/auth";
 import type { User as FirebaseUser } from "@firebase/auth";
-import { ApiRequestError, api, formatUzs, type ApiCategory, type ApiOrder, type ApiProduct, type ApiShippingQuote, type ApiUser } from "./api";
+import { ApiRequestError, api, formatUzs, type ApiCategory, type ApiOrder, type ApiProduct, type ApiShippingQuote, type ApiSellerApplication, type ApiUser } from "./api";
 import { firebaseAuth, firebaseConfigReady } from "./firebase";
 import { prepareMarketplaceQuery, productPopularity } from "./search";
 import { parseSearchInterests, recordSearchInterest, selectHomeRecommendationQueries, type SearchInterests } from "./recommendations";
@@ -1069,6 +1069,10 @@ export function App() {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState("");
   const [ordersAttempt, setOrdersAttempt] = useState(0);
+  const [sellerApplication, setSellerApplication] = useState<ApiSellerApplication | null>(null);
+  const [sellerApplicationBusy, setSellerApplicationBusy] = useState(false);
+  const [sellerApplicationError, setSellerApplicationError] = useState("");
+  const [sellerApplicationForm, setSellerApplicationForm] = useState({ storeName: "", logoUrl: "", description: "", categories: "", region: "", city: "", address: "" });
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
@@ -1163,6 +1167,23 @@ export function App() {
     });
     return () => { active = false; };
   }, [authToken]);
+
+  useEffect(() => {
+    if (!authToken || !profile || profile.role === "SELLER" || profile.role === "ADMIN") return;
+    let active = true;
+    api.seller.application(authToken).then((application) => {
+      if (!active) return;
+      setSellerApplication(application);
+      if (application) setSellerApplicationForm({
+        storeName: application.storeName, logoUrl: application.logoUrl ?? "",
+        description: application.description, categories: application.categoryIds.join(", "),
+        region: application.region, city: application.city, address: application.address ?? "",
+      });
+    }).catch((error: unknown) => {
+      if (active) setSellerApplicationError(error instanceof Error ? error.message : "Не удалось загрузить заявку магазина.");
+    });
+    return () => { active = false; };
+  }, [authToken, profile?.id, profile?.role]);
 
   useEffect(() => {
     if (!authToken || !profile || profileSection !== "orders") return;
@@ -1493,13 +1514,13 @@ export function App() {
     return sum + (selectedOption?.feeUzsMinor ?? 0);
   }, 0);
   const checkoutTotal = checkoutSubtotal - checkoutDiscount + checkoutShippingTotal;
-  const checkoutQuotesReady = cartEntryList.length > 0 && cartEntryList.every((product) => {
+  const aliCartEntries = cartEntryList.filter((product) => !product.sellerId);
+  const localCartEntries = cartEntryList.filter((product) => Boolean(product.sellerId));
+  const checkoutQuotesReady = aliCartEntries.length === 0 || aliCartEntries.every((product) => {
     const quote = shippingQuotes[product.id];
     return quote?.quantity === cartItems[product.id] && quote.shippingOptions.length > 0;
   });
-  const checkoutShippingSelected = checkoutQuotesReady && cartEntryList.every((product) =>
-    Boolean(shippingOptionByProduct[product.id])
-  );
+  const checkoutShippingSelected = checkoutQuotesReady && aliCartEntries.every((product) => Boolean(shippingOptionByProduct[product.id]));
 
   const retryCatalog = () => setCatalogAttempt((attempt) => attempt + 1);
   const renderCatalogState = (message: string, canRetry: boolean) => (
@@ -1634,33 +1655,14 @@ export function App() {
   };
 
   const beginCheckout = async () => {
-    if (!authToken) {
-      setCheckoutError("Войдите в профиль, чтобы оформить заказ.");
-      setView("Профиль");
-      setNotice("Для оформления заказа войдите в профиль");
-      return;
-    }
-    if (cartEntryList.length === 0) {
-      setCheckoutError("Корзина пуста.");
-      return;
-    }
-    setCheckoutOpen(true);
-    setCheckoutBusy(true);
-    setCheckoutError("");
-    setShippingQuotes({});
-    setShippingOptionByProduct({});
+    if (!authToken) { setCheckoutError("Войдите в профиль, чтобы оформить заказ."); setView("Профиль"); setNotice("Для оформления заказа войдите в профиль"); return; }
+    if (cartEntryList.length === 0) { setCheckoutError("Корзина пуста."); return; }
+    setCheckoutOpen(true); setCheckoutBusy(true); setCheckoutError(""); setShippingQuotes({}); setShippingOptionByProduct({});
     try {
-      const entries = await Promise.all(cartEntryList.map(async (product) => {
-        if (!/^\d+$/.test(product.id)) {
-          throw new Error(`Невозможно оформить товар «${productTitle(product)}»: идентификатор AliExpress некорректен.`);
-        }
-        const payload = await api.aliexpress.productDetails(product.id, {
-          ship_to_country: "UZ",
-          target_currency: "UZS",
-          target_language: "ru_RU",
-        });
-        const options = checkoutVariants(parseAliExpressProductDetails(payload).skus);
-        return [product.id, options] as const;
+      const entries = await Promise.all(aliCartEntries.map(async (product) => {
+        if (!/^\\d+$/.test(product.id)) throw new Error(`Невозможно оформить товар «${productTitle(product)}»: идентификатор AliExpress некорректен.`);
+        const payload = await api.aliexpress.productDetails(product.id, { ship_to_country: "UZ", target_currency: "UZS", target_language: "ru_RU" });
+        return [product.id, checkoutVariants(parseAliExpressProductDetails(payload).skus)] as const;
       }));
       const variantsByProduct = Object.fromEntries(entries);
       setCheckoutVariantsByProduct(variantsByProduct);
@@ -1668,144 +1670,80 @@ export function App() {
         const next = { ...previous };
         for (const [productId, options] of entries) {
           if (options.some((option) => option.id === next[productId])) continue;
-          if (options.length === 1) next[productId] = options[0].id;
-          else delete next[productId];
+          if (options.length === 1) next[productId] = options[0].id; else delete next[productId];
         }
         return next;
       });
-      const withoutVariants = cartEntryList
-        .filter((product) => variantsByProduct[product.id].length === 0)
-        .map((product) => productTitle(product));
-      if (withoutVariants.length > 0) {
-        setCheckoutError(`Для оформления недоступны варианты товара: ${withoutVariants.join(", ")}. Удалите эти товары из корзины.`);
-      }
+      const withoutVariants = aliCartEntries.filter((product) => variantsByProduct[product.id]?.length === 0).map(productTitle);
+      if (withoutVariants.length) setCheckoutError(`Для оформления недоступны варианты товара: ${withoutVariants.join(", ")}. Удалите эти товары из корзины.`);
     } catch (error: unknown) {
-      if (error instanceof ApiRequestError && error.status === 401) {
-        clearExpiredSession(profile?.email);
-      }
+      if (error instanceof ApiRequestError && error.status === 401) clearExpiredSession(profile?.email);
       setCheckoutError(error instanceof Error ? error.message : "Не удалось загрузить варианты товаров.");
-    } finally {
-      setCheckoutBusy(false);
-    }
+    } finally { setCheckoutBusy(false); }
   };
 
   const quoteCheckoutShipping = async () => {
-    if (!authToken) {
-      setCheckoutError("Сеанс истёк. Войдите в профиль повторно.");
-      return;
-    }
-    const items = cartEntryList.map((product) => ({
-      productId: product.id,
-      supplierProductId: product.id,
-      supplierSkuId: checkoutSkuByProduct[product.id] ?? "",
-      quantity: cartItems[product.id] ?? 0,
-    }));
-    if (items.some((item) => !item.supplierSkuId)) {
-      setCheckoutError("Выберите вариант каждого товара перед расчётом доставки.");
-      return;
-    }
-
-    setCheckoutBusy(true);
-    setCheckoutError("");
-    setShippingQuotes({});
-    setShippingOptionByProduct({});
+    if (!authToken) { setCheckoutError("Сеанс истёк. Войдите в профиль повторно."); return; }
+    if (aliCartEntries.length === 0) { setShippingQuotes({}); setShippingOptionByProduct({}); setCheckoutError(""); return; }
+    const items = aliCartEntries.map((product) => ({ productId: product.id, supplierProductId: product.id, supplierSkuId: checkoutSkuByProduct[product.id] ?? "", quantity: cartItems[product.id] ?? 0 }));
+    if (items.some((item) => !item.supplierSkuId)) { setCheckoutError("Выберите вариант каждого товара AliExpress перед расчётом доставки."); return; }
+    setCheckoutBusy(true); setCheckoutError(""); setShippingQuotes({}); setShippingOptionByProduct({});
     try {
       const quotes = await api.orders.quoteShipping(authToken, items);
       const quotesByProduct = Object.fromEntries(quotes.map((quote) => [quote.productId, quote]));
-      const missingQuotes = cartEntryList.filter((product) => !quotesByProduct[product.id]?.shippingOptions.length);
-      setShippingQuotes(quotesByProduct);
-      setShippingOptionByProduct({});
-      if (missingQuotes.length > 0) {
-        setCheckoutError(`AliExpress не вернул доступный способ доставки для: ${missingQuotes.map(productTitle).join(", ")}.`);
-      }
+      const missingQuotes = aliCartEntries.filter((product) => !quotesByProduct[product.id]?.shippingOptions.length);
+      setShippingQuotes(quotesByProduct); setShippingOptionByProduct({});
+      if (missingQuotes.length) setCheckoutError(`AliExpress не вернул доступный способ доставки для: ${missingQuotes.map(productTitle).join(", ")}.`);
     } catch (error: unknown) {
-      if (error instanceof ApiRequestError && error.status === 401) {
-        clearExpiredSession(profile?.email);
-      }
+      if (error instanceof ApiRequestError && error.status === 401) clearExpiredSession(profile?.email);
       setCheckoutError(error instanceof Error ? error.message : "Не удалось рассчитать доставку.");
-    } finally {
-      setCheckoutBusy(false);
-    }
+    } finally { setCheckoutBusy(false); }
   };
 
   const submitCheckoutOrder = async () => {
-    if (!authToken) {
-      setCheckoutError("Сеанс истёк. Войдите в профиль повторно.");
-      return;
-    }
-    if (!profileForm.name.trim() || !profileForm.phone.trim() || !profileForm.city.trim() || !profileForm.address.trim()) {
-      setCheckoutError("Заполните имя, телефон, город и адрес доставки.");
-      return;
-    }
-    if (!/^\+?[0-9()\-\s]{7,40}$/.test(profileForm.phone.trim())) {
-      setCheckoutError("Проверьте номер телефона.");
-      return;
-    }
-    if (!checkoutShippingSelected) {
-      setCheckoutError("Рассчитайте доставку и выберите способ доставки для каждого товара.");
-      return;
-    }
-
+    if (!authToken) { setCheckoutError("Сеанс истёк. Войдите в профиль повторно."); return; }
+    if (!profileForm.name.trim() || !profileForm.phone.trim() || !profileForm.city.trim() || !profileForm.address.trim()) { setCheckoutError("Заполните имя, телефон, город и адрес доставки."); return; }
+    if (!/^\\+?[0-9()\\-\\s]{7,40}$/.test(profileForm.phone.trim())) { setCheckoutError("Проверьте номер телефона."); return; }
+    if (!checkoutShippingSelected) { setCheckoutError("Рассчитайте доставку и выберите способ доставки для товаров AliExpress."); return; }
     const orderItems = [];
     for (const product of cartEntryList) {
+      const quantity = cartItems[product.id] ?? 0;
+      if (product.sellerId) {
+        orderItems.push({ productId: product.id, quantity, productTitle: productTitle(product) || undefined, imageUrl: product.imageUrl ?? undefined });
+        continue;
+      }
       const quote = shippingQuotes[product.id];
       const variantId = checkoutSkuByProduct[product.id];
       const variant = checkoutVariantsByProduct[product.id]?.find((option) => option.id === variantId);
       const shippingOption = quote?.shippingOptions.find((option) => option.code === shippingOptionByProduct[product.id]);
-      if (!quote || !variant || !shippingOption || quote.quantity !== cartItems[product.id]) {
-        setCheckoutError("Данные товара или доставки изменились. Рассчитайте доставку заново.");
-        return;
-      }
+      if (!quote || !variant || !shippingOption || quote.quantity !== quantity) { setCheckoutError("Данные товара или доставки AliExpress изменились. Рассчитайте доставку заново."); return; }
       orderItems.push({
-        productId: product.id,
-        quantity: cartItems[product.id],
-        supplierProductId: product.id,
-        supplierSkuId: variant.id,
-        productTitle: quote.title || productTitle(product) || "Товар AliExpress",
-        variantLabel: variant.label,
-        imageUrl: product.imageUrl ?? undefined,
-        unitPriceMinor: quote.unitPriceMinor,
-        shippingOptionCode: shippingOption.code,
-        shippingFeeMinor: shippingOption.feeUzsMinor,
-        shippingCompany: shippingOption.company,
-        shippingFeeFormat: shippingOption.feeFormat,
-        shippingCurrency: shippingOption.currency,
-        shippingMinDays: shippingOption.minDeliveryDays,
+        productId: product.id, quantity, supplierProductId: product.id, supplierSkuId: variant.id,
+        productTitle: quote.title || productTitle(product) || "Товар AliExpress", variantLabel: variant.label,
+        imageUrl: product.imageUrl ?? undefined, unitPriceMinor: quote.unitPriceMinor,
+        shippingOptionCode: shippingOption.code, shippingFeeMinor: shippingOption.feeUzsMinor,
+        shippingCompany: shippingOption.company, shippingFeeFormat: shippingOption.feeFormat,
+        shippingCurrency: shippingOption.currency, shippingMinDays: shippingOption.minDeliveryDays,
         shippingMaxDays: shippingOption.maxDeliveryDays,
         ...(shippingOption.tracking === null ? {} : { shippingTracking: shippingOption.tracking }),
         shippingQuoteQuantity: quote.quantity,
       });
     }
-
-    setCheckoutBusy(true);
-    setCheckoutError("");
+    setCheckoutBusy(true); setCheckoutError("");
     try {
       await api.orders.create(authToken, {
-        recipientName: profileForm.name.trim(),
-        recipientPhone: profileForm.phone.trim(),
-        deliveryCity: profileForm.city.trim(),
-        deliveryAddress: profileForm.address.trim(),
-        ...(appliedPromo ? { promoCode: appliedPromo } : {}),
-        items: orderItems,
+        recipientName: profileForm.name.trim(), recipientPhone: profileForm.phone.trim(),
+        deliveryCity: profileForm.city.trim(), deliveryAddress: profileForm.address.trim(),
+        ...(appliedPromo ? { promoCode: appliedPromo } : {}), items: orderItems,
       });
-      setCartItems({});
-      setPromo("");
-      setAppliedPromo("");
-      setCheckoutOpen(false);
-      setShippingQuotes({});
-      setShippingOptionByProduct({});
-      setProfileSection("orders");
-      setOrdersAttempt((attempt) => attempt + 1);
-      setView("Профиль");
-      setNotice("Заказ создан и ожидает оплаты. Он не отправлен продавцу.");
+      setCartItems({}); setPromo(""); setAppliedPromo(""); setCheckoutOpen(false);
+      setShippingQuotes({}); setShippingOptionByProduct({}); setProfileSection("orders");
+      setOrdersAttempt((attempt) => attempt + 1); setView("Профиль");
+      setNotice("Заказ создан и ожидает оплаты. Заказы продавцов Uriona будут обработаны продавцами; AliExpress-заказы пока не отправлены поставщику.");
     } catch (error: unknown) {
-      if (error instanceof ApiRequestError && error.status === 401) {
-        clearExpiredSession(profile?.email);
-      }
+      if (error instanceof ApiRequestError && error.status === 401) clearExpiredSession(profile?.email);
       setCheckoutError(error instanceof Error ? error.message : "Не удалось создать заказ.");
-    } finally {
-      setCheckoutBusy(false);
-    }
+    } finally { setCheckoutBusy(false); }
   };
 
   const simulatePayment = () => {
@@ -1958,6 +1896,29 @@ export function App() {
     } catch (error) {
       setAuthNotice(firebaseErrorMessage(error));
     } finally { setProfileBusy(false); }
+  };
+
+  const submitSellerApplication = async () => {
+    if (!authToken) { setSellerApplicationError("Войдите в аккаунт, чтобы подать заявку."); return; }
+    const categories = sellerApplicationForm.categories.split(",").map((value) => value.trim()).filter(Boolean);
+    if (!sellerApplicationForm.storeName.trim() || !sellerApplicationForm.description.trim() || !categories.length || !sellerApplicationForm.region.trim() || !sellerApplicationForm.city.trim()) {
+      setSellerApplicationError("Заполните название, описание, категории, регион и город.");
+      return;
+    }
+    setSellerApplicationBusy(true); setSellerApplicationError("");
+    try {
+      const application = await api.seller.submitApplication(authToken, {
+        storeName: sellerApplicationForm.storeName.trim(),
+        ...(sellerApplicationForm.logoUrl.trim() ? { logoUrl: sellerApplicationForm.logoUrl.trim() } : {}),
+        description: sellerApplicationForm.description.trim(), categoryIds: categories,
+        region: sellerApplicationForm.region.trim(), city: sellerApplicationForm.city.trim(),
+        ...(sellerApplicationForm.address.trim() ? { address: sellerApplicationForm.address.trim() } : {}),
+      });
+      setSellerApplication(application);
+      setNotice("Заявка продавца отправлена на проверку администратору.");
+    } catch (error: unknown) {
+      setSellerApplicationError(error instanceof Error ? error.message : "Не удалось отправить заявку.");
+    } finally { setSellerApplicationBusy(false); }
   };
 
   const saveProfile = async () => {
@@ -2425,6 +2386,9 @@ export function App() {
                 {cartEntryList.map((product) => (
                   <div className="checkout-line" key={product.id}>
                     <strong>{productTitle(product)}</strong>
+                    {product.sellerId ? (
+                      <p className="checkout-disclosure">Товар местного продавца URIONA. Варианты AliExpress не требуются; условия доставки уточняются у продавца.</p>
+                    ) : <>
                     <label>
                       Вариант товара
                       <select
@@ -2465,17 +2429,19 @@ export function App() {
                         </select>
                       </label>
                     )}
+                    </>}
                   </div>
                 ))}
-                <button
+                {aliCartEntries.length > 0 && <button
                   type="button"
                   className="secondary-btn checkout-quote-button"
                   onClick={quoteCheckoutShipping}
-                  disabled={checkoutBusy || cartEntryList.some((product) => !checkoutSkuByProduct[product.id])}
+                  disabled={checkoutBusy || aliCartEntries.some((product) => !checkoutSkuByProduct[product.id])}
                 >
-                  {checkoutBusy ? "Проверяем AliExpress…" : "Рассчитать доступность и доставку"}
-                </button>
-                {checkoutQuotesReady && <p className="checkout-disclosure">Цена и доставка перепроверены через AliExpress для выбранных вариантов и количества. Итог будет подтверждён ещё раз при создании заказа.</p>}
+                  {checkoutBusy ? "Проверяем AliExpress…" : "Рассчитать доставку AliExpress"}
+                </button>}
+                {aliCartEntries.length > 0 && checkoutQuotesReady && <p className="checkout-disclosure">Цена и доставка товаров AliExpress перепроверены для выбранных вариантов и количества.</p>}
+                {localCartEntries.length > 0 && <p className="checkout-disclosure">Местные товары не передаются в AliExpress. Стоимость доставки местного продавца согласуется отдельно.</p>}
                 <div className="checkout-recipient-fields">
                   <label>Получатель<input value={profileForm.name} onChange={(event) => setProfileForm({ ...profileForm, name: event.target.value })} maxLength={120} autoComplete="name" /></label>
                   <label>Телефон<input type="tel" value={profileForm.phone} onChange={(event) => setProfileForm({ ...profileForm, phone: event.target.value })} maxLength={40} autoComplete="tel" placeholder="+998" /></label>
@@ -2617,6 +2583,31 @@ export function App() {
             </nav>
             <div className="profile-content">
               {profileSection === "overview" && <>
+                {profile.role !== "SELLER" && profile.role !== "ADMIN" && (
+                  <section className="seller-onboarding-card">
+                    <div className="profile-section-heading"><div><small>URIONA MARKETPLACE</small><h3>Стать продавцом</h3></div><Store size={22} /></div>
+                    {sellerApplication?.status === "PENDING" ? (
+                      <div className="profile-empty"><ShieldCheck size={28} /><h3>Заявка на проверке</h3><p>Мы проверим информацию о магазине. После одобрения откроется кабинет продавца.</p></div>
+                    ) : (
+                      <>
+                        {sellerApplication?.status === "REJECTED" && <p className="checkout-error">Предыдущая заявка отклонена: {sellerApplication.reviewNote || "причина не указана"}. Вы можете исправить данные и отправить её повторно.</p>}
+                        <div className="profile-form">
+                          <label>Название магазина<input value={sellerApplicationForm.storeName} onChange={(event) => setSellerApplicationForm({ ...sellerApplicationForm, storeName: event.target.value })} maxLength={120} placeholder="Например, Tech World" /></label>
+                          <label>Фото или логотип магазина<input type="file" accept="image/*" onChange={(event) => {  const file = event.target.files?.[0];  if (!file || !authToken) return;  setSellerApplicationBusy(true);  api.seller.uploadApplicationImage(authToken, file)    .then((result) => setSellerApplicationForm((current) => ({ ...current, logoUrl: result.imageUrl })))    .catch((error: unknown) => setSellerApplicationError(error instanceof Error ? error.message : "Не удалось загрузить логотип магазина."))    .finally(() => setSellerApplicationBusy(false));}} /></label>
+                          {sellerApplicationForm.logoUrl && <img src={sellerApplicationForm.logoUrl} alt="Логотип магазина" className="seller-application-logo" />}
+                          <label>Описание магазина<textarea value={sellerApplicationForm.description} onChange={(event) => setSellerApplicationForm({ ...sellerApplicationForm, description: event.target.value })} maxLength={2000} rows={3} placeholder="Что продаёте и чем ваш магазин полезен покупателям?" /></label>
+                          <label>Категории товаров<input value={sellerApplicationForm.categories} onChange={(event) => setSellerApplicationForm({ ...sellerApplicationForm, categories: event.target.value })} placeholder="Электроника, одежда, товары для дома" /><small>Перечислите категории через запятую.</small></label>
+                          <label>Регион отправителя<input value={sellerApplicationForm.region} onChange={(event) => setSellerApplicationForm({ ...sellerApplicationForm, region: event.target.value })} maxLength={120} placeholder="Ташкентская область" /></label>
+                          <label>Город<input value={sellerApplicationForm.city} onChange={(event) => setSellerApplicationForm({ ...sellerApplicationForm, city: event.target.value })} maxLength={120} placeholder="Ташкент" /></label>
+                          <label>Адрес или район отправления<input value={sellerApplicationForm.address} onChange={(event) => setSellerApplicationForm({ ...sellerApplicationForm, address: event.target.value })} maxLength={500} placeholder="Район, улица (необязательно)" /></label>
+                        </div>
+                        {sellerApplicationError && <p className="checkout-error" role="alert">{sellerApplicationError}</p>}
+                        <div className="profile-actions"><button type="button" className="primary-btn" disabled={sellerApplicationBusy} onClick={() => void submitSellerApplication()}>{sellerApplicationBusy ? "Отправляем…" : "Отправить заявку на проверку"}</button></div>
+                        <p className="profile-hint">Магазин станет доступен для продаж только после одобрения администратором URIONA.</p>
+                      </>
+                    )}
+                  </section>
+                )}
                 <div className="mini-grid">
                   <button type="button" className="mini-tile" onClick={() => setProfileSection("orders")}><Package size={18} /><span>Активные заказы</span><b>{activeOrderCount}</b></button>
                   <button type="button" className="mini-tile" onClick={() => setProfileSection("payments")}><CreditCard size={18} /><span>Оплата</span><b>Настроить</b></button>

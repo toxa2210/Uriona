@@ -48,6 +48,7 @@ export type ApiProduct = {
 };
 export type ApiOption = { id: string; name: string; parentId: string | null };
 export type ProductList = { items: ApiProduct[]; page: number; limit: number; total: number; pages: number };
+export type ApiSellerApplication = { id: string; storeName: string; logoUrl?: string | null; description: string; categoryIds: string[]; region: string; city: string; address?: string | null; status: "PENDING" | "APPROVED" | "REJECTED"; reviewNote?: string | null; createdAt: string };
 export type ApiUser = { id: string; phone?: string | null; name?: string | null; email?: string | null; city?: string | null; address?: string | null; language?: string | null; role?: string };
 export type ApiProfileUpdate = Pick<ApiUser, "phone" | "name" | "city" | "address" | "language">;
 export type ApiShippingOption = {
@@ -257,6 +258,9 @@ export const api = {
   categories: () => request<ApiCategory[]>("/categories"),
   shippingBranches: (carrier?: "EMU_EXPRESS" | "UZPOST") => request<ApiShippingBranch[]>(carrier ? `/shipping-branches?carrier=${encodeURIComponent(carrier)}` : "/shipping-branches"),
   seller: {
+    application: (token: string) => request<ApiSellerApplication | null>("/seller/application", { headers: bearerHeaders(token) }),
+    submitApplication: (token: string, input: { storeName: string; logoUrl?: string; description: string; categoryIds: string[]; region: string; city: string; address?: string }) => request<ApiSellerApplication>("/seller/application", { method: "POST", headers: bearerHeaders(token), body: JSON.stringify(input) }),
+    uploadApplicationImage: async (token: string, file: File) => { const body = new FormData(); body.append("file", await prepareProductImage(file)); return request<{ imageUrl: string }>("/seller/application/image", { method: "POST", headers: bearerHeaders(token), body }); },
     products: (token: string) => request<ApiProduct[]>("/seller/products", { headers: bearerHeaders(token) }),
     billing: (token: string) => request<{ orderItems: number; grossMinor: number; awaitingPaymentMinor: number; confirmedSalesMinor: number; deliveredSalesMinor: number; currency: string }>("/seller/billing", { headers: bearerHeaders(token) }),
     financialActions: (token: string) => request<Array<{ id: string; type: string; status: string; amountMinor: number; currency: string; description: string; reviewNote?: string | null; createdAt: string }>>("/seller/financial-actions", { headers: bearerHeaders(token) }),
@@ -299,21 +303,21 @@ export const api = {
       items: Array<{
         productId: string;
         quantity: number;
-        supplierProductId: string;
-        supplierSkuId: string;
-        productTitle: string;
-        variantLabel: string;
+        supplierProductId?: string;
+        supplierSkuId?: string;
+        productTitle?: string;
+        variantLabel?: string;
         imageUrl?: string;
-        unitPriceMinor: number;
-        shippingOptionCode: string;
-        shippingFeeMinor: number;
-        shippingCompany: string;
-        shippingFeeFormat: string;
-        shippingCurrency: string;
-        shippingMinDays: string;
-        shippingMaxDays: string;
+        unitPriceMinor?: number;
+        shippingOptionCode?: string;
+        shippingFeeMinor?: number;
+        shippingCompany?: string;
+        shippingFeeFormat?: string;
+        shippingCurrency?: string;
+        shippingMinDays?: string;
+        shippingMaxDays?: string;
         shippingTracking?: boolean;
-        shippingQuoteQuantity: number;
+        shippingQuoteQuantity?: number;
       }>;
     }) => request<ApiOrder>("/orders", {
       method: "POST",

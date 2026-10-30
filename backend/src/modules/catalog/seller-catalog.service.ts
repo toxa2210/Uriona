@@ -39,6 +39,36 @@ export class SellerCatalogService {
     private readonly storage: R2StorageService,
   ) {}
 
+  getSellerApplication(userId: string) {
+    return this.prisma.sellerApplication.findUnique({ where: { userId } });
+  }
+
+  async submitSellerApplication(userId: string, input: {
+    storeName: string; logoUrl?: string; description: string; categoryIds: string[];
+    region: string; city: string; address?: string;
+  }) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+    if (!user) throw new NotFoundException("User not found");
+    if (user.role === "SELLER" || user.role === "ADMIN") throw new ConflictException("This account already has seller access");
+    const existing = await this.prisma.sellerApplication.findUnique({ where: { userId } });
+    if (existing?.status === "PENDING") throw new ConflictException("Your seller application is awaiting administrator review");
+    return this.prisma.sellerApplication.upsert({
+      where: { userId },
+      create: {
+        userId, storeName: input.storeName.trim(), logoUrl: input.logoUrl?.trim() || null,
+        description: input.description.trim(), categoryIds: input.categoryIds.map((id) => id.trim()).filter(Boolean),
+        region: input.region.trim(), city: input.city.trim(), address: input.address?.trim() || null,
+        status: "PENDING", reviewNote: null, reviewedAt: null, reviewedBy: null,
+      },
+      update: {
+        storeName: input.storeName.trim(), logoUrl: input.logoUrl?.trim() || null,
+        description: input.description.trim(), categoryIds: input.categoryIds.map((id) => id.trim()).filter(Boolean),
+        region: input.region.trim(), city: input.city.trim(), address: input.address?.trim() || null,
+        status: "PENDING", reviewNote: null, reviewedAt: null, reviewedBy: null,
+      },
+    });
+  }
+
   listShippingBranches(carrier?: ShippingCarrier) {
     return this.prisma.shippingBranch.findMany({
       where: { isActive: true, ...(carrier ? { carrier } : {}) },

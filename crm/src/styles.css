@@ -315,3 +315,16 @@ td small { display: block; margin-top: 4px; color: #9aa3b1; font-size: 9px; }
   .product-detail-summary { grid-row: 1; }
   .product-detail-grid { gap: 12px; }
 }
+
+.seller-application-list { display: grid; gap: 16px; }
+.seller-application-card { padding: 20px; border: 1px solid var(--border, #26324b); border-radius: 16px; background: var(--panel, #111827); display: grid; gap: 14px; }
+.seller-application-head { display: flex; align-items: center; gap: 14px; }
+.seller-application-head img, .seller-application-placeholder { width: 64px; height: 64px; border-radius: 14px; object-fit: cover; flex: 0 0 auto; }
+.seller-application-placeholder { display: grid; place-items: center; background: rgba(90,120,180,.15); }
+.seller-application-head h3 { margin: 0 0 4px; }
+.seller-application-head p, .seller-application-head small { margin: 0; color: var(--muted, #9ca3af); }
+.seller-application-meta { display: grid; gap: 7px; color: var(--muted, #aab4c8); }
+.seller-review-note { display: grid; gap: 8px; }
+.seller-review-note textarea { width: 100%; min-height: 78px; resize: vertical; }
+.seller-application-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+@media (max-width: 640px) { .seller-application-card { padding: 14px; } .seller-application-actions > button { flex: 1 1 100%; } }

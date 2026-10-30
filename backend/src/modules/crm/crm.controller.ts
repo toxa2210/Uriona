@@ -27,6 +27,14 @@ import { FinanceEntryType, OrderStatus } from "@prisma/client";
 import { AuthService } from "../auth/auth.service";
 import { CrmService } from "./crm.service";
 
+class ReviewSellerApplicationDto {
+  @IsIn(["APPROVED", "REJECTED"])
+  status!: "APPROVED" | "REJECTED";
+
+  @IsOptional() @IsString() @MaxLength(1000)
+  reviewNote?: string;
+}
+
 class UpdateShippingDto {
   @IsString() @IsNotEmpty() @MaxLength(120)
   carrier!: string;
@@ -102,6 +110,18 @@ class CreateIncomeDto {
 @Controller("crm")
 export class CrmController {
   constructor(private readonly crm: CrmService, private readonly auth: AuthService) {}
+
+  @Get("seller-applications")
+  async sellerApplications(@Headers("authorization") authorization?: string, @Query("status") status?: string) {
+    await this.requireAdmin(authorization);
+    return this.crm.sellerApplications(status);
+  }
+
+  @Patch("seller-applications/:id")
+  async reviewSellerApplication(@Headers("authorization") authorization: string | undefined, @Param("id") id: string, @Body() body: ReviewSellerApplicationDto) {
+    const admin = await this.requireAdmin(authorization);
+    return this.crm.reviewSellerApplication(id, body.status, admin.id, body.reviewNote);
+  }
 
   @Get("overview")
   async overview(@Headers("authorization") authorization?: string) {
