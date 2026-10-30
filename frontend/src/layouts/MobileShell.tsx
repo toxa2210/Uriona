@@ -52,6 +52,14 @@ export function MobileShell({
   cartCount,
   language,
   languageLabel,
+  locationLabel,
+  locationPending,
+  lightMode,
+  themeLabel,
+  homeSort,
+  onLocate,
+  onToggleTheme,
+  onHomeSortChange,
   onSearchChange,
   onSearchSubmit,
   onNavigate,
@@ -77,7 +85,22 @@ export function MobileShell({
             <span className="mobile-brand-mark">U</span>
             <span>URIONA</span>
           </button>
-          <div className="mobile-header-actions">\n            <button type="button" className="mobile-location" onClick={onLocate} disabled={locationPending} aria-label={locationLabel} title={locationLabel}>\n              <MapPin size={16} />\n            </button>\n            <button type="button" className="mobile-theme" onClick={onToggleTheme} aria-label={themeLabel} title={themeLabel}>\n              {lightMode ? <Moon size={16} /> : <Sun size={16} />}\n            </button>\n          </div>\n          <label className="mobile-language">
+          <div className="mobile-header-actions">
+            <button
+              type="button"
+              className="mobile-location"
+              onClick={onLocate}
+              disabled={locationPending}
+              aria-label={locationLabel}
+              title={locationLabel}
+            >
+              <MapPin size={16} />
+            </button>
+            <button type="button" className="mobile-theme" onClick={onToggleTheme} aria-label={themeLabel} title={themeLabel}>
+              {lightMode ? <Moon size={16} /> : <Sun size={16} />}
+            </button>
+          </div>
+          <label className="mobile-language">
             <span className="visually-hidden">{languageLabel}</span>
             <select
               aria-label={languageLabel}
@@ -113,6 +136,26 @@ export function MobileShell({
           </button>
         </form>
       </header>
+
+      {activeView === "Главная" && (
+        <nav className="mobile-promo-tabs" aria-label="Предложения">
+          {([
+            ["deals", "Дни выгоды"],
+            ["cheaper", "Сейчас дешевле"],
+            ["popular", "Топ-товары"],
+          ] as const).map(([sort, label]) => (
+            <button
+              key={sort}
+              type="button"
+              className={homeSort === sort ? "active" : ""}
+              aria-pressed={homeSort === sort}
+              onClick={() => onHomeSortChange(sort)}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
+      )}
 
       <div className="mobile-page-content">{children}</div>
 
