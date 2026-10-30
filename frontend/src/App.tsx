@@ -798,6 +798,18 @@ type DemoPayment = {
   }>;
 };
 type ProfileSection = "overview" | "orders" | "wishlist" | "stores" | "reviews" | "questions" | "coupons" | "addresses" | "payments" | "settings" | "support" | "seller";
+const PROFILE_SECTION_STORAGE_KEY = "uriona-profile-section";
+const VIEW_STORAGE_KEY = "uriona-current-view";
+const PROFILE_SECTIONS: ProfileSection[] = ["overview", "orders", "wishlist", "stores", "reviews", "questions", "coupons", "addresses", "payments", "settings", "support", "seller"];
+const VALID_VIEWS: View[] = [...navItems, "Каталог", "Международный каталог", "Скидки", "Как заказать", "Доставка", "Поддержка"];
+function readStoredView(): View {
+  const stored = localStorage.getItem(VIEW_STORAGE_KEY);
+  return VALID_VIEWS.includes(stored as View) ? stored as View : "Главная";
+}
+function readStoredProfileSection(): ProfileSection {
+  const stored = localStorage.getItem(PROFILE_SECTION_STORAGE_KEY);
+  return PROFILE_SECTIONS.includes(stored as ProfileSection) ? stored as ProfileSection : "overview";
+}
 
 const orderStatusLabels: Record<string, string> = {
   CREATED: "Создан",
@@ -1011,7 +1023,7 @@ export function App() {
     // Older catalog records may contain a supplier URL in the description field.
     return description && !/^https?:\/\//i.test(description.trim()) ? description : "";
   };
-  const [view, setView] = useState<View>("Главная");
+  const [view, setView] = useState<View>(readStoredView);
   const [nearbyBranches, setNearbyBranches] = useState<BranchWithDistance[]>([]);
   const [pickupDialogOpen, setPickupDialogOpen] = useState(false);
   const [locationPending, setLocationPending] = useState(false);
@@ -1061,7 +1073,7 @@ export function App() {
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authMode, setAuthMode] = useState<"login" | "register" | "reset">("login");
-  const [profileSection, setProfileSection] = useState<ProfileSection>("overview");
+  const [profileSection, setProfileSection] = useState<ProfileSection>(readStoredProfileSection);
   const [profileBusy, setProfileBusy] = useState(false);
   const [verificationPending, setVerificationPending] = useState(false);
   const [authNotice, setAuthNotice] = useState("");
@@ -1120,6 +1132,14 @@ export function App() {
     setAuthNotice(text.sessionExpired);
     setView("Профиль");
   };
+
+  useEffect(() => {
+    localStorage.setItem(VIEW_STORAGE_KEY, view);
+  }, [view]);
+
+  useEffect(() => {
+    localStorage.setItem(PROFILE_SECTION_STORAGE_KEY, profileSection);
+  }, [profileSection]);
 
   useEffect(() => {
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems));

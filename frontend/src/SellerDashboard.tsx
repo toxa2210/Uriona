@@ -1,5 +1,5 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
-import { Archive, ArrowDown, ArrowUp, ImagePlus, Plus, Save, Store, Trash2, Upload, X, Package, BarChart3 } from "lucide-react";
+import { Archive, ArrowDown, ArrowUp, ImagePlus, Plus, Save, Store, Trash2, Upload, X, Package, BarChart3, RefreshCw } from "lucide-react";
 import { ApiRequestError, api, formatUzs, type ApiCategory, type ApiProduct, type ApiShippingBranch } from "./api";
 import "./SellerDashboard.css";
 
@@ -80,8 +80,15 @@ function productToPayload(draft: SellerDraft, publish: boolean) {
   };
 }
 
+type SellerTab = "publish" | "products" | "analytics";
+const SELLER_TAB_STORAGE_KEY = "uriona-seller-active-tab";
+function readStoredSellerTab(): SellerTab {
+  const stored = localStorage.getItem(SELLER_TAB_STORAGE_KEY);
+  return stored === "products" || stored === "analytics" ? stored : "publish";
+}
+
 export function SellerDashboard({ token, onClose }: SellerDashboardProps) {
-  const [activeTab, setActiveTab] = useState<"publish" | "products" | "analytics">("publish");
+  const [activeTab, setActiveTab] = useState<SellerTab>(readStoredSellerTab);
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [billing, setBilling] = useState<{ orderItems: number; grossMinor: number; awaitingPaymentMinor: number; confirmedSalesMinor: number; deliveredSalesMinor: number; currency: string } | null>(null);
   const [financialActions, setFinancialActions] = useState<Array<{ id: string; type: string; status: string; amountMinor: number; currency: string; description: string; reviewNote?: string | null; createdAt: string }>>([]);
@@ -134,6 +141,8 @@ export function SellerDashboard({ token, onClose }: SellerDashboardProps) {
   }, [draft.shippingCarrier]);
 
   useEffect(() => { void refresh(); }, [token]);
+
+  useEffect(() => { localStorage.setItem(SELLER_TAB_STORAGE_KEY, activeTab); }, [activeTab]);
 
   const selectedCategory = categories.find((category) => category.id === draft.categoryId);
   const categoryFields = Object.entries(selectedCategory?.attributes ?? {});
@@ -232,7 +241,7 @@ export function SellerDashboard({ token, onClose }: SellerDashboardProps) {
 
   return (
     <section className="seller-dashboard seller-workspace screen-panel" role="dialog" aria-modal="true" aria-label="Кабинет продавца">
-      <header className="seller-dashboard-heading"><div><small>URIONA / МАГАЗИН</small><h2><Store size={23} /> Кабинет продавца</h2><span className="seller-condition">Управление вашим магазином</span></div><button type="button" className="seller-workspace-close" onClick={onClose} aria-label="Закрыть кабинет"><X size={20} /><span>Закрыть</span></button></header>
+      <header className="seller-dashboard-heading"><div><small>URIONA / МАГАЗИН</small><h2><Store size={23} /> Кабинет продавца</h2><span className="seller-condition">Управление вашим магазином</span></div><div className="seller-workspace-header-actions"><button type="button" className="seller-workspace-refresh" onClick={() => void refresh()} disabled={loading} aria-label="Обновить данные продавца"><RefreshCw size={17} className={loading ? "seller-refresh-spinning" : ""} /><span>{loading ? "Обновляем…" : "Обновить"}</span></button><button type="button" className="seller-workspace-close" onClick={onClose} aria-label="Закрыть кабинет"><X size={20} /><span>Закрыть</span></button></div></header>
       <nav className="seller-workspace-tabs" aria-label="Разделы кабинета продавца">
         <button type="button" className={activeTab === "publish" ? "active" : ""} aria-pressed={activeTab === "publish"} onClick={() => setActiveTab("publish")}><Plus size={17} />Опубликовать товар</button>
         <button type="button" className={activeTab === "products" ? "active" : ""} aria-pressed={activeTab === "products"} onClick={() => setActiveTab("products")}><Package size={17} />Мои товары <span>{products.length}</span></button>
