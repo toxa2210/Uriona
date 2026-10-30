@@ -35,6 +35,11 @@ class ReviewSellerApplicationDto {
   reviewNote?: string;
 }
 
+class UpdateSellerStatusDto {
+  @IsIn(["ACTIVE", "PAUSED"])
+  status!: "ACTIVE" | "PAUSED";
+}
+
 class UpdateShippingDto {
   @IsString() @IsNotEmpty() @MaxLength(120)
   carrier!: string;
