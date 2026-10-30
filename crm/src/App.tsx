@@ -35,7 +35,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 const API_URL = (import.meta.env.VITE_API_URL ?? "https://uriona-api.onrender.com/api/v1").replace(/\/$/, "");
 const SESSION_KEY = "uriona.crm.session";
 type User = { id: string; name?: string | null; email?: string | null; role: string };
-type Page = "overview" | "orders" | "customers" | "products" | "finance" | "moderation" | "sellers";
+type Page = "overview" | "orders" | "customers" | "products" | "finance" | "moderation" | "sellers" | "seller-management";
 type Order = {
   id: string;
   status: string;
@@ -100,13 +100,18 @@ type ModerationProduct = {
 };
 type PageResult<T> = { items: T[]; total: number; pages: number; page: number };
 
-type SellerApplication = { id: string; storeName: string; logoUrl?: string | null; description: string; categoryIds: string[]; region: string; city: string; address?: string | null; status: string; createdAt: string; user: { id: string; name?: string | null; email?: string | null; phone?: string | null } };\n\nconst navItems: Array<{ id: Page; label: string; icon: typeof LayoutDashboard }> = [
+type SellerApplication = { id: string; storeName: string; logoUrl?: string | null; description: string; categoryIds: string[]; region: string; city: string; address?: string | null; status: string; createdAt: string; user: { id: string; name?: string | null; email?: string | null; phone?: string | null } };
+type ManagedSeller = { id: string; name?: string | null; email?: string | null; phone?: string | null; city?: string | null; role: string; createdAt: string; sellerApplication: Omit<SellerApplication, "user">; _count: { sellerProducts: number; orders: number } };
+
+const navItems: Array<{ id: Page; label: string; icon: typeof LayoutDashboard }> = [
   { id: "overview", label: "Обзор", icon: LayoutDashboard },
   { id: "orders", label: "Заказы", icon: Box },
   { id: "customers", label: "Клиенты", icon: Users },
   { id: "products", label: "Товары", icon: PackageSearch },
   { id: "finance", label: "Финансы", icon: CircleDollarSign },
-  { id: "moderation", label: "Модерация", icon: ClipboardCheck },\n  { id: "sellers", label: "Заявки продавцов", icon: Store },
+  { id: "moderation", label: "Модерация", icon: ClipboardCheck },
+  { id: "sellers", label: "Заявки продавцов", icon: ClipboardCheck },
+  { id: "seller-management", label: "Продавцы", icon: Store },
 ];
 
 const firebaseConfig = {
@@ -167,7 +172,11 @@ export function App() {
   const [selectedProduct, setSelectedProduct] = useState<ManagedProduct | null>(null);
   const [productStatus, setProductStatus] = useState("");
   const [entries, setEntries] = useState<FinanceEntry[]>([]);
-  const [moderationProducts, setModerationProducts] = useState<ModerationProduct[]>([]);\n  const [sellerApplications, setSellerApplications] = useState<SellerApplication[]>([]);\n  const [sellerReviewNotes, setSellerReviewNotes] = useState<Record<string, string>>({});
+  const [moderationProducts, setModerationProducts] = useState<ModerationProduct[]>([]);
+  const [sellerApplications, setSellerApplications] = useState<SellerApplication[]>([]);
+  const [sellerReviewNotes, setSellerReviewNotes] = useState<Record<string, string>>({});
+  const [managedSellers, setManagedSellers] = useState<ManagedSeller[]>([]);
+  const [sellerResetLink, setSellerResetLink] = useState<{ email: string; resetLink: string } | null>(null);
   const [moderationNotes, setModerationNotes] = useState<Record<string, string>>({});
   const [modal, setModal] = useState<"shipping" | "status" | "income" | "expense" | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -208,7 +217,14 @@ export function App() {
         const statusParam = productStatus ? `&status=${encodeURIComponent(productStatus)}` : "";
         const result = await api<PageResult<ManagedProduct>>(`/crm/products?limit=100${query ? `&search=${encodeURIComponent(query)}` : ""}${statusParam}`);
         setProducts(result.items);
-      } else if (activePage === "sellers") {\n        const result = await api<SellerApplication[]>("/crm/seller-applications?status=PENDING");\n        setSellerApplications(result);\n      } else if (activePage === "moderation") {
+      } else if (activePage === "sellers") {
+        const result = await api<SellerApplication[]>("/crm/seller-applications?status=PENDING");
+        setSellerApplications(result);
+      } else if (activePage === "seller-management") {
+        const result = await api<PageResult<ManagedSeller>>(`/crm/sellers?limit=100${query ? `&search=${encodeURIComponent(query)}` : ""}`);
+        setManagedSellers(result.items);
+        setSellerResetLink(null);
+      } else if (activePage === "moderation") {
         const result = await api<PageResult<ModerationProduct>>(`/crm/moderation/products?limit=100${query ? `&search=${encodeURIComponent(query)}` : ""}`);
         setModerationProducts(result.items);
       } else {
@@ -294,6 +310,32 @@ export function App() {
       });
       setNotice(status === "APPROVED" ? "Магазин одобрен. Пользователю выдан доступ продавца." : "Заявка отклонена.");
       await loadPage("sellers", search);
+    } catch (reason) { setError(getErrorMessage(reason)); }
+    finally { setBusy(false); }
+  }
+
+  async function updateSellerAccess(seller: ManagedSeller, status: "ACTIVE" | "PAUSED") {
+    const message = status === "PAUSED"
+      ? `Приостановить доступ к кабинету продавца «${seller.sellerApplication.storeName}»? Владелец сможет входить как покупатель.`
+      : `Возобновить доступ продавца для магазина «${seller.sellerApplication.storeName}»?`;
+    if (!window.confirm(message)) return;
+    setBusy(true); setError("");
+    try {
+      await api(`/crm/sellers/${encodeURIComponent(seller.id)}/status`, {
+        method: "PATCH", body: JSON.stringify({ status }),
+      });
+      setNotice(status === "ACTIVE" ? "Доступ продавца восстановлен." : "Доступ к кабинету продавца приостановлен.");
+      await loadPage("seller-management", search);
+    } catch (reason) { setError(getErrorMessage(reason)); }
+    finally { setBusy(false); }
+  }
+
+  async function createSellerPasswordReset(seller: ManagedSeller) {
+    setBusy(true); setError(""); setSellerResetLink(null);
+    try {
+      const result = await api<{ email: string; resetLink: string }>(`/crm/sellers/${encodeURIComponent(seller.id)}/password-reset`, { method: "POST" });
+      setSellerResetLink(result);
+      setNotice(`Ссылка для сброса пароля создана для ${result.email}.`);
     } catch (reason) { setError(getErrorMessage(reason)); }
     finally { setBusy(false); }
   }
@@ -475,7 +517,7 @@ export function App() {
         </header>
         <div className="content">
           <div className="page-heading">
-            <div><p className="eyebrow">УПРАВЛЕНИЕ МАГАЗИНОМ</p><h1>{page === "overview" ? "Добро пожаловать" : currentTitle}</h1><p>{page === "overview" ? "Краткая сводка по работе вашего магазина." : page === "orders" ? "Заказы, статусы и информация о доставке." : page === "customers" ? "Клиентская база и история каждого покупателя." : page === "products" ? "Управление публикациями и состоянием товаров." : "Доходы, расходы и движение средств."}</p></div>
+            <div><p className="eyebrow">УПРАВЛЕНИЕ МАГАЗИНОМ</p><h1>{page === "overview" ? "Добро пожаловать" : currentTitle}</h1><p>{page === "overview" ? "Краткая сводка по работе вашего магазина." : page === "orders" ? "Заказы, статусы и информация о доставке." : page === "customers" ? "Клиентская база и история каждого покупателя." : page === "products" ? "Управление публикациями и состоянием товаров." : page === "sellers" ? "Проверка анкет и одобрение новых магазинов." : page === "seller-management" ? "Список продавцов, доступ к продажам и восстановление пароля." : "Доходы, расходы и движение средств."}</p></div>
             {page === "finance" && <div className="heading-actions"><button className="secondary-button" onClick={() => { setForm({ carrier: "", trackingNumber: "", status: "PROCESSING", category: "", description: "", amount: "" }); setModal("expense"); }}><ArrowUpRight size={16} /> Добавить расход</button><button className="primary-button" onClick={() => { setForm({ carrier: "", trackingNumber: "", status: "PROCESSING", category: "", description: "", amount: "" }); setModal("income"); }}><Plus size={17} /> Добавить доход</button></div>}
           </div>
           {error && <div className="alert page-alert">{error}<button className="icon-button" onClick={() => setError("")} aria-label="Закрыть"><X size={16} /></button></div>}
@@ -496,6 +538,17 @@ export function App() {
                 <div className="seller-application-actions"><button className="primary-button" disabled={busy} onClick={() => void reviewSeller(application.id, "APPROVED")}><Check size={16} /> Одобрить магазин</button><button className="secondary-button" disabled={busy || !(sellerReviewNotes[application.id] ?? "").trim()} onClick={() => void reviewSeller(application.id, "REJECTED")}><XCircle size={16} /> Отклонить</button></div>
               </article>)}
             </div>}
+          </section>}
+          {page === "seller-management" && <section className="panel">
+            <div className="panel-header"><div><h2>Продавцы Uriona</h2><p>Управление одобренными магазинами, доступом к продажам и восстановлением пароля.</p></div><button className="secondary-button" onClick={() => void loadPage("seller-management", search)} disabled={busy}><RotateCcw size={16} /> Обновить</button></div>
+            <div className="toolbar"><div className="search-box"><Search size={17} /><input value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void loadPage("seller-management", search); }} placeholder="Магазин, имя, email или телефон" /><button onClick={() => void loadPage("seller-management", search)} aria-label="Искать"><Search size={16} /></button></div><span className="result-count">{busy ? "Обновляем..." : `${managedSellers.length} продавцов`}</span></div>
+            {sellerResetLink && <div className="seller-reset-panel"><div><b>Ссылка для сброса пароля · {sellerResetLink.email}</b><p>Передай эту ссылку владельцу магазина. По ней он сможет задать новый пароль.</p><a href={sellerResetLink.resetLink} target="_blank" rel="noreferrer">{sellerResetLink.resetLink}</a></div><button className="secondary-button" onClick={() => void navigator.clipboard.writeText(sellerResetLink.resetLink)}>Копировать ссылку</button><button className="icon-button" aria-label="Закрыть" onClick={() => setSellerResetLink(null)}><X size={16} /></button></div>}
+            {managedSellers.length ? <div className="table-wrap"><table><thead><tr><th>МАГАЗИН / ВЛАДЕЛЕЦ</th><th>КОНТАКТЫ</th><th>ГОРОД</th><th>ТОВАРЫ</th><th>ЗАКАЗЫ</th><th>ДОСТУП</th><th>УПРАВЛЕНИЕ</th></tr></thead><tbody>{managedSellers.map((seller) => <tr key={seller.id}>
+              <td><div className="customer-cell">{seller.sellerApplication.logoUrl ? <img className="seller-table-logo" src={seller.sellerApplication.logoUrl} alt="" /> : <div className="customer-avatar"><Store size={15} /></div>}<div><b>{seller.sellerApplication.storeName}</b><small>{seller.name || "Без имени"} · {date(seller.createdAt)}</small></div></div></td>
+              <td><b>{seller.email || "Email не указан"}</b><small>{seller.phone || "Телефон не указан"}</small></td><td>{seller.sellerApplication.region}, {seller.sellerApplication.city}</td><td>{seller._count.sellerProducts}</td><td>{seller._count.orders}</td>
+              <td><span className={`product-status ${seller.role === "SELLER" ? "status-active" : "status-archived"}`}>{seller.role === "SELLER" ? "Активен" : "Приостановлен"}</span></td>
+              <td><div className="seller-management-actions"><button className="secondary-button" disabled={busy || !seller.email} title={!seller.email ? "У продавца нет email" : "Создать ссылку для сброса пароля"} onClick={() => void createSellerPasswordReset(seller)}>Сбросить пароль</button>{seller.role === "SELLER" ? <button className="danger-button" disabled={busy} onClick={() => void updateSellerAccess(seller, "PAUSED")}>Приостановить доступ</button> : <button className="primary-button" disabled={busy} onClick={() => void updateSellerAccess(seller, "ACTIVE")}>Возобновить</button>}</div></td>
+            </tr>)}</tbody></table></div> : <EmptyTable icon={Store} title="Продавцы не найдены" copy="Одобренные заявки появятся здесь. Проверьте фильтр или список заявок." />}
           </section>}
           {page === "moderation" && <ModerationPage
             products={moderationProducts}
