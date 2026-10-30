@@ -22,7 +22,6 @@ import {
   ShoppingBag,
   Star,
   Store,
-  Ticket,
   Truck,
   RotateCcw,
   UserRound,
