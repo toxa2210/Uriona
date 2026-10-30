@@ -1,10 +1,11 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
-import { Archive, ArrowDown, ArrowUp, ImagePlus, Plus, Save, Store, Trash2, Upload } from "lucide-react";
+import { Archive, ArrowDown, ArrowUp, ImagePlus, Plus, Save, Store, Trash2, Upload, X, Package, BarChart3 } from "lucide-react";
 import { ApiRequestError, api, formatUzs, type ApiCategory, type ApiProduct, type ApiShippingBranch } from "./api";
 import "./SellerDashboard.css";
 
 interface SellerDashboardProps {
   token: string;
+  onClose: () => void;
 }
 
 interface SellerDraft {
@@ -79,7 +80,8 @@ function productToPayload(draft: SellerDraft, publish: boolean) {
   };
 }
 
-export function SellerDashboard({ token }: SellerDashboardProps) {
+export function SellerDashboard({ token, onClose }: SellerDashboardProps) {
+  const [activeTab, setActiveTab] = useState<"publish" | "products" | "analytics">("publish");
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [billing, setBilling] = useState<{ orderItems: number; grossMinor: number; awaitingPaymentMinor: number; confirmedSalesMinor: number; deliveredSalesMinor: number; currency: string } | null>(null);
   const [financialActions, setFinancialActions] = useState<Array<{ id: string; type: string; status: string; amountMinor: number; currency: string; description: string; reviewNote?: string | null; createdAt: string }>>([]);
@@ -229,16 +231,21 @@ export function SellerDashboard({ token }: SellerDashboardProps) {
   };
 
   return (
-    <section className="seller-dashboard screen-panel">
-      <header className="seller-dashboard-heading"><div><small>URIONA / МАГАЗИН</small><h2><Store size={23} /> Кабинет продавца</h2></div><span className="seller-condition">Принимаются только новые товары</span></header>
+    <section className="seller-dashboard seller-workspace screen-panel" role="dialog" aria-modal="true" aria-label="Кабинет продавца">
+      <header className="seller-dashboard-heading"><div><small>URIONA / МАГАЗИН</small><h2><Store size={23} /> Кабинет продавца</h2><span className="seller-condition">Управление вашим магазином</span></div><button type="button" className="seller-workspace-close" onClick={onClose} aria-label="Закрыть кабинет"><X size={20} /><span>Закрыть</span></button></header>
+      <nav className="seller-workspace-tabs" aria-label="Разделы кабинета продавца">
+        <button type="button" className={activeTab === "publish" ? "active" : ""} aria-pressed={activeTab === "publish"} onClick={() => setActiveTab("publish")}><Plus size={17} />Опубликовать товар</button>
+        <button type="button" className={activeTab === "products" ? "active" : ""} aria-pressed={activeTab === "products"} onClick={() => setActiveTab("products")}><Package size={17} />Мои товары <span>{products.length}</span></button>
+        <button type="button" className={activeTab === "analytics" ? "active" : ""} aria-pressed={activeTab === "analytics"} onClick={() => setActiveTab("analytics")}><BarChart3 size={17} />Аналитика</button>
+      </nav>
       <div className="seller-dashboard-layout">
-        <aside className="seller-product-list">
+        <aside className={`seller-product-list ${activeTab !== "products" ? "seller-tab-hidden" : ""}`}>
           <div className="seller-list-heading"><h3>Мои товары</h3><button type="button" className="icon-btn" title="Новый товар" onClick={() => setDraft(emptyDraft())}><Plus size={18} /></button></div>
-          {loading ? <p>Загрузка…</p> : products.length ? products.map((product) => <button type="button" className="seller-product-row" key={product.id} onClick={() => setDraft(draftFromProduct(product))}>
+          {loading ? <p>Загрузка…</p> : products.length ? products.map((product) => <button type="button" className="seller-product-row" key={product.id} onClick={() => { setDraft(draftFromProduct(product)); setActiveTab("publish"); }}>
             <img src={product.imageUrl ?? ""} alt="" /><span><b>{product.titleRu || product.titleUz}</b><small>{product.status === "ACTIVE" ? "Опубликован" : product.status === "PENDING_REVIEW" ? "На модерации" : "Черновик"} · {formatUzs(product.priceMinor)}</small>{product.moderationNote && <small className="seller-review-note">Замечание: {product.moderationNote}</small>}</span>
           </button>) : <p className="seller-empty">Пока нет товаров</p>}
         </aside>
-        <form className="seller-product-form" onSubmit={(event) => void save(event, false)}>
+        <form className={`seller-product-form ${activeTab !== "publish" ? "seller-tab-hidden" : ""}`} onSubmit={(event) => void save(event, false)}>
           <div className="seller-form-heading"><h3>{draft.id ? "Редактировать товар" : "Новый товар"}</h3><span>Состояние: новый</span></div>
           <div className="seller-form-grid">
             <label>Название товара<input required maxLength={200} value={draft.titleRu} onChange={(event) => setDraft({ ...draft, titleRu: event.target.value, titleUz: draft.titleUz || event.target.value })} /></label>
@@ -265,7 +272,7 @@ export function SellerDashboard({ token }: SellerDashboardProps) {
           <footer className="seller-form-actions"><button type="submit" disabled={saving || uploading}><Save size={16} />Сохранить черновик</button><button type="button" disabled={saving || uploading || !draft.photos.length || !draft.city || !draft.publicationRulesAccepted || !draft.restrictedGoodsConfirmed} onClick={(event) => { const form = event.currentTarget.form; if (form?.reportValidity()) void save({ preventDefault: () => undefined } as FormEvent<HTMLFormElement>, true); }}><Store size={16} />Отправить на модерацию</button>{draft.id && <button type="button" className="seller-archive-button" onClick={() => { const product = products.find((item) => item.id === draft.id); if (product) void archive(product); setDraft(emptyDraft()); }}><Archive size={16} />В архив</button>}</footer>
         </form>
       </div>
-      <section className="seller-billing" aria-labelledby="seller-billing-title"><div className="seller-list-heading"><div><small>Заказы только по вашим товарам</small><h3 id="seller-billing-title">Продажи и биллинг</h3></div></div><div className="seller-billing-grid"><div><span>Всего заказано</span><strong>{billing ? formatUzs(billing.grossMinor) : "—"}</strong><small>{billing?.orderItems ?? 0} позиций</small></div><div><span>Ожидает оплаты</span><strong>{billing ? formatUzs(billing.awaitingPaymentMinor) : "—"}</strong></div><div><span>Подтверждённые продажи</span><strong>{billing ? formatUzs(billing.confirmedSalesMinor) : "—"}</strong></div><div><span>Доставлено</span><strong>{billing ? formatUzs(billing.deliveredSalesMinor) : "—"}</strong></div></div><p>Запрос выплаты уйдёт администратору на подтверждение; перевод денег автоматически не выполняется.</p><form className="seller-payout-request" onSubmit={(event) => void requestPayout(event)}><label>Запросить выплату, UZS<input type="number" min="1" step="100" required value={payoutAmount} onChange={(event) => setPayoutAmount(event.target.value)} /></label><label>Комментарий <span>(не указывайте банковские реквизиты)</span><input required maxLength={1000} value={payoutDescription} onChange={(event) => setPayoutDescription(event.target.value)} placeholder="Комментарий для администратора" /></label><button type="submit" disabled={payoutBusy}>{payoutBusy ? "Отправляем…" : "Запросить подтверждение"}</button></form>{financialActions.length > 0 && <div className="seller-financial-history"><h4>Запросы на выплату</h4>{financialActions.map((action) => <div key={action.id}><span>{formatUzs(action.amountMinor)} · {action.description}</span><b>{action.status === "PENDING" ? "На проверке" : action.status === "APPROVED" ? "Одобрено" : "Отклонено"}</b>{action.reviewNote && <small>{action.reviewNote}</small>}</div>)}</div>}</section>
+      <section className={`seller-billing ${activeTab !== "analytics" ? "seller-tab-hidden" : ""}`} aria-labelledby="seller-billing-title"><div className="seller-list-heading"><div><small>Заказы только по вашим товарам</small><h3 id="seller-billing-title">Продажи и биллинг</h3></div></div><div className="seller-billing-grid"><div><span>Всего заказано</span><strong>{billing ? formatUzs(billing.grossMinor) : "—"}</strong><small>{billing?.orderItems ?? 0} позиций</small></div><div><span>Ожидает оплаты</span><strong>{billing ? formatUzs(billing.awaitingPaymentMinor) : "—"}</strong></div><div><span>Подтверждённые продажи</span><strong>{billing ? formatUzs(billing.confirmedSalesMinor) : "—"}</strong></div><div><span>Доставлено</span><strong>{billing ? formatUzs(billing.deliveredSalesMinor) : "—"}</strong></div></div><p>Запрос выплаты уйдёт администратору на подтверждение; перевод денег автоматически не выполняется.</p><form className="seller-payout-request" onSubmit={(event) => void requestPayout(event)}><label>Запросить выплату, UZS<input type="number" min="1" step="100" required value={payoutAmount} onChange={(event) => setPayoutAmount(event.target.value)} /></label><label>Комментарий <span>(не указывайте банковские реквизиты)</span><input required maxLength={1000} value={payoutDescription} onChange={(event) => setPayoutDescription(event.target.value)} placeholder="Комментарий для администратора" /></label><button type="submit" disabled={payoutBusy}>{payoutBusy ? "Отправляем…" : "Запросить подтверждение"}</button></form>{financialActions.length > 0 && <div className="seller-financial-history"><h4>Запросы на выплату</h4>{financialActions.map((action) => <div key={action.id}><span>{formatUzs(action.amountMinor)} · {action.description}</span><b>{action.status === "PENDING" ? "На проверке" : action.status === "APPROVED" ? "Одобрено" : "Отклонено"}</b>{action.reviewNote && <small>{action.reviewNote}</small>}</div>)}</div>}</section>
     </section>
   );
 }
