@@ -2346,6 +2346,9 @@ export function App() {
                 {cartEntryList.map((product) => (
                   <div className="checkout-line" key={product.id}>
                     <strong>{productTitle(product)}</strong>
+                    {product.sellerId ? (
+                      <p className="checkout-disclosure">Товар местного продавца URIONA. Варианты AliExpress не требуются; условия доставки уточняются у продавца.</p>
+                    ) : <>
                     <label>
                       Вариант товара
                       <select
@@ -2386,17 +2389,19 @@ export function App() {
                         </select>
                       </label>
                     )}
+                    </>}
                   </div>
                 ))}
-                <button
+                {aliCartEntries.length > 0 && <button
                   type="button"
                   className="secondary-btn checkout-quote-button"
                   onClick={quoteCheckoutShipping}
-                  disabled={checkoutBusy || cartEntryList.some((product) => !checkoutSkuByProduct[product.id])}
+                  disabled={checkoutBusy || aliCartEntries.some((product) => !checkoutSkuByProduct[product.id])}
                 >
-                  {checkoutBusy ? "Проверяем AliExpress…" : "Рассчитать доступность и доставку"}
-                </button>
-                {checkoutQuotesReady && <p className="checkout-disclosure">Цена и доставка перепроверены через AliExpress для выбранных вариантов и количества. Итог будет подтверждён ещё раз при создании заказа.</p>}
+                  {checkoutBusy ? "Проверяем AliExpress…" : "Рассчитать доставку AliExpress"}
+                </button>}
+                {aliCartEntries.length > 0 && checkoutQuotesReady && <p className="checkout-disclosure">Цена и доставка товаров AliExpress перепроверены для выбранных вариантов и количества.</p>}
+                {localCartEntries.length > 0 && <p className="checkout-disclosure">Местные товары не передаются в AliExpress. Стоимость доставки местного продавца согласуется отдельно.</p>}
                 <div className="checkout-recipient-fields">
                   <label>Получатель<input value={profileForm.name} onChange={(event) => setProfileForm({ ...profileForm, name: event.target.value })} maxLength={120} autoComplete="name" /></label>
                   <label>Телефон<input type="tel" value={profileForm.phone} onChange={(event) => setProfileForm({ ...profileForm, phone: event.target.value })} maxLength={40} autoComplete="tel" placeholder="+998" /></label>
