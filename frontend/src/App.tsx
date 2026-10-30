@@ -1070,8 +1070,6 @@ export function App() {
   const [categoriesError, setCategoriesError] = useState("");
   const [liked, setLiked] = useState<string[]>(readStoredLiked);
   const [cartItems, setCartItems] = useState<Record<string, number>>(readStoredCart);
-  const [promo, setPromo] = useState("");
-  const [appliedPromo, setAppliedPromo] = useState("");
   const [demoPayment, setDemoPayment] = useState<DemoPayment | null>(() => DEMO_PAYMENT_ENABLED ? readStoredDemoPayment() : null);
   const [demoPaymentScenario, setDemoPaymentScenario] = useState<"success" | "declined">("success");
   const [notice, setNotice] = useState("");
@@ -1526,17 +1524,13 @@ export function App() {
       ? `${cartCount} ta mahsulot`
       : `${cartCount} ${cartCount % 10 === 1 && cartCount % 100 !== 11 ? "товар" : cartCount % 10 >= 2 && cartCount % 10 <= 4 && (cartCount % 100 < 12 || cartCount % 100 > 14) ? "товара" : "товаров"}`;
   const subtotal = cartEntryList.reduce((sum, product) => sum + product.priceMinor * (cartItems[product.id] ?? 0), 0);
-  const discount = appliedPromo === "SAVE10" && subtotal >= MIN_PROMO_SUBTOTAL
-    ? Math.round(subtotal * 0.1)
-    : 0;
+  const discount = 0;
   const total = subtotal - discount;
   const checkoutSubtotal = cartEntryList.reduce((sum, product) => {
     const quantity = cartItems[product.id] ?? 0;
     return sum + (shippingQuotes[product.id]?.unitPriceMinor ?? product.priceMinor) * quantity;
   }, 0);
-  const checkoutDiscount = appliedPromo === "SAVE10" && checkoutSubtotal >= MIN_PROMO_SUBTOTAL
-    ? Math.round(checkoutSubtotal * 0.1)
-    : 0;
+  const checkoutDiscount = 0;
   const checkoutShippingTotal = cartEntryList.reduce((sum, product) => {
     const quote = shippingQuotes[product.id];
     const selectedOption = quote?.shippingOptions.find((option) => option.code === shippingOptionByProduct[product.id]);
@@ -1654,22 +1648,6 @@ export function App() {
     setDetailProduct(product);
   };
 
-  const applyPromo = () => {
-    const code = promo.trim().toUpperCase();
-    if (code !== "SAVE10") {
-      setAppliedPromo("");
-      setNotice(code ? "Промокод не найден" : "Введите промокод");
-      return;
-    }
-    if (subtotal < MIN_PROMO_SUBTOTAL) {
-      setAppliedPromo("");
-      setNotice("SAVE10 действует для заказа от 500 000 сум");
-      return;
-    }
-    setAppliedPromo(code);
-    setNotice("Промокод SAVE10 применён");
-  };
-
   const handleQtyChange = (productId: string, delta: number) => {
     setShippingQuotes({});
     setShippingOptionByProduct({});
@@ -1768,9 +1746,9 @@ export function App() {
       await api.orders.create(authToken, {
         recipientName: profileForm.name.trim(), recipientPhone: profileForm.phone.trim(),
         deliveryCity: profileForm.city.trim(), deliveryAddress: profileForm.address.trim(),
-        ...(appliedPromo ? { promoCode: appliedPromo } : {}), items: orderItems,
+        items: orderItems,
       });
-      setCartItems({}); setPromo(""); setAppliedPromo(""); setCheckoutOpen(false);
+      setCartItems({}); setCheckoutOpen(false);
       setShippingQuotes({}); setShippingOptionByProduct({}); setProfileSection("orders");
       setOrdersAttempt((attempt) => attempt + 1); setView("Профиль");
       setNotice("Заказ создан и ожидает оплаты. Заказы продавцов Uriona будут обработаны продавцами; AliExpress-заказы пока не отправлены поставщику.");
@@ -1799,8 +1777,6 @@ export function App() {
     setDemoPayment(payment);
     if (payment.status === "PAID") {
       setCartItems({});
-      setPromo("");
-      setAppliedPromo("");
       setNotice("Тестовый заказ оплачен");
     } else {
       setNotice("Тестовая оплата отклонена");
@@ -2148,15 +2124,15 @@ export function App() {
     </div>
   );
 
-  const renderCatalog = () => selectedCat !== "all" ? renderHome() : (
+  const renderCatalog = () => selectedCat !== "all" && (categoryChildren.get(selectedCat) ?? []).length === 0 ? renderHome() : (
     <section className="screen-panel catalog-browser">
       <div className="section-head panel-head">
         <div><small>URIONA MARKETPLACE</small><h2>Каталог товаров</h2><p>Выберите категорию, чтобы посмотреть товары</p></div>
-        <span>{topLevelCategories.length} категорий</span>
+        <span>{selectedCat === "all" ? topLevelCategories.length : (categoryChildren.get(selectedCat) ?? []).length} категорий</span>
       </div>
-      {categoriesLoading ? renderCatalogState(text.loading, false) : categoriesError ? renderCatalogState(categoriesError, true) : topLevelCategories.length === 0 ? renderCatalogState("Категории пока не загружены", true) : (
+      {categoriesLoading ? renderCatalogState(text.loading, false) : categoriesError ? renderCatalogState(categoriesError, true) : (selectedCat === "all" ? topLevelCategories : (categoryChildren.get(selectedCat) ?? [])).length === 0 ? renderCatalogState("Подкатегории не найдены", true) : (
         <div className="category-grid">
-          {topLevelCategories.map((category, index) => {
+          {(selectedCat === "all" ? topLevelCategories : (categoryChildren.get(selectedCat) ?? [])).map((category, index) => {
             const children = categoryChildren.get(category.id) ?? [];
             return <button type="button" className="category-card" key={category.id} onClick={() => {
               setSelectedCat(category.id);
@@ -2170,7 +2146,13 @@ export function App() {
           })}
         </div>
       )}
-      <div className="catalog-browser-actions"><button type="button" className="secondary-btn" onClick={() => { setSelectedCat("all"); goTo("Главная"); }}>Все товары</button></div>
+      <div className="catalog-browser-actions">
+        {selectedCat !== "all" && <button type="button" className="secondary-btn" onClick={() => {
+          const current = categories.find((category) => category.id === selectedCat);
+          setSelectedCat(current?.parentId ?? "all");
+        }}>Назад к категориям</button>}
+        <button type="button" className="secondary-btn" onClick={() => { setSelectedCat("all"); goTo("Главная"); }}>Все товары</button>
+      </div>
     </section>
   );
 
@@ -2566,8 +2548,7 @@ export function App() {
       { key: "stores", label: "Любимые магазины", Icon: Store },
       { key: "reviews", label: "Мои отзывы", Icon: Star },
       { key: "questions", label: "Вопросы и ответы", Icon: HelpCircle },
-      { key: "coupons", label: "Купоны", Icon: Ticket },
-      { key: "addresses", label: "Адреса доставки", Icon: MapPin },
+            { key: "addresses", label: "Адреса доставки", Icon: MapPin },
       { key: "payments", label: "Способы оплаты", Icon: CreditCard },
       { key: "settings", label: "Настройки", Icon: ShieldCheck },
       { key: "support", label: "Служба поддержки", Icon: MessageCircle },
@@ -2700,9 +2681,6 @@ export function App() {
               {profileSection === "stores" && <div className="profile-empty"><Store size={30} /><h3>Любимые магазины</h3><p>В текущем каталоге Uriona AliExpress не передаёт данные продавцов, необходимые для подписки на магазин. Раздел заработает после подтверждения доступа к данным магазинов.</p><button type="button" className="secondary-btn" onClick={() => goTo("Каталог")}>Вернуться в каталог</button></div>}
               {profileSection === "reviews" && <div className="profile-empty"><Star size={30} /><h3>Мои отзывы</h3><p>Отзывы можно оставить после доставки заказа. Публикация и хранение отзывов пока не подключены.</p><button type="button" className="secondary-btn" onClick={() => setProfileSection("orders")}>Мои заказы</button></div>}
               {profileSection === "questions" && <div className="profile-empty"><HelpCircle size={30} /><h3>Вопросы и ответы</h3><p>Вопросы продавцам и история ответов пока не подключены: для этого нужен разрешённый API продавцов и отдельный раздел товара.</p><button type="button" className="secondary-btn" onClick={() => goTo("Поддержка")}>Открыть справку</button></div>}
-              {profileSection === "coupons" && <div className="profile-coupon">
-                <div className="coupon-icon"><Ticket size={22} /></div><div><small>Купон Uriona</small><h3>SAVE10 · скидка 10%</h3><p>Действует на товары при сумме от 500 000 сум. Применение будет доступно в корзине.</p><button type="button" className="secondary-btn" onClick={() => { setPromo("SAVE10"); goTo("Корзина", "Промокод добавлен в корзину"); }}>Перейти в корзину</button></div>
-              </div>}
               {profileSection === "addresses" && <>
                 <div className="profile-section-heading"><div><small>Для оформления заказа</small><h3>Основной адрес доставки</h3></div><MapPin size={22} /></div>
                 <div className="profile-form">
