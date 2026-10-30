@@ -70,7 +70,7 @@ export class SellerCatalogController {
 
   @Get("seller/application")
   async getSellerApplication(@Headers("authorization") authorization?: string) {
-    const token = authorization?.replace(/^Bearer\\s+/i, "").trim();
+    const token = authorization?.replace(/^Bearer\s+/i, "").trim();
     if (!token) throw new UnauthorizedException("Bearer token is required");
     const user = await this.auth.validateSession(token);
     return this.catalog.getSellerApplication(user.id);
@@ -78,7 +78,7 @@ export class SellerCatalogController {
 
   @Post("seller/application")
   async submitSellerApplication(@Headers("authorization") authorization: string | undefined, @Body() body: SellerApplicationDto) {
-    const token = authorization?.replace(/^Bearer\\s+/i, "").trim();
+    const token = authorization?.replace(/^Bearer\s+/i, "").trim();
     if (!token) throw new UnauthorizedException("Bearer token is required");
     const user = await this.auth.validateSession(token);
     return this.catalog.submitSellerApplication(user.id, body);
@@ -87,7 +87,7 @@ export class SellerCatalogController {
   @Post("seller/application/image")
   @UseInterceptors(FileInterceptor("file", { storage: memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 1 } }))
   async uploadSellerApplicationImage(@Headers("authorization") authorization: string | undefined, @UploadedFile() file: ProductImageUpload) {
-    const token = authorization?.replace(/^Bearer\\s+/i, "").trim();
+    const token = authorization?.replace(/^Bearer\s+/i, "").trim();
     if (!token) throw new UnauthorizedException("Bearer token is required");
     const user = await this.auth.validateSession(token);
     return this.catalog.uploadImage(user.id, file);
