@@ -316,7 +316,7 @@ export function App() {
 
   async function updateSellerAccess(seller: ManagedSeller, status: "ACTIVE" | "PAUSED") {
     const message = status === "PAUSED"
-      ? `Приостановить продажи магазина «${seller.sellerApplication.storeName}»? Владелец сможет входить как покупатель.`
+      ? `Приостановить доступ к кабинету продавца «${seller.sellerApplication.storeName}»? Владелец сможет входить как покупатель.`
       : `Возобновить доступ продавца для магазина «${seller.sellerApplication.storeName}»?`;
     if (!window.confirm(message)) return;
     setBusy(true); setError("");
@@ -324,7 +324,7 @@ export function App() {
       await api(`/crm/sellers/${encodeURIComponent(seller.id)}/status`, {
         method: "PATCH", body: JSON.stringify({ status }),
       });
-      setNotice(status === "ACTIVE" ? "Доступ продавца восстановлен." : "Продажи продавца приостановлены.");
+      setNotice(status === "ACTIVE" ? "Доступ продавца восстановлен." : "Доступ к кабинету продавца приостановлен.");
       await loadPage("seller-management", search);
     } catch (reason) { setError(getErrorMessage(reason)); }
     finally { setBusy(false); }
@@ -547,7 +547,7 @@ export function App() {
               <td><div className="customer-cell">{seller.sellerApplication.logoUrl ? <img className="seller-table-logo" src={seller.sellerApplication.logoUrl} alt="" /> : <div className="customer-avatar"><Store size={15} /></div>}<div><b>{seller.sellerApplication.storeName}</b><small>{seller.name || "Без имени"} · {date(seller.createdAt)}</small></div></div></td>
               <td><b>{seller.email || "Email не указан"}</b><small>{seller.phone || "Телефон не указан"}</small></td><td>{seller.sellerApplication.region}, {seller.sellerApplication.city}</td><td>{seller._count.sellerProducts}</td><td>{seller._count.orders}</td>
               <td><span className={`product-status ${seller.role === "SELLER" ? "status-active" : "status-archived"}`}>{seller.role === "SELLER" ? "Активен" : "Приостановлен"}</span></td>
-              <td><div className="seller-management-actions"><button className="secondary-button" disabled={busy || !seller.email} title={!seller.email ? "У продавца нет email" : "Создать ссылку для сброса пароля"} onClick={() => void createSellerPasswordReset(seller)}>Сбросить пароль</button>{seller.role === "SELLER" ? <button className="danger-button" disabled={busy} onClick={() => void updateSellerAccess(seller, "PAUSED")}>Приостановить</button> : <button className="primary-button" disabled={busy} onClick={() => void updateSellerAccess(seller, "ACTIVE")}>Возобновить</button>}</div></td>
+              <td><div className="seller-management-actions"><button className="secondary-button" disabled={busy || !seller.email} title={!seller.email ? "У продавца нет email" : "Создать ссылку для сброса пароля"} onClick={() => void createSellerPasswordReset(seller)}>Сбросить пароль</button>{seller.role === "SELLER" ? <button className="danger-button" disabled={busy} onClick={() => void updateSellerAccess(seller, "PAUSED")}>Приостановить доступ</button> : <button className="primary-button" disabled={busy} onClick={() => void updateSellerAccess(seller, "ACTIVE")}>Возобновить</button>}</div></td>
             </tr>)}</tbody></table></div> : <EmptyTable icon={Store} title="Продавцы не найдены" copy="Одобренные заявки появятся здесь. Проверьте фильтр или список заявок." />}
           </section>}
           {page === "moderation" && <ModerationPage
