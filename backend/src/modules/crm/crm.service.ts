@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException
 } from "@nestjs/common";
-import { FinanceEntrySource, FinanceEntryType, OrderStatus } from "@prisma/client";
+import { FinanceEntrySource, FinanceEntryType, OrderStatus, Prisma } from "@prisma/client";
 import { PrismaService } from "../../database/prisma.service";
 
 const MAX_PAGE_SIZE = 100;
@@ -72,8 +72,8 @@ export class CrmService {
   async sellers(searchValue?: string, pageValue?: string, limitValue?: string) {
     const { page, limit, skip } = pagination(pageValue, limitValue);
     const search = searchValue?.trim();
-    const where = {
-      role: { in: ["SELLER", "CUSTOMER"] as const },
+    const where: Prisma.UserWhereInput = {
+      role: { in: ["SELLER", "CUSTOMER"] },
       sellerApplication: { is: { status: "APPROVED" as const } },
       ...(search ? { OR: [
         { name: { contains: search, mode: "insensitive" as const } },
