@@ -52,7 +52,7 @@ export class SellerCatalogService {
     if (user.role === "SELLER" || user.role === "ADMIN") throw new ConflictException("This account already has seller access");
     const existing = await this.prisma.sellerApplication.findUnique({ where: { userId } });
     if (existing?.status === "PENDING") throw new ConflictException("Your seller application is awaiting administrator review");
-    return this.prisma.sellerApplication.upsert({
+    const application = await this.prisma.sellerApplication.upsert({
       where: { userId },
       create: {
         userId, storeName: input.storeName.trim(), logoUrl: input.logoUrl?.trim() || null,
@@ -67,6 +67,60 @@ export class SellerCatalogService {
         status: "PENDING", reviewNote: null, reviewedAt: null, reviewedBy: null,
       },
     });
+    await this.notifyTelegramSellerApplication(userId, application);
+    return application;
+  }
+
+
+  private async notifyTelegramSellerApplication(userId: string, application: {
+    id: string;
+    storeName: string;
+    description: string;
+    region: string;
+    city: string;
+    address: string | null;
+  }) {
+    const botToken = this.config.get<string>("TELEGRAM_BOT_TOKEN");
+    const chatId = this.config.get<string>("TELEGRAM_CHAT_ID");
+    if (!botToken || !chatId) {
+      console.warn("Telegram seller application alert skipped: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is not configured");
+      return;
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true, email: true, phone: true },
+    });
+    if (!user) return;
+
+    const message = [
+      "🛎 URIONA — новая заявка продавца",
+      `Магазин: ${application.storeName}`,
+      `Заявитель: ${user.name || "Не указано"}`,
+      `Email: ${user.email || "не указан"}`,
+      `Телефон: ${user.phone || "не указан"}`,
+      `Регион: ${application.region}`,
+      `Город: ${application.city}`,
+      `Адрес: ${application.address || "не указан"}`,
+      `Описание: ${application.description.slice(0, 500)}`,
+      `ID заявки: ${application.id}`,
+      "Откройте CRM → Заявки продавцов, чтобы одобрить или отклонить заявку.",
+      "https://uriona-crm-console-29oct647.onrender.com",
+    ].join("\n");
+
+    try {
+      const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text: message, disable_web_page_preview: true }),
+      });
+      const result = await response.json().catch(() => null) as { ok?: boolean; description?: string } | null;
+      if (!response.ok || !result?.ok) {
+        console.error("Telegram seller application alert failed:", result?.description || `HTTP ${response.status}`);
+      }
+    } catch (error) {
+      console.error("Telegram seller application alert failed:", error instanceof Error ? error.message : "Unknown error");
+    }
   }
 
   listShippingBranches(carrier?: ShippingCarrier) {
