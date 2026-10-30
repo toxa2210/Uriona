@@ -2,10 +2,20 @@ import { Body, Controller, Delete, ForbiddenException, Get, Headers, Param, Patc
 import { FileInterceptor } from "@nestjs/platform-express";
 import { memoryStorage } from "multer";
 import { Type } from "class-transformer";
-import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Max, MaxLength, Min, ValidateNested } from "class-validator";
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Max, MaxLength, Min, ValidateNested } from "class-validator";
 import { AuthService } from "../auth/auth.service";
 import { ProductImageUpload } from "./r2-storage.service";
 import { SellerCatalogService } from "./seller-catalog.service";
+
+class SellerApplicationDto {
+  @IsString() @IsNotEmpty() @MaxLength(120) storeName!: string;
+  @IsOptional() @IsString() @MaxLength(2048) logoUrl?: string;
+  @IsString() @IsNotEmpty() @MaxLength(2000) description!: string;
+  @IsArray() @ArrayMinSize(1) @ArrayMaxSize(20) @IsString({ each: true }) categoryIds!: string[];
+  @IsString() @IsNotEmpty() @MaxLength(120) region!: string;
+  @IsString() @IsNotEmpty() @MaxLength(120) city!: string;
+  @IsOptional() @IsString() @MaxLength(500) address?: string;
+}
 
 class SellerProductDto {
   @IsOptional() @IsString() @MaxLength(190) id?: string;
@@ -56,6 +66,22 @@ export class SellerCatalogController {
     const user = await this.auth.validateSession(token);
     if (user.role !== "SELLER" && user.role !== "ADMIN") throw new ForbiddenException("Seller access is required");
     return user.id;
+  }
+
+  @Get("seller/application")
+  async getSellerApplication(@Headers("authorization") authorization?: string) {
+    const token = authorization?.replace(/^Bearer\\s+/i, "").trim();
+    if (!token) throw new UnauthorizedException("Bearer token is required");
+    const user = await this.auth.validateSession(token);
+    return this.catalog.getSellerApplication(user.id);
+  }
+
+  @Post("seller/application")
+  async submitSellerApplication(@Headers("authorization") authorization: string | undefined, @Body() body: SellerApplicationDto) {
+    const token = authorization?.replace(/^Bearer\\s+/i, "").trim();
+    if (!token) throw new UnauthorizedException("Bearer token is required");
+    const user = await this.auth.validateSession(token);
+    return this.catalog.submitSellerApplication(user.id, body);
   }
 
   @Get("shipping-branches")
