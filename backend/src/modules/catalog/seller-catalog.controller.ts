@@ -84,6 +84,14 @@ export class SellerCatalogController {
     return this.catalog.submitSellerApplication(user.id, body);
   }
 
+  @Post("seller/application/image")
+  @UseInterceptors(FileInterceptor("file", { storage: memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 1 } }))
+  async uploadSellerApplicationImage(@Headers("authorization") authorization: string | undefined, @UploadedFile() file: ProductImageUpload) {
+    const token = authorization?.replace(/^Bearer\\s+/i, "").trim();
+    if (!token) throw new UnauthorizedException("Bearer token is required");
+    const user = await this.auth.validateSession(token);
+    return this.catalog.uploadImage(user.id, file);
+  }
   @Get("shipping-branches")
   shippingBranches(@Query("carrier") carrier?: "EMU_EXPRESS" | "UZPOST") {
     return this.catalog.listShippingBranches(carrier);
