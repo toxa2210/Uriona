@@ -41,6 +41,7 @@ import { SellerDashboard } from "./SellerDashboard";
 import { DesktopShell } from "./layouts/DesktopShell";
 import { MobileShell } from "./layouts/MobileShell";
 import { useViewportMode } from "./layouts/useViewportMode";
+import { MobileHome } from "./mobile/MobileHome";
 
 function formatUzPhone(value: string): string {
   let digits = value.replace(/\D/g, "");
@@ -2806,7 +2807,64 @@ export function App() {
           }}
           onLanguageChange={setLanguage}
         >
-          <main className="page mobile-page">{renderMain()}</main>
+          <main className="page mobile-page">
+            {view === "Главная" ? (
+              <MobileHome
+                language={language}
+                products={homeProducts}
+                heroProducts={heroProducts}
+                heroSlide={heroSlide}
+                liked={liked}
+                categories={topLevelCategories}
+                catalogLoading={catalogLoading}
+                catalogError={catalogError}
+                catalogMoreLoading={catalogMoreLoading}
+                catalogMoreError={catalogMoreError}
+                catalogHasMore={catalogHasMore}
+                copy={{
+                  best: text.best,
+                  forYou: text.forYou,
+                  details: text.details,
+                  seeAll: text.seeAll,
+                  discount: text.discount,
+                  popular: text.popular,
+                  newProduct: language === "en" ? "New" : language === "uz" ? "Yangi" : "Новинка",
+                  buy: text.buy,
+                  loading: text.loading,
+                  noGoods: text.noGoods,
+                  retry: text.retry,
+                  categories: language === "en" ? "Categories" : language === "uz" ? "Kategoriyalar" : "Категории",
+                  allCategories: language === "en" ? "All" : language === "uz" ? "Barchasi" : "Все",
+                  addedToFavorites: language === "en" ? "Add to wishlist" : language === "uz" ? "Saralanganlarga qo‘shish" : "Добавить в избранное",
+                  removeFromFavorites: language === "en" ? "Remove from wishlist" : language === "uz" ? "Saralanganlardan olib tashlash" : "Убрать из избранного",
+                  sellerComingSoon: language === "en" ? "Seller checkout coming soon" : language === "uz" ? "Sotuvchi xaridi tez orada" : "Продажи скоро откроются",
+                  loadingMore: language === "en" ? "Loading more products…" : language === "uz" ? "Yana mahsulotlar yuklanmoqda…" : "Загружаем ещё товары…",
+                  allLoaded: language === "en" ? "You've seen all products" : language === "uz" ? "Barcha mahsulotlarni ko‘rdingiz" : "Вы посмотрели все товары",
+                }}
+                productTitle={productTitle}
+                categoryLabel={categoryLabel}
+                categoryPhoto={categoryPhoto}
+                onHeroChange={setHeroSlide}
+                onOpenProduct={(product) => void openProductDetails(product)}
+                onToggleFavorite={toggleFavorite}
+                onAddToCart={handleAddToCart}
+                onOpenCatalog={() => {
+                  setSelectedCat("all");
+                  setCategoryParentId(null);
+                  setCategorySearch("");
+                  goTo("Каталог", text.catalog);
+                }}
+                onSelectCategory={(categoryId) => {
+                  setSelectedCat(categoryId);
+                  setSearch("");
+                  goTo("Каталог");
+                }}
+                onRetry={retryCatalog}
+                onRetryMore={() => setCatalogMoreError("")}
+                sentinelRef={(node) => { catalogSentinelRef.current = node; }}
+              />
+            ) : renderMain()}
+          </main>
         </MobileShell>
       ) : (
         <DesktopShell>
