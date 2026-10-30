@@ -1104,6 +1104,14 @@ export function App() {
     [detailPayload],
   );
   const activeProductDetails = detailLoadedProductId === detailProduct?.id ? productDetails : null;
+  const detailImages = useMemo(() => {
+    const candidates = [
+      ...(detailProduct?.imageUrls ?? []),
+      detailProduct?.imageUrl,
+      ...(activeProductDetails?.images ?? []),
+    ];
+    return Array.from(new Set(candidates.filter((image): image is string => typeof image === "string" && image.trim().length > 0)));
+  }, [detailProduct, activeProductDetails]);
   const detailVariants = useMemo(
     () => checkoutVariants(activeProductDetails?.skus ?? []),
     [activeProductDetails],
@@ -1271,14 +1279,41 @@ export function App() {
     }
 
     let active = true;
-    setDetailImage(detailProduct.imageUrl ?? "");
+    setDetailImage(detailProduct.imageUrl ?? detailProduct.imageUrls?.[0] ?? "");
     setDetailImageZoomOpen(false);
     setDetailPayload(null);
-    setDetailLoadedProductId(detailProduct.id);
+    setDetailLoadedProductId(null);
     setDetailError("");
-    setDetailLoading(false);
+
+    // Seller products already include their complete gallery in the catalog API.
+    if (detailProduct.sellerId) {
+      setDetailLoadedProductId(detailProduct.id);
+      setDetailLoading(false);
+      return () => { active = false; };
+    }
+
+    // AliExpress products need a details request to retrieve all source images.
+    setDetailLoading(true);
+    api.aliexpress.productDetails(detailProduct.id, {
+      ship_to_country: "UZ",
+      target_currency: "UZS",
+      target_language: language === "uz" ? "en_US" : language === "en" ? "en_US" : "ru_RU",
+    })
+      .then((payload) => {
+        if (!active) return;
+        setDetailPayload(payload);
+        setDetailLoadedProductId(detailProduct.id);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setDetailError(error instanceof Error ? error.message : "Не удалось загрузить фотографии товара");
+      })
+      .finally(() => {
+        if (active) setDetailLoading(false);
+      });
+
     return () => { active = false; };
-  }, [detailProduct]);
+  }, [detailProduct, detailAttempt, language]);
 
   useEffect(() => {
     if (!detailProduct) return;
@@ -2921,17 +2956,17 @@ export function App() {
             <button type="button" className="product-dialog-close" onClick={() => setDetailProduct(null)} aria-label="Закрыть"><X size={20} /></button>
             <div className="product-dialog-layout">
               <div className="product-dialog-gallery">
-                {(detailImage || activeProductDetails?.images[0] || detailProduct.imageUrl) ? (
+                {(detailImage || detailImages[0] || detailProduct.imageUrl) ? (
                   <button type="button" className="product-dialog-image-button" onClick={() => setDetailImageZoomOpen(true)} aria-label="Открыть фото товара на весь экран">
-                    <img className="product-dialog-image" src={detailImage || activeProductDetails?.images[0] || detailProduct.imageUrl || undefined} alt={activeProductDetails?.subject || productTitle(detailProduct) || ""} referrerPolicy="no-referrer" />
+                    <img className="product-dialog-image" src={detailImage || detailImages[0] || detailProduct.imageUrl || undefined} alt={activeProductDetails?.subject || productTitle(detailProduct) || ""} referrerPolicy="no-referrer" />
                   </button>
                 ) : (
                   <div className="product-dialog-image-placeholder"><ShoppingBag size={44} /><span>Фото товара загружается</span></div>
                 )}
-                {activeProductDetails?.images && activeProductDetails.images.length > 0 && (
+                {detailImages.length > 1 && (
                   <div className="product-detail-images" aria-label="Фотографии товара">
-                    {activeProductDetails.images.slice(0, 8).map((image) => (
-                      <button type="button" key={image} className={"product-detail-image-thumb " + ((detailImage || activeProductDetails.images[0]) === image ? "selected" : "")} onClick={() => setDetailImage(image)} aria-label="Выбрать фотографию товара">
+                    {detailImages.slice(0, 10).map((image) => (
+                      <button type="button" key={image} className={"product-detail-image-thumb " + ((detailImage || detailImages[0]) === image ? "selected" : "")} onClick={() => setDetailImage(image)} aria-label="Выбрать фотографию товара">
                         <img src={image} alt="" referrerPolicy="no-referrer" loading="lazy" />
                       </button>
                     ))}
