@@ -114,7 +114,17 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {}
     throw new ApiRequestError(message, res.status);
   }
-  return res.json();
+  const responseText = await res.text();
+  if (!responseText.trim()) {
+    if (res.status === 204) return undefined as T;
+    throw new ApiRequestError(`API вернул пустой ответ (HTTP ${res.status}). Попробуйте ещё раз; если ошибка повторится, сообщите администратору.`, res.status);
+  }
+  try {
+    return JSON.parse(responseText) as T;
+  } catch {
+    const contentType = res.headers.get("content-type") ?? "unknown";
+    throw new ApiRequestError(`API вернул некорректный ответ (HTTP ${res.status}, ${contentType}).`, res.status);
+  }
 }
 
 const bearerHeaders = (token: string): HeadersInit => ({ Authorization: `Bearer ${token}` });
