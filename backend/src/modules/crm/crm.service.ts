@@ -41,6 +41,34 @@ function dateRange(from?: string, to?: string) {
 export class CrmService {
   constructor(private readonly prisma: PrismaService) {}
 
+  sellerApplications(statusValue?: string) {
+    if (statusValue && !["PENDING", "APPROVED", "REJECTED"].includes(statusValue)) {
+      throw new BadRequestException("Invalid seller application status");
+    }
+    return this.prisma.sellerApplication.findMany({
+      where: statusValue ? { status: statusValue as "PENDING" | "APPROVED" | "REJECTED" } : {},
+      orderBy: { createdAt: "asc" },
+      include: { user: { select: { id: true, name: true, email: true, phone: true } } },
+    });
+  }
+
+  async reviewSellerApplication(id: string, decision: "APPROVED" | "REJECTED", adminId: string, reviewNote?: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const application = await tx.sellerApplication.findUnique({ where: { id } });
+      if (!application) throw new NotFoundException("Seller application not found");
+      if (application.status !== "PENDING") throw new ConflictException("Seller application has already been reviewed");
+      if (decision === "REJECTED" && !reviewNote?.trim()) throw new BadRequestException("A rejection reason is required");
+      const updated = await tx.sellerApplication.update({
+        where: { id },
+        data: { status: decision, reviewNote: reviewNote?.trim() || null, reviewedAt: new Date(), reviewedBy: adminId },
+      });
+      if (decision === "APPROVED") {
+        await tx.user.update({ where: { id: application.userId }, data: { role: "SELLER" } });
+      }
+      return updated;
+    });
+  }
+
   async overview() {
     const [customers, orders, activeOrders, income, expenses, recentOrders] = await Promise.all([
       this.prisma.user.count({ where: { role: "CUSTOMER" } }),
