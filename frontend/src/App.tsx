@@ -2583,6 +2583,31 @@ export function App() {
             </nav>
             <div className="profile-content">
               {profileSection === "overview" && <>
+                {profile.role !== "SELLER" && profile.role !== "ADMIN" && (
+                  <section className="seller-onboarding-card">
+                    <div className="profile-section-heading"><div><small>URIONA MARKETPLACE</small><h3>Стать продавцом</h3></div><Store size={22} /></div>
+                    {sellerApplication?.status === "PENDING" ? (
+                      <div className="profile-empty"><ShieldCheck size={28} /><h3>Заявка на проверке</h3><p>Мы проверим информацию о магазине. После одобрения откроется кабинет продавца.</p></div>
+                    ) : (
+                      <>
+                        {sellerApplication?.status === "REJECTED" && <p className="checkout-error">Предыдущая заявка отклонена: {sellerApplication.reviewNote || "причина не указана"}. Вы можете исправить данные и отправить её повторно.</p>}
+                        <div className="profile-form">
+                          <label>Название магазина<input value={sellerApplicationForm.storeName} onChange={(event) => setSellerApplicationForm({ ...sellerApplicationForm, storeName: event.target.value })} maxLength={120} placeholder="Например, Tech World" /></label>
+                          <label>Фото или логотип магазина · ссылка<input type="url" value={sellerApplicationForm.logoUrl} onChange={(event) => setSellerApplicationForm({ ...sellerApplicationForm, logoUrl: event.target.value })} maxLength={2048} placeholder="https://..." /></label>
+                          {sellerApplicationForm.logoUrl && <img src={sellerApplicationForm.logoUrl} alt="Логотип магазина" className="seller-application-logo" />}
+                          <label>Описание магазина<textarea value={sellerApplicationForm.description} onChange={(event) => setSellerApplicationForm({ ...sellerApplicationForm, description: event.target.value })} maxLength={2000} rows={3} placeholder="Что продаёте и чем ваш магазин полезен покупателям?" /></label>
+                          <label>Категории товаров<input value={sellerApplicationForm.categories} onChange={(event) => setSellerApplicationForm({ ...sellerApplicationForm, categories: event.target.value })} placeholder="Электроника, одежда, товары для дома" /><small>Перечислите категории через запятую.</small></label>
+                          <label>Регион отправителя<input value={sellerApplicationForm.region} onChange={(event) => setSellerApplicationForm({ ...sellerApplicationForm, region: event.target.value })} maxLength={120} placeholder="Ташкентская область" /></label>
+                          <label>Город<input value={sellerApplicationForm.city} onChange={(event) => setSellerApplicationForm({ ...sellerApplicationForm, city: event.target.value })} maxLength={120} placeholder="Ташкент" /></label>
+                          <label>Адрес или район отправления<input value={sellerApplicationForm.address} onChange={(event) => setSellerApplicationForm({ ...sellerApplicationForm, address: event.target.value })} maxLength={500} placeholder="Район, улица (необязательно)" /></label>
+                        </div>
+                        {sellerApplicationError && <p className="checkout-error" role="alert">{sellerApplicationError}</p>}
+                        <div className="profile-actions"><button type="button" className="primary-btn" disabled={sellerApplicationBusy} onClick={() => void submitSellerApplication()}>{sellerApplicationBusy ? "Отправляем…" : "Отправить заявку на проверку"}</button></div>
+                        <p className="profile-hint">Магазин станет доступен для продаж только после одобрения администратором URIONA.</p>
+                      </>
+                    )}
+                  </section>
+                )}
                 <div className="mini-grid">
                   <button type="button" className="mini-tile" onClick={() => setProfileSection("orders")}><Package size={18} /><span>Активные заказы</span><b>{activeOrderCount}</b></button>
                   <button type="button" className="mini-tile" onClick={() => setProfileSection("payments")}><CreditCard size={18} /><span>Оплата</span><b>Настроить</b></button>
