@@ -22,7 +22,6 @@ import {
   ShoppingBag,
   Star,
   Store,
-  Ticket,
   Truck,
   RotateCcw,
   UserRound,
@@ -39,6 +38,15 @@ import { prepareMarketplaceQuery, productPopularity } from "./search";
 import { parseSearchInterests, recordSearchInterest, selectHomeRecommendationQueries, type SearchInterests } from "./recommendations";
 import { findNearestBranches, type BranchWithDistance } from "./nearestBranches";
 import { SellerDashboard } from "./SellerDashboard";
+
+function formatUzPhone(value: string): string {
+  let digits = value.replace(/\D/g, "");
+  if (digits.startsWith("998")) digits = digits.slice(3);
+  else if (digits.startsWith("0")) digits = digits.slice(1);
+  digits = digits.slice(0, 9);
+  const groups = [digits.slice(0, 2), digits.slice(2, 5), digits.slice(5, 7), digits.slice(7, 9)].filter(Boolean);
+  return groups.length ? "+998 " + groups.join(" ") : "+998 ";
+}
 
 const navItems = ["Главная", "Категории", "Корзина", "Профиль"] as const;
 type Language = "ru" | "en" | "uz";
@@ -1061,8 +1069,6 @@ export function App() {
   const [categoriesError, setCategoriesError] = useState("");
   const [liked, setLiked] = useState<string[]>(readStoredLiked);
   const [cartItems, setCartItems] = useState<Record<string, number>>(readStoredCart);
-  const [promo, setPromo] = useState("");
-  const [appliedPromo, setAppliedPromo] = useState("");
   const [demoPayment, setDemoPayment] = useState<DemoPayment | null>(() => DEMO_PAYMENT_ENABLED ? readStoredDemoPayment() : null);
   const [demoPaymentScenario, setDemoPaymentScenario] = useState<"success" | "declined">("success");
   const [notice, setNotice] = useState("");
@@ -1517,17 +1523,13 @@ export function App() {
       ? `${cartCount} ta mahsulot`
       : `${cartCount} ${cartCount % 10 === 1 && cartCount % 100 !== 11 ? "товар" : cartCount % 10 >= 2 && cartCount % 10 <= 4 && (cartCount % 100 < 12 || cartCount % 100 > 14) ? "товара" : "товаров"}`;
   const subtotal = cartEntryList.reduce((sum, product) => sum + product.priceMinor * (cartItems[product.id] ?? 0), 0);
-  const discount = appliedPromo === "SAVE10" && subtotal >= MIN_PROMO_SUBTOTAL
-    ? Math.round(subtotal * 0.1)
-    : 0;
+  const discount = 0;
   const total = subtotal - discount;
   const checkoutSubtotal = cartEntryList.reduce((sum, product) => {
     const quantity = cartItems[product.id] ?? 0;
     return sum + (shippingQuotes[product.id]?.unitPriceMinor ?? product.priceMinor) * quantity;
   }, 0);
-  const checkoutDiscount = appliedPromo === "SAVE10" && checkoutSubtotal >= MIN_PROMO_SUBTOTAL
-    ? Math.round(checkoutSubtotal * 0.1)
-    : 0;
+  const checkoutDiscount = 0;
   const checkoutShippingTotal = cartEntryList.reduce((sum, product) => {
     const quote = shippingQuotes[product.id];
     const selectedOption = quote?.shippingOptions.find((option) => option.code === shippingOptionByProduct[product.id]);
@@ -1624,8 +1626,8 @@ export function App() {
   const handleAddToCart = (productId: string) => {
     const product = knownProducts.find((item) => item.id === productId)
       ?? products.find((item) => item.id === productId);
-    if (product && typeof product.stock === "number" && product.stock <= 0) {
-      setNotice(language === "en" ? "This product is out of stock" : language === "uz" ? "Mahsulot omborda qolmagan" : "Товар закончился");
+    if (product && typeof product.stock === "number" && (product.stock <= 0 || (cartItems[productId] ?? 0) >= product.stock)) {
+      setNotice(product.stock <= 0 ? "Товар закончился" : "Доступно только " + product.stock + " шт.");
       return;
     }
     setCartItems((items) => ({ ...items, [productId]: (items[productId] ?? 0) + 1 }));
@@ -1645,27 +1647,16 @@ export function App() {
     setDetailProduct(product);
   };
 
-  const applyPromo = () => {
-    const code = promo.trim().toUpperCase();
-    if (code !== "SAVE10") {
-      setAppliedPromo("");
-      setNotice(code ? "Промокод не найден" : "Введите промокод");
-      return;
-    }
-    if (subtotal < MIN_PROMO_SUBTOTAL) {
-      setAppliedPromo("");
-      setNotice("SAVE10 действует для заказа от 500 000 сум");
-      return;
-    }
-    setAppliedPromo(code);
-    setNotice("Промокод SAVE10 применён");
-  };
-
   const handleQtyChange = (productId: string, delta: number) => {
     setShippingQuotes({});
     setShippingOptionByProduct({});
     setCartItems((items) => {
+      const product = knownProducts.find((item) => item.id === productId) ?? products.find((item) => item.id === productId);
       const nextQty = (items[productId] ?? 0) + delta;
+      if (delta > 0 && product?.sellerId && typeof product.stock === "number" && nextQty > product.stock) {
+        setNotice("Доступно только " + product.stock + " шт.");
+        return items;
+      }
       if (nextQty <= 0) {
         const { [productId]: _, ...rest } = items;
         return rest;
@@ -1723,7 +1714,7 @@ export function App() {
   const submitCheckoutOrder = async () => {
     if (!authToken) { setCheckoutError("Сеанс истёк. Войдите в профиль повторно."); return; }
     if (!profileForm.name.trim() || !profileForm.phone.trim() || !profileForm.city.trim() || !profileForm.address.trim()) { setCheckoutError("Заполните имя, телефон, город и адрес доставки."); return; }
-    if (!/^\\+?[0-9()\\-\\s]{7,40}$/.test(profileForm.phone.trim())) { setCheckoutError("Проверьте номер телефона."); return; }
+    if (!/^998\d{9}$/.test(profileForm.phone.replace(/\D/g, ""))) { setCheckoutError("Введите номер Узбекистана в формате +998 XX XXX XX XX."); return; }
     if (!checkoutShippingSelected) { setCheckoutError("Рассчитайте доставку и выберите способ доставки для товаров AliExpress."); return; }
     const orderItems = [];
     for (const product of cartEntryList) {
@@ -1754,9 +1745,9 @@ export function App() {
       await api.orders.create(authToken, {
         recipientName: profileForm.name.trim(), recipientPhone: profileForm.phone.trim(),
         deliveryCity: profileForm.city.trim(), deliveryAddress: profileForm.address.trim(),
-        ...(appliedPromo ? { promoCode: appliedPromo } : {}), items: orderItems,
+        items: orderItems,
       });
-      setCartItems({}); setPromo(""); setAppliedPromo(""); setCheckoutOpen(false);
+      setCartItems({}); setCheckoutOpen(false);
       setShippingQuotes({}); setShippingOptionByProduct({}); setProfileSection("orders");
       setOrdersAttempt((attempt) => attempt + 1); setView("Профиль");
       setNotice("Заказ создан и ожидает оплаты. Заказы продавцов Uriona будут обработаны продавцами; AliExpress-заказы пока не отправлены поставщику.");
@@ -1785,8 +1776,6 @@ export function App() {
     setDemoPayment(payment);
     if (payment.status === "PAID") {
       setCartItems({});
-      setPromo("");
-      setAppliedPromo("");
       setNotice("Тестовый заказ оплачен");
     } else {
       setNotice("Тестовая оплата отклонена");
@@ -2134,7 +2123,37 @@ export function App() {
     </div>
   );
 
-  const renderCatalog = () => renderHome();
+  const renderCatalog = () => selectedCat !== "all" && (categoryChildren.get(selectedCat) ?? []).length === 0 ? renderHome() : (
+    <section className="screen-panel catalog-browser">
+      <div className="section-head panel-head">
+        <div><small>URIONA MARKETPLACE</small><h2>Каталог товаров</h2><p>Выберите категорию, чтобы посмотреть товары</p></div>
+        <span>{selectedCat === "all" ? topLevelCategories.length : (categoryChildren.get(selectedCat) ?? []).length} категорий</span>
+      </div>
+      {categoriesLoading ? renderCatalogState(text.loading, false) : categoriesError ? renderCatalogState(categoriesError, true) : (selectedCat === "all" ? topLevelCategories : (categoryChildren.get(selectedCat) ?? [])).length === 0 ? renderCatalogState("Подкатегории не найдены", true) : (
+        <div className="category-grid">
+          {(selectedCat === "all" ? topLevelCategories : (categoryChildren.get(selectedCat) ?? [])).map((category, index) => {
+            const children = categoryChildren.get(category.id) ?? [];
+            return <button type="button" className="category-card" key={category.id} onClick={() => {
+              setSelectedCat(category.id);
+              setSearch("");
+              goTo("Каталог");
+            }}>
+              <img src={categoryPhoto(category, index)} alt="" loading="lazy" />
+              <span><strong>{categoryLabel(category)}</strong><small>{children.length ? children.length + " подкатегорий" : "Смотреть товары"}</small></span>
+              <ChevronRight size={18} />
+            </button>;
+          })}
+        </div>
+      )}
+      <div className="catalog-browser-actions">
+        {selectedCat !== "all" && <button type="button" className="secondary-btn" onClick={() => {
+          const current = categories.find((category) => category.id === selectedCat);
+          setSelectedCat(current?.parentId ?? "all");
+        }}>Назад к категориям</button>}
+        <button type="button" className="secondary-btn" onClick={() => { setSelectedCat("all"); goTo("Главная"); }}>Все товары</button>
+      </div>
+    </section>
+  );
 
   const renderChinaGoods = () => (
     <section className="screen-panel">
@@ -2342,7 +2361,7 @@ export function App() {
                       <div className="qty-control qty-control-modern" aria-label="Количество товара">
                         <button type="button" aria-label="Уменьшить количество" onClick={() => handleQtyChange(product.id, -1)}><Minus size={14} /></button>
                         <span>{quantity}</span>
-                        <button type="button" aria-label="Увеличить количество" onClick={() => handleQtyChange(product.id, 1)}><Plus size={14} /></button>
+                        <button type="button" aria-label="Увеличить количество" disabled={Boolean(product.sellerId && typeof product.stock === "number" && quantity >= product.stock)} onClick={() => handleQtyChange(product.id, 1)}><Plus size={14} /></button>
                       </div>
                       <strong className="cart-line-total">{formatUzs(product.priceMinor * quantity)}</strong>
                       <button
@@ -2366,23 +2385,6 @@ export function App() {
             <div className="cart-checkout-heading">
               <h3>Сводка заказа</h3>
               <ShieldCheck size={20} />
-            </div>
-
-            <div className="promo-box cart-promo-box">
-              <label htmlFor="promo-code">Промокод</label>
-              <div className="promo-row">
-                <input
-                  id="promo-code"
-                  value={promo}
-                  onChange={(event) => {
-                    setPromo(event.target.value);
-                    setAppliedPromo("");
-                  }}
-                  placeholder="SAVE10"
-                />
-                <button type="button" onClick={applyPromo}>Применить</button>
-              </div>
-              {appliedPromo && <span className="cart-promo-applied"><CheckCircle2 size={14} />Промокод SAVE10 применён</span>}
             </div>
 
             <div className="totals cart-totals">
@@ -2464,7 +2466,7 @@ export function App() {
                 {localCartEntries.length > 0 && <p className="checkout-disclosure">Местные товары не передаются в AliExpress. Стоимость доставки местного продавца согласуется отдельно.</p>}
                 <div className="checkout-recipient-fields">
                   <label>Получатель<input value={profileForm.name} onChange={(event) => setProfileForm({ ...profileForm, name: event.target.value })} maxLength={120} autoComplete="name" /></label>
-                  <label>Телефон<input type="tel" value={profileForm.phone} onChange={(event) => setProfileForm({ ...profileForm, phone: event.target.value })} maxLength={40} autoComplete="tel" placeholder="+998" /></label>
+                  <label>Телефон<input type="tel" inputMode="numeric" value={profileForm.phone} onChange={(event) => setProfileForm({ ...profileForm, phone: formatUzPhone(event.target.value) })} maxLength={17} autoComplete="tel" placeholder="+998 XX XXX XX XX" /></label>
                   <label>Город<input value={profileForm.city} onChange={(event) => setProfileForm({ ...profileForm, city: event.target.value })} maxLength={120} autoComplete="address-level2" /></label>
                   <label>Адрес доставки<textarea value={profileForm.address} onChange={(event) => setProfileForm({ ...profileForm, address: event.target.value })} maxLength={1000} autoComplete="street-address" rows={3} /></label>
                 </div>
@@ -2545,8 +2547,7 @@ export function App() {
       { key: "stores", label: "Любимые магазины", Icon: Store },
       { key: "reviews", label: "Мои отзывы", Icon: Star },
       { key: "questions", label: "Вопросы и ответы", Icon: HelpCircle },
-      { key: "coupons", label: "Купоны", Icon: Ticket },
-      { key: "addresses", label: "Адреса доставки", Icon: MapPin },
+            { key: "addresses", label: "Адреса доставки", Icon: MapPin },
       { key: "payments", label: "Способы оплаты", Icon: CreditCard },
       { key: "settings", label: "Настройки", Icon: ShieldCheck },
       { key: "support", label: "Служба поддержки", Icon: MessageCircle },
@@ -2637,7 +2638,7 @@ export function App() {
                 <div className="profile-form">
                   <label>Имя<input value={profileForm.name} onChange={(event) => setProfileForm({ ...profileForm, name: event.target.value })} placeholder="Ваше имя" /></label>
                   <label>Email<input type="email" value={profileForm.email} readOnly /></label>
-                  <label>Телефон<input type="tel" value={profileForm.phone} onChange={(event) => setProfileForm({ ...profileForm, phone: event.target.value })} placeholder="Добавить номер позже" /></label>
+                  <label>Телефон<input type="tel" inputMode="numeric" value={profileForm.phone} onChange={(event) => setProfileForm({ ...profileForm, phone: formatUzPhone(event.target.value) })} maxLength={17} placeholder="+998 XX XXX XX XX" /></label>
                   <label>Город<input value={profileForm.city} onChange={(event) => setProfileForm({ ...profileForm, city: event.target.value })} placeholder="Ташкент" /></label>
                   <label>Адрес доставки<textarea value={profileForm.address} onChange={(event) => setProfileForm({ ...profileForm, address: event.target.value })} placeholder="Улица, дом, квартира" rows={3} /></label>
                 </div>
@@ -2679,14 +2680,11 @@ export function App() {
               {profileSection === "stores" && <div className="profile-empty"><Store size={30} /><h3>Любимые магазины</h3><p>В текущем каталоге Uriona AliExpress не передаёт данные продавцов, необходимые для подписки на магазин. Раздел заработает после подтверждения доступа к данным магазинов.</p><button type="button" className="secondary-btn" onClick={() => goTo("Каталог")}>Вернуться в каталог</button></div>}
               {profileSection === "reviews" && <div className="profile-empty"><Star size={30} /><h3>Мои отзывы</h3><p>Отзывы можно оставить после доставки заказа. Публикация и хранение отзывов пока не подключены.</p><button type="button" className="secondary-btn" onClick={() => setProfileSection("orders")}>Мои заказы</button></div>}
               {profileSection === "questions" && <div className="profile-empty"><HelpCircle size={30} /><h3>Вопросы и ответы</h3><p>Вопросы продавцам и история ответов пока не подключены: для этого нужен разрешённый API продавцов и отдельный раздел товара.</p><button type="button" className="secondary-btn" onClick={() => goTo("Поддержка")}>Открыть справку</button></div>}
-              {profileSection === "coupons" && <div className="profile-coupon">
-                <div className="coupon-icon"><Ticket size={22} /></div><div><small>Купон Uriona</small><h3>SAVE10 · скидка 10%</h3><p>Действует на товары при сумме от 500 000 сум. Применение будет доступно в корзине.</p><button type="button" className="secondary-btn" onClick={() => { setPromo("SAVE10"); goTo("Корзина", "Промокод добавлен в корзину"); }}>Перейти в корзину</button></div>
-              </div>}
               {profileSection === "addresses" && <>
                 <div className="profile-section-heading"><div><small>Для оформления заказа</small><h3>Основной адрес доставки</h3></div><MapPin size={22} /></div>
                 <div className="profile-form">
                   <label>Получатель<input value={profileForm.name} onChange={(event) => setProfileForm({ ...profileForm, name: event.target.value })} placeholder="Имя получателя" /></label>
-                  <label>Телефон<input type="tel" value={profileForm.phone} onChange={(event) => setProfileForm({ ...profileForm, phone: event.target.value })} placeholder="+998" /></label>
+                  <label>Телефон<input type="tel" inputMode="numeric" value={profileForm.phone} onChange={(event) => setProfileForm({ ...profileForm, phone: formatUzPhone(event.target.value) })} maxLength={17} placeholder="+998 XX XXX XX XX" /></label>
                   <label>Город<input value={profileForm.city} onChange={(event) => setProfileForm({ ...profileForm, city: event.target.value })} placeholder="Ташкент" /></label>
                   <label>Улица, дом, квартира<textarea value={profileForm.address} onChange={(event) => setProfileForm({ ...profileForm, address: event.target.value })} placeholder="Улица, дом, квартира" rows={3} /></label>
                 </div>
@@ -2749,13 +2747,11 @@ export function App() {
               aria-expanded={catalogMenuOpen}
               aria-haspopup="menu"
               onClick={() => {
-                if (window.matchMedia("(max-width: 760px)").matches) {
-                  setCatalogMenuOpen(false);
-                  setSelectedCat("all");
-                  goTo("Категории", "Каталог открыт");
-                } else {
-                  setCatalogMenuOpen((open) => !open);
-                }
+                setCatalogMenuOpen(false);
+                setSelectedCat("all");
+                setCategoryParentId(null);
+                setCategorySearch("");
+                goTo("Каталог", "Каталог открыт");
               }}
             >
               <Store size={18} />
