@@ -2,8 +2,6 @@ import { BadRequestException, ConflictException, Injectable } from "@nestjs/comm
 import { PrismaService } from "../../database/prisma.service";
 import { AliexpressService, type AliExpressFreightOption } from "../integrations/aliexpress/aliexpress.service";
 
-const SAVE10_MIN_SUBTOTAL_MINOR = 50_000_000;
-
 @Injectable()
 export class OrdersService {
   constructor(
