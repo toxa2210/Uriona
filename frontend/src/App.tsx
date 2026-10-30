@@ -1684,83 +1684,49 @@ export function App() {
   };
 
   const submitCheckoutOrder = async () => {
-    if (!authToken) {
-      setCheckoutError("Сеанс истёк. Войдите в профиль повторно.");
-      return;
-    }
-    if (!profileForm.name.trim() || !profileForm.phone.trim() || !profileForm.city.trim() || !profileForm.address.trim()) {
-      setCheckoutError("Заполните имя, телефон, город и адрес доставки.");
-      return;
-    }
-    if (!/^\+?[0-9()\-\s]{7,40}$/.test(profileForm.phone.trim())) {
-      setCheckoutError("Проверьте номер телефона.");
-      return;
-    }
-    if (!checkoutShippingSelected) {
-      setCheckoutError("Рассчитайте доставку и выберите способ доставки для каждого товара.");
-      return;
-    }
-
+    if (!authToken) { setCheckoutError("Сеанс истёк. Войдите в профиль повторно."); return; }
+    if (!profileForm.name.trim() || !profileForm.phone.trim() || !profileForm.city.trim() || !profileForm.address.trim()) { setCheckoutError("Заполните имя, телефон, город и адрес доставки."); return; }
+    if (!/^\\+?[0-9()\\-\\s]{7,40}$/.test(profileForm.phone.trim())) { setCheckoutError("Проверьте номер телефона."); return; }
+    if (!checkoutShippingSelected) { setCheckoutError("Рассчитайте доставку и выберите способ доставки для товаров AliExpress."); return; }
     const orderItems = [];
     for (const product of cartEntryList) {
+      const quantity = cartItems[product.id] ?? 0;
+      if (product.sellerId) {
+        orderItems.push({ productId: product.id, quantity, productTitle: productTitle(product), imageUrl: product.imageUrl ?? undefined });
+        continue;
+      }
       const quote = shippingQuotes[product.id];
       const variantId = checkoutSkuByProduct[product.id];
       const variant = checkoutVariantsByProduct[product.id]?.find((option) => option.id === variantId);
       const shippingOption = quote?.shippingOptions.find((option) => option.code === shippingOptionByProduct[product.id]);
-      if (!quote || !variant || !shippingOption || quote.quantity !== cartItems[product.id]) {
-        setCheckoutError("Данные товара или доставки изменились. Рассчитайте доставку заново.");
-        return;
-      }
+      if (!quote || !variant || !shippingOption || quote.quantity !== quantity) { setCheckoutError("Данные товара или доставки AliExpress изменились. Рассчитайте доставку заново."); return; }
       orderItems.push({
-        productId: product.id,
-        quantity: cartItems[product.id],
-        supplierProductId: product.id,
-        supplierSkuId: variant.id,
-        productTitle: quote.title || productTitle(product) || "Товар AliExpress",
-        variantLabel: variant.label,
-        imageUrl: product.imageUrl ?? undefined,
-        unitPriceMinor: quote.unitPriceMinor,
-        shippingOptionCode: shippingOption.code,
-        shippingFeeMinor: shippingOption.feeUzsMinor,
-        shippingCompany: shippingOption.company,
-        shippingFeeFormat: shippingOption.feeFormat,
-        shippingCurrency: shippingOption.currency,
-        shippingMinDays: shippingOption.minDeliveryDays,
+        productId: product.id, quantity, supplierProductId: product.id, supplierSkuId: variant.id,
+        productTitle: quote.title || productTitle(product) || "Товар AliExpress", variantLabel: variant.label,
+        imageUrl: product.imageUrl ?? undefined, unitPriceMinor: quote.unitPriceMinor,
+        shippingOptionCode: shippingOption.code, shippingFeeMinor: shippingOption.feeUzsMinor,
+        shippingCompany: shippingOption.company, shippingFeeFormat: shippingOption.feeFormat,
+        shippingCurrency: shippingOption.currency, shippingMinDays: shippingOption.minDeliveryDays,
         shippingMaxDays: shippingOption.maxDeliveryDays,
         ...(shippingOption.tracking === null ? {} : { shippingTracking: shippingOption.tracking }),
         shippingQuoteQuantity: quote.quantity,
       });
     }
-
-    setCheckoutBusy(true);
-    setCheckoutError("");
+    setCheckoutBusy(true); setCheckoutError("");
     try {
       await api.orders.create(authToken, {
-        recipientName: profileForm.name.trim(),
-        recipientPhone: profileForm.phone.trim(),
-        deliveryCity: profileForm.city.trim(),
-        deliveryAddress: profileForm.address.trim(),
-        ...(appliedPromo ? { promoCode: appliedPromo } : {}),
-        items: orderItems,
+        recipientName: profileForm.name.trim(), recipientPhone: profileForm.phone.trim(),
+        deliveryCity: profileForm.city.trim(), deliveryAddress: profileForm.address.trim(),
+        ...(appliedPromo ? { promoCode: appliedPromo } : {}), items: orderItems,
       });
-      setCartItems({});
-      setPromo("");
-      setAppliedPromo("");
-      setCheckoutOpen(false);
-      setShippingQuotes({});
-      setShippingOptionByProduct({});
-      setProfileSection("orders");
-      setOrdersAttempt((attempt) => attempt + 1);
-      setView("Профиль");
-      setNotice("Заказ создан и ожидает оплаты. Он не отправлен продавцу.");
+      setCartItems({}); setPromo(""); setAppliedPromo(""); setCheckoutOpen(false);
+      setShippingQuotes({}); setShippingOptionByProduct({}); setProfileSection("orders");
+      setOrdersAttempt((attempt) => attempt + 1); setView("Профиль");
+      setNotice("Заказ создан и ожидает оплаты. Заказы продавцов Uriona будут обработаны продавцами; AliExpress-заказы пока не отправлены поставщику.");
     } catch (error: unknown) {
-      if (error instanceof ApiRequestError && error.status === 401) {
-        clearExpiredSession(profile?.email);
-      }
+      if (error instanceof ApiRequestError && error.status === 401) clearExpiredSession(profile?.email);
       setCheckoutError(error instanceof Error ? error.message : "Не удалось создать заказ.");
-    } finally {
-      setCheckoutBusy(false);
-    }
+    } finally { setCheckoutBusy(false); }
   };
 
   const simulatePayment = () => {
