@@ -106,7 +106,7 @@ export class SellerCatalogService {
       `ID заявки: ${application.id}`,
       "Откройте CRM → Заявки продавцов, чтобы одобрить или отклонить заявку.",
       "https://uriona-crm-console-29oct647.onrender.com",
-    ].join("\\n");
+    ].join("\n");
 
     try {
       const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
