@@ -142,3 +142,5 @@
 .seller-refresh-spinning { animation:seller-refresh-spin 1s linear infinite; }
 @keyframes seller-refresh-spin { to { transform:rotate(360deg); } }
 @media(max-width:560px) { .seller-workspace-header-actions { gap:5px; } .seller-workspace-refresh { padding:8px; } .seller-workspace-refresh span { display:none; } }
+
+.seller-map-link { display:inline-flex; align-items:center; gap:6px; color:var(--cyan); font-size:12px; text-decoration:underline; }
