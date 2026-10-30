@@ -38,6 +38,9 @@ import { prepareMarketplaceQuery, productPopularity } from "./search";
 import { parseSearchInterests, recordSearchInterest, selectHomeRecommendationQueries, type SearchInterests } from "./recommendations";
 import { findNearestBranches, type BranchWithDistance } from "./nearestBranches";
 import { SellerDashboard } from "./SellerDashboard";
+import { DesktopShell } from "./layouts/DesktopShell";
+import { MobileShell } from "./layouts/MobileShell";
+import { useViewportMode } from "./layouts/useViewportMode";
 
 function formatUzPhone(value: string): string {
   let digits = value.replace(/\D/g, "");
@@ -1015,6 +1018,7 @@ function checkoutVariants(skus: Record<string, unknown>[]): CheckoutVariant[] {
 }
 
 export function App() {
+  const isMobile = useViewportMode();
   const [language, setLanguage] = useState<Language>(() => (localStorage.getItem("uriona-language") as Language) || "ru");
   const [lightMode, setLightMode] = useState(() => localStorage.getItem("uriona-theme") !== "dark");
   const text = translations[language];
@@ -2766,8 +2770,36 @@ export function App() {
   };
 
   return localizeNode(
-    <div className={`app-shell ${lightMode ? "light-mode" : ""}`}>
-      <header className="topbar">
+    <div className={`app-shell ${lightMode ? "light-mode" : ""} ${isMobile ? "mobile-app-shell" : "desktop-app-shell"}`}>
+      {isMobile ? (
+        <MobileShell
+          activeView={view}
+          searchValue={search}
+          searchPlaceholder={text.search}
+          cartCount={cartCount}
+          language={language}
+          languageLabel={text.lang}
+          onSearchChange={setSearch}
+          onSearchSubmit={() => {
+            rememberCurrentSearch();
+            setSelectedCat("all");
+            goTo("Главная");
+          }}
+          onNavigate={(nextView) => {
+            if (nextView === "Каталог") {
+              setSelectedCat("all");
+              setCategoryParentId(null);
+              setCategorySearch("");
+            }
+            goTo(nextView);
+          }}
+          onLanguageChange={setLanguage}
+        >
+          <main className="page mobile-page">{renderMain()}</main>
+        </MobileShell>
+      ) : (
+        <DesktopShell>
+          <header className="topbar">
         <div className="top-row">
           <button type="button" className="brand" aria-label="URIONA logo — на главную" onClick={openHome}>
             <LogoMark className="brand-mark" />
@@ -2916,9 +2948,10 @@ export function App() {
           </div>
         </div>
 
-      </header>
-
-      <main className="page">{renderMain()}</main>
+          </header>
+          <main className="page">{renderMain()}</main>
+        </DesktopShell>
+      )}
 
       {pickupDialogOpen && (
         <div className="pickup-dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setPickupDialogOpen(false); }}>
