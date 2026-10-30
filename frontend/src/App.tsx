@@ -33,7 +33,7 @@ import {
 } from "lucide-react";
 import { createUserWithEmailAndPassword, getIdToken, reload, sendEmailVerification, sendPasswordResetEmail, signInWithEmailAndPassword, signOut } from "@firebase/auth";
 import type { User as FirebaseUser } from "@firebase/auth";
-import { ApiRequestError, api, formatUzs, type ApiCategory, type ApiOrder, type ApiProduct, type ApiShippingQuote, type ApiUser } from "./api";
+import { ApiRequestError, api, formatUzs, type ApiCategory, type ApiOrder, type ApiProduct, type ApiShippingQuote, type ApiSellerApplication, type ApiUser } from "./api";
 import { firebaseAuth, firebaseConfigReady } from "./firebase";
 import { prepareMarketplaceQuery, productPopularity } from "./search";
 import { parseSearchInterests, recordSearchInterest, selectHomeRecommendationQueries, type SearchInterests } from "./recommendations";
@@ -1069,6 +1069,10 @@ export function App() {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState("");
   const [ordersAttempt, setOrdersAttempt] = useState(0);
+  const [sellerApplication, setSellerApplication] = useState<ApiSellerApplication | null>(null);
+  const [sellerApplicationBusy, setSellerApplicationBusy] = useState(false);
+  const [sellerApplicationError, setSellerApplicationError] = useState("");
+  const [sellerApplicationForm, setSellerApplicationForm] = useState({ storeName: "", logoUrl: "", description: "", categories: "", region: "", city: "", address: "" });
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
@@ -1493,13 +1497,13 @@ export function App() {
     return sum + (selectedOption?.feeUzsMinor ?? 0);
   }, 0);
   const checkoutTotal = checkoutSubtotal - checkoutDiscount + checkoutShippingTotal;
-  const checkoutQuotesReady = cartEntryList.length > 0 && cartEntryList.every((product) => {
+  const aliCartEntries = cartEntryList.filter((product) => !product.sellerId);
+  const localCartEntries = cartEntryList.filter((product) => Boolean(product.sellerId));
+  const checkoutQuotesReady = aliCartEntries.length === 0 || aliCartEntries.every((product) => {
     const quote = shippingQuotes[product.id];
     return quote?.quantity === cartItems[product.id] && quote.shippingOptions.length > 0;
   });
-  const checkoutShippingSelected = checkoutQuotesReady && cartEntryList.every((product) =>
-    Boolean(shippingOptionByProduct[product.id])
-  );
+  const checkoutShippingSelected = checkoutQuotesReady && aliCartEntries.every((product) => Boolean(shippingOptionByProduct[product.id]));
 
   const retryCatalog = () => setCatalogAttempt((attempt) => attempt + 1);
   const renderCatalogState = (message: string, canRetry: boolean) => (
@@ -1634,33 +1638,14 @@ export function App() {
   };
 
   const beginCheckout = async () => {
-    if (!authToken) {
-      setCheckoutError("Войдите в профиль, чтобы оформить заказ.");
-      setView("Профиль");
-      setNotice("Для оформления заказа войдите в профиль");
-      return;
-    }
-    if (cartEntryList.length === 0) {
-      setCheckoutError("Корзина пуста.");
-      return;
-    }
-    setCheckoutOpen(true);
-    setCheckoutBusy(true);
-    setCheckoutError("");
-    setShippingQuotes({});
-    setShippingOptionByProduct({});
+    if (!authToken) { setCheckoutError("Войдите в профиль, чтобы оформить заказ."); setView("Профиль"); setNotice("Для оформления заказа войдите в профиль"); return; }
+    if (cartEntryList.length === 0) { setCheckoutError("Корзина пуста."); return; }
+    setCheckoutOpen(true); setCheckoutBusy(true); setCheckoutError(""); setShippingQuotes({}); setShippingOptionByProduct({});
     try {
-      const entries = await Promise.all(cartEntryList.map(async (product) => {
-        if (!/^\d+$/.test(product.id)) {
-          throw new Error(`Невозможно оформить товар «${productTitle(product)}»: идентификатор AliExpress некорректен.`);
-        }
-        const payload = await api.aliexpress.productDetails(product.id, {
-          ship_to_country: "UZ",
-          target_currency: "UZS",
-          target_language: "ru_RU",
-        });
-        const options = checkoutVariants(parseAliExpressProductDetails(payload).skus);
-        return [product.id, options] as const;
+      const entries = await Promise.all(aliCartEntries.map(async (product) => {
+        if (!/^\\d+$/.test(product.id)) throw new Error(`Невозможно оформить товар «${productTitle(product)}»: идентификатор AliExpress некорректен.`);
+        const payload = await api.aliexpress.productDetails(product.id, { ship_to_country: "UZ", target_currency: "UZS", target_language: "ru_RU" });
+        return [product.id, checkoutVariants(parseAliExpressProductDetails(payload).skus)] as const;
       }));
       const variantsByProduct = Object.fromEntries(entries);
       setCheckoutVariantsByProduct(variantsByProduct);
@@ -1668,64 +1653,34 @@ export function App() {
         const next = { ...previous };
         for (const [productId, options] of entries) {
           if (options.some((option) => option.id === next[productId])) continue;
-          if (options.length === 1) next[productId] = options[0].id;
-          else delete next[productId];
+          if (options.length === 1) next[productId] = options[0].id; else delete next[productId];
         }
         return next;
       });
-      const withoutVariants = cartEntryList
-        .filter((product) => variantsByProduct[product.id].length === 0)
-        .map((product) => productTitle(product));
-      if (withoutVariants.length > 0) {
-        setCheckoutError(`Для оформления недоступны варианты товара: ${withoutVariants.join(", ")}. Удалите эти товары из корзины.`);
-      }
+      const withoutVariants = aliCartEntries.filter((product) => variantsByProduct[product.id]?.length === 0).map(productTitle);
+      if (withoutVariants.length) setCheckoutError(`Для оформления недоступны варианты товара: ${withoutVariants.join(", ")}. Удалите эти товары из корзины.`);
     } catch (error: unknown) {
-      if (error instanceof ApiRequestError && error.status === 401) {
-        clearExpiredSession(profile?.email);
-      }
+      if (error instanceof ApiRequestError && error.status === 401) clearExpiredSession(profile?.email);
       setCheckoutError(error instanceof Error ? error.message : "Не удалось загрузить варианты товаров.");
-    } finally {
-      setCheckoutBusy(false);
-    }
+    } finally { setCheckoutBusy(false); }
   };
 
   const quoteCheckoutShipping = async () => {
-    if (!authToken) {
-      setCheckoutError("Сеанс истёк. Войдите в профиль повторно.");
-      return;
-    }
-    const items = cartEntryList.map((product) => ({
-      productId: product.id,
-      supplierProductId: product.id,
-      supplierSkuId: checkoutSkuByProduct[product.id] ?? "",
-      quantity: cartItems[product.id] ?? 0,
-    }));
-    if (items.some((item) => !item.supplierSkuId)) {
-      setCheckoutError("Выберите вариант каждого товара перед расчётом доставки.");
-      return;
-    }
-
-    setCheckoutBusy(true);
-    setCheckoutError("");
-    setShippingQuotes({});
-    setShippingOptionByProduct({});
+    if (!authToken) { setCheckoutError("Сеанс истёк. Войдите в профиль повторно."); return; }
+    if (aliCartEntries.length === 0) { setShippingQuotes({}); setShippingOptionByProduct({}); setCheckoutError(""); return; }
+    const items = aliCartEntries.map((product) => ({ productId: product.id, supplierProductId: product.id, supplierSkuId: checkoutSkuByProduct[product.id] ?? "", quantity: cartItems[product.id] ?? 0 }));
+    if (items.some((item) => !item.supplierSkuId)) { setCheckoutError("Выберите вариант каждого товара AliExpress перед расчётом доставки."); return; }
+    setCheckoutBusy(true); setCheckoutError(""); setShippingQuotes({}); setShippingOptionByProduct({});
     try {
       const quotes = await api.orders.quoteShipping(authToken, items);
       const quotesByProduct = Object.fromEntries(quotes.map((quote) => [quote.productId, quote]));
-      const missingQuotes = cartEntryList.filter((product) => !quotesByProduct[product.id]?.shippingOptions.length);
-      setShippingQuotes(quotesByProduct);
-      setShippingOptionByProduct({});
-      if (missingQuotes.length > 0) {
-        setCheckoutError(`AliExpress не вернул доступный способ доставки для: ${missingQuotes.map(productTitle).join(", ")}.`);
-      }
+      const missingQuotes = aliCartEntries.filter((product) => !quotesByProduct[product.id]?.shippingOptions.length);
+      setShippingQuotes(quotesByProduct); setShippingOptionByProduct({});
+      if (missingQuotes.length) setCheckoutError(`AliExpress не вернул доступный способ доставки для: ${missingQuotes.map(productTitle).join(", ")}.`);
     } catch (error: unknown) {
-      if (error instanceof ApiRequestError && error.status === 401) {
-        clearExpiredSession(profile?.email);
-      }
+      if (error instanceof ApiRequestError && error.status === 401) clearExpiredSession(profile?.email);
       setCheckoutError(error instanceof Error ? error.message : "Не удалось рассчитать доставку.");
-    } finally {
-      setCheckoutBusy(false);
-    }
+    } finally { setCheckoutBusy(false); }
   };
 
   const submitCheckoutOrder = async () => {
