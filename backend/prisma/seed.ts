@@ -9,7 +9,18 @@ async function main() {
     ["Одежда", "Одежда"],
     ["Красота", "Красота"],
     ["Аксессуары", "Аксессуары"],
-    ["Спорт", "Спорт"]
+    ["Sport", "Спорт"],
+    ["Oyoq kiyim", "Обувь"],
+    ["Sumkalar va ryukzaklar", "Сумки и рюкзаки"],
+    ["Soatlar", "Часы"],
+    ["Zargarlik buyumlari", "Ювелирные украшения"],
+    ["Bolalar mahsulotlari", "Детские товары"],
+    ["Oshxona va idishlar", "Кухня и посуда"],
+    ["Avtomobil mahsulotlari", "Автотовары"],
+    ["Uy hayvonlari uchun mahsulotlar", "Товары для животных"],
+    ["Kanselyariya va kitoblar", "Канцтовары и книги"],
+    ["Sayohat va dam olish", "Туризм и отдых"],
+    ["Bog‘ va dala hovli", "Сад и дача"]
   ] as const;
 
   const categoryMap = new Map<string, string>();

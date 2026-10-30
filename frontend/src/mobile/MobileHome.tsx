@@ -136,7 +136,7 @@ export function MobileHome({
             <button type="button" onClick={onOpenCatalog}>{copy.allCategories}<ChevronRight size={15} /></button>
           </div>
           <div className="mobile-home-category-rail">
-            {categories.slice(0, 10).map((category, index) => (
+            {categories.slice(0, 14).map((category, index) => (
               <button type="button" className="mobile-home-category" key={category.id} onClick={() => onSelectCategory(category.id)}>
                 <img src={categoryPhoto(category, index)} alt="" loading="lazy" />
                 <span>{categoryLabel(category)}</span>

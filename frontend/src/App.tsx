@@ -64,23 +64,42 @@ const CATEGORY_PHOTOS = [
   "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=640&q=80",
   "https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=640&q=80",
   "https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?auto=format&fit=crop&w=640&q=80",
-  "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=640&q=80",
+  "https://images.unsplash.com/photo-1611652022419-a9419f74343d?auto=format&fit=crop&w=640&q=80",
   "https://images.unsplash.com/photo-1558060370-d644479cb6f7?auto=format&fit=crop&w=640&q=80",
   "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=640&q=80",
   "https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=640&q=80",
+  "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=640&q=80",
+  "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=640&q=80",
+  "https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=640&q=80",
+  "https://images.unsplash.com/photo-1599623560574-39d485900c95?auto=format&fit=crop&w=640&q=80",
+  "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=640&q=80",
+  "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=640&q=80",
+  "https://images.unsplash.com/photo-1450778869180-41d0601e046e?auto=format&fit=crop&w=640&q=80",
+  "https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=640&q=80",
+  "https://images.unsplash.com/photo-1565026057447-bc90a3dceb87?auto=format&fit=crop&w=640&q=80",
+  "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=640&q=80",
 ];
 
 function categoryPhoto(category?: ApiCategory | null, index = 0): string {
   const label = `${category?.nameRu ?? ""} ${category?.nameUz ?? ""}`.toLocaleLowerCase();
   const rules: Array<[RegExp, number]> = [
-    [/одежд|обув|аксессуар|kiyim|poyabzal|aksessuar/, 0],
+    [/аксессуар|aksessuar|аксессуары/, 4],
+    [/обув|пойабзал|poyabzal|footwear|shoes/, 8],
+    [/одежд|кийим|kiyim|clothing|apparel/, 0],
     [/электрон|телефон|смартфон|компьютер|elektron|telefon|kompyuter/, 1],
     [/дом|интерьер|мебел|home|uy|mebel/, 2],
     [/красот|космет|уход|beauty|go‘zallik|parvarish|kosmet/, 3],
-    [/час|украшен|ювелир|soat|taqinchoq/, 4],
-    [/игруш|дет|toy|o‘yinchoq|bolalar/, 5],
-    [/сумк|рюкзак|багаж|bag|sumka|ryukzak/, 6],
+    [/ювелир|украшен|taqinchoq|zargarlik|jewelry/, 10],
+    [/час|soat|watch/, 9],
+    [/игруш|дет|toy|o‘yinchoq|bolalar|bola/, 11],
+    [/сумк|рюкзак|багаж|bag|sumka|ryukzak|чемодан|sayohat/, 6],
     [/кухн|бытов|посуда|kitchen|oshxona|idish/, 7],
+    [/спорт|fitness|fitnes|sport/, 12],
+    [/авто|машин|автомоб|avto|mashina|car/, 13],
+    [/животн|питом|товар.*живот|hayvon|uy hayvon|pet/, 14],
+    [/канц|книг|тетрад|ручк|daftar|qalam|stationery|book/, 15],
+    [/туризм|турист|путешеств|travel|sayohat|outdoor/, 16],
+    [/сад|огород|растен|bog‘|o‘simlik|garden/, 17],
   ];
   const match = rules.find(([pattern]) => pattern.test(label));
   return CATEGORY_PHOTOS[match?.[1] ?? Math.abs(index) % CATEGORY_PHOTOS.length];
