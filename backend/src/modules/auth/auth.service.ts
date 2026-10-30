@@ -87,6 +87,17 @@ export class AuthService {
     return this.createSession(user);
   }
 
+  async generatePasswordResetLink(email: string): Promise<string> {
+    const projectId = process.env.FIREBASE_PROJECT_ID;
+    if (!projectId) throw new ServiceUnavailableException("Firebase authentication is not configured on the server");
+    const app = getApps().find((item) => item.options.projectId === projectId) ?? initializeApp({ projectId });
+    try {
+      return await getAuth(app).generatePasswordResetLink(email.trim().toLowerCase());
+    } catch {
+      throw new BadRequestException("Не удалось создать ссылку сброса. Проверьте, что email продавца зарегистрирован в Firebase.");
+    }
+  }
+
   async updateProfile(token: string, update: ProfileUpdate) {
     const user = await this.validateSession(token);
     return this.prisma.user.update({ where: { id: user.id }, data: update });
