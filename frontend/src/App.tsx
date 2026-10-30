@@ -40,6 +40,15 @@ import { parseSearchInterests, recordSearchInterest, selectHomeRecommendationQue
 import { findNearestBranches, type BranchWithDistance } from "./nearestBranches";
 import { SellerDashboard } from "./SellerDashboard";
 
+function formatUzPhone(value: string): string {
+  let digits = value.replace(/\D/g, "");
+  if (digits.startsWith("998")) digits = digits.slice(3);
+  else if (digits.startsWith("0")) digits = digits.slice(1);
+  digits = digits.slice(0, 9);
+  const groups = [digits.slice(0, 2), digits.slice(2, 5), digits.slice(5, 7), digits.slice(7, 9)].filter(Boolean);
+  return groups.length ? "+998 " + groups.join(" ") : "+998 ";
+}
+
 const navItems = ["Главная", "Категории", "Корзина", "Профиль"] as const;
 type Language = "ru" | "en" | "uz";
 const locationMessages: Record<Language, { button: string; locating: string; title: string; denied: string; unavailable: string; failed: string; noBranches: string; close: string; route: string; distance: string }> = {
@@ -1624,8 +1633,8 @@ export function App() {
   const handleAddToCart = (productId: string) => {
     const product = knownProducts.find((item) => item.id === productId)
       ?? products.find((item) => item.id === productId);
-    if (product && typeof product.stock === "number" && product.stock <= 0) {
-      setNotice(language === "en" ? "This product is out of stock" : language === "uz" ? "Mahsulot omborda qolmagan" : "Товар закончился");
+    if (product && typeof product.stock === "number" && (product.stock <= 0 || (cartItems[productId] ?? 0) >= product.stock)) {
+      setNotice(product.stock <= 0 ? "Товар закончился" : "Доступно только " + product.stock + " шт.");
       return;
     }
     setCartItems((items) => ({ ...items, [productId]: (items[productId] ?? 0) + 1 }));
@@ -1665,7 +1674,12 @@ export function App() {
     setShippingQuotes({});
     setShippingOptionByProduct({});
     setCartItems((items) => {
+      const product = knownProducts.find((item) => item.id === productId) ?? products.find((item) => item.id === productId);
       const nextQty = (items[productId] ?? 0) + delta;
+      if (delta > 0 && product?.sellerId && typeof product.stock === "number" && nextQty > product.stock) {
+        setNotice("Доступно только " + product.stock + " шт.");
+        return items;
+      }
       if (nextQty <= 0) {
         const { [productId]: _, ...rest } = items;
         return rest;
@@ -1723,7 +1737,7 @@ export function App() {
   const submitCheckoutOrder = async () => {
     if (!authToken) { setCheckoutError("Сеанс истёк. Войдите в профиль повторно."); return; }
     if (!profileForm.name.trim() || !profileForm.phone.trim() || !profileForm.city.trim() || !profileForm.address.trim()) { setCheckoutError("Заполните имя, телефон, город и адрес доставки."); return; }
-    if (!/^\\+?[0-9()\\-\\s]{7,40}$/.test(profileForm.phone.trim())) { setCheckoutError("Проверьте номер телефона."); return; }
+    if (!/^998\d{9}$/.test(profileForm.phone.replace(/\D/g, ""))) { setCheckoutError("Введите номер Узбекистана в формате +998 XX XXX XX XX."); return; }
     if (!checkoutShippingSelected) { setCheckoutError("Рассчитайте доставку и выберите способ доставки для товаров AliExpress."); return; }
     const orderItems = [];
     for (const product of cartEntryList) {
@@ -2134,7 +2148,31 @@ export function App() {
     </div>
   );
 
-  const renderCatalog = () => renderHome();
+  const renderCatalog = () => selectedCat !== "all" ? renderHome() : (
+    <section className="screen-panel catalog-browser">
+      <div className="section-head panel-head">
+        <div><small>URIONA MARKETPLACE</small><h2>Каталог товаров</h2><p>Выберите категорию, чтобы посмотреть товары</p></div>
+        <span>{topLevelCategories.length} категорий</span>
+      </div>
+      {categoriesLoading ? renderCatalogState(text.loading, false) : categoriesError ? renderCatalogState(categoriesError, true) : topLevelCategories.length === 0 ? renderCatalogState("Категории пока не загружены", true) : (
+        <div className="category-grid">
+          {topLevelCategories.map((category, index) => {
+            const children = categoryChildren.get(category.id) ?? [];
+            return <button type="button" className="category-card" key={category.id} onClick={() => {
+              setSelectedCat(category.id);
+              setSearch("");
+              goTo("Каталог");
+            }}>
+              <img src={categoryPhoto(category, index)} alt="" loading="lazy" />
+              <span><strong>{categoryLabel(category)}</strong><small>{children.length ? children.length + " подкатегорий" : "Смотреть товары"}</small></span>
+              <ChevronRight size={18} />
+            </button>;
+          })}
+        </div>
+      )}
+      <div className="catalog-browser-actions"><button type="button" className="secondary-btn" onClick={() => { setSelectedCat("all"); goTo("Главная"); }}>Все товары</button></div>
+    </section>
+  );
 
   const renderChinaGoods = () => (
     <section className="screen-panel">
@@ -2342,7 +2380,7 @@ export function App() {
                       <div className="qty-control qty-control-modern" aria-label="Количество товара">
                         <button type="button" aria-label="Уменьшить количество" onClick={() => handleQtyChange(product.id, -1)}><Minus size={14} /></button>
                         <span>{quantity}</span>
-                        <button type="button" aria-label="Увеличить количество" onClick={() => handleQtyChange(product.id, 1)}><Plus size={14} /></button>
+                        <button type="button" aria-label="Увеличить количество" disabled={Boolean(product.sellerId && typeof product.stock === "number" && quantity >= product.stock)} onClick={() => handleQtyChange(product.id, 1)}><Plus size={14} /></button>
                       </div>
                       <strong className="cart-line-total">{formatUzs(product.priceMinor * quantity)}</strong>
                       <button
@@ -2366,23 +2404,6 @@ export function App() {
             <div className="cart-checkout-heading">
               <h3>Сводка заказа</h3>
               <ShieldCheck size={20} />
-            </div>
-
-            <div className="promo-box cart-promo-box">
-              <label htmlFor="promo-code">Промокод</label>
-              <div className="promo-row">
-                <input
-                  id="promo-code"
-                  value={promo}
-                  onChange={(event) => {
-                    setPromo(event.target.value);
-                    setAppliedPromo("");
-                  }}
-                  placeholder="SAVE10"
-                />
-                <button type="button" onClick={applyPromo}>Применить</button>
-              </div>
-              {appliedPromo && <span className="cart-promo-applied"><CheckCircle2 size={14} />Промокод SAVE10 применён</span>}
             </div>
 
             <div className="totals cart-totals">
@@ -2464,7 +2485,7 @@ export function App() {
                 {localCartEntries.length > 0 && <p className="checkout-disclosure">Местные товары не передаются в AliExpress. Стоимость доставки местного продавца согласуется отдельно.</p>}
                 <div className="checkout-recipient-fields">
                   <label>Получатель<input value={profileForm.name} onChange={(event) => setProfileForm({ ...profileForm, name: event.target.value })} maxLength={120} autoComplete="name" /></label>
-                  <label>Телефон<input type="tel" value={profileForm.phone} onChange={(event) => setProfileForm({ ...profileForm, phone: event.target.value })} maxLength={40} autoComplete="tel" placeholder="+998" /></label>
+                  <label>Телефон<input type="tel" inputMode="numeric" value={profileForm.phone} onChange={(event) => setProfileForm({ ...profileForm, phone: formatUzPhone(event.target.value) })} maxLength={17} autoComplete="tel" placeholder="+998 XX XXX XX XX" /></label>
                   <label>Город<input value={profileForm.city} onChange={(event) => setProfileForm({ ...profileForm, city: event.target.value })} maxLength={120} autoComplete="address-level2" /></label>
                   <label>Адрес доставки<textarea value={profileForm.address} onChange={(event) => setProfileForm({ ...profileForm, address: event.target.value })} maxLength={1000} autoComplete="street-address" rows={3} /></label>
                 </div>
@@ -2637,7 +2658,7 @@ export function App() {
                 <div className="profile-form">
                   <label>Имя<input value={profileForm.name} onChange={(event) => setProfileForm({ ...profileForm, name: event.target.value })} placeholder="Ваше имя" /></label>
                   <label>Email<input type="email" value={profileForm.email} readOnly /></label>
-                  <label>Телефон<input type="tel" value={profileForm.phone} onChange={(event) => setProfileForm({ ...profileForm, phone: event.target.value })} placeholder="Добавить номер позже" /></label>
+                  <label>Телефон<input type="tel" inputMode="numeric" value={profileForm.phone} onChange={(event) => setProfileForm({ ...profileForm, phone: formatUzPhone(event.target.value) })} maxLength={17} placeholder="+998 XX XXX XX XX" /></label>
                   <label>Город<input value={profileForm.city} onChange={(event) => setProfileForm({ ...profileForm, city: event.target.value })} placeholder="Ташкент" /></label>
                   <label>Адрес доставки<textarea value={profileForm.address} onChange={(event) => setProfileForm({ ...profileForm, address: event.target.value })} placeholder="Улица, дом, квартира" rows={3} /></label>
                 </div>
@@ -2686,7 +2707,7 @@ export function App() {
                 <div className="profile-section-heading"><div><small>Для оформления заказа</small><h3>Основной адрес доставки</h3></div><MapPin size={22} /></div>
                 <div className="profile-form">
                   <label>Получатель<input value={profileForm.name} onChange={(event) => setProfileForm({ ...profileForm, name: event.target.value })} placeholder="Имя получателя" /></label>
-                  <label>Телефон<input type="tel" value={profileForm.phone} onChange={(event) => setProfileForm({ ...profileForm, phone: event.target.value })} placeholder="+998" /></label>
+                  <label>Телефон<input type="tel" inputMode="numeric" value={profileForm.phone} onChange={(event) => setProfileForm({ ...profileForm, phone: formatUzPhone(event.target.value) })} maxLength={17} placeholder="+998 XX XXX XX XX" /></label>
                   <label>Город<input value={profileForm.city} onChange={(event) => setProfileForm({ ...profileForm, city: event.target.value })} placeholder="Ташкент" /></label>
                   <label>Улица, дом, квартира<textarea value={profileForm.address} onChange={(event) => setProfileForm({ ...profileForm, address: event.target.value })} placeholder="Улица, дом, квартира" rows={3} /></label>
                 </div>
@@ -2749,13 +2770,11 @@ export function App() {
               aria-expanded={catalogMenuOpen}
               aria-haspopup="menu"
               onClick={() => {
-                if (window.matchMedia("(max-width: 760px)").matches) {
-                  setCatalogMenuOpen(false);
-                  setSelectedCat("all");
-                  goTo("Категории", "Каталог открыт");
-                } else {
-                  setCatalogMenuOpen((open) => !open);
-                }
+                setCatalogMenuOpen(false);
+                setSelectedCat("all");
+                setCategoryParentId(null);
+                setCategorySearch("");
+                goTo("Каталог", "Каталог открыт");
               }}
             >
               <Store size={18} />
