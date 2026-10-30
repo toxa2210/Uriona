@@ -248,3 +248,81 @@
     font-size: 9px;
   }
 }
+
+
+/* Explicit mobile color tokens: the mobile shell is outside the desktop .app-shell. */
+@media (max-width: 760px) {
+  body:not(.light-mode) .mobile-app-layout {
+    --page-bg: #080f1f;
+    --surface: #101a2d;
+    --input-bg: #0b1425;
+    --border-color: rgba(148, 163, 184, .2);
+    --text-primary: #edf3ff;
+    --text-secondary: #9aa8c0;
+    background: var(--page-bg);
+    color: var(--text-primary);
+  }
+
+  body:not(.light-mode) .mobile-header,
+  body:not(.light-mode) .mobile-bottom-nav {
+    background: rgba(16, 26, 45, .96);
+    border-color: rgba(148, 163, 184, .2);
+  }
+
+  body:not(.light-mode) .mobile-brand,
+  body:not(.light-mode) .mobile-search input,
+  body:not(.light-mode) .mobile-language select {
+    color: #edf3ff;
+  }
+
+  body:not(.light-mode) .mobile-language select,
+  body:not(.light-mode) .mobile-header-actions button {
+    background: #17243a;
+    border-color: rgba(148, 163, 184, .24);
+    color: #d8e3f5;
+  }
+
+  body:not(.light-mode) .mobile-search {
+    background: #0b1425;
+    border-color: rgba(148, 163, 184, .24);
+    color: #a8b6cc;
+  }
+
+  body:not(.light-mode) .mobile-promo-tabs button {
+    background: #111d32;
+    border-color: rgba(148, 163, 184, .2);
+    color: #b8c5d9;
+  }
+
+  body:not(.light-mode) .mobile-promo-tabs button.active {
+    background: rgba(80, 120, 220, .18);
+    border-color: rgba(115, 151, 240, .42);
+    color: #cbd9ff;
+  }
+
+  body:not(.light-mode) .mobile-bottom-nav button {
+    color: #9aa8c0;
+  }
+
+  body:not(.light-mode) .mobile-bottom-nav button.active {
+    color: #c5d5ff;
+    background: rgba(91, 126, 220, .16);
+  }
+
+  body:not(.light-mode) .mobile-cart-badge {
+    border-color: #101a2d;
+  }
+}
+
+@media (max-width: 760px) {
+  body.light-mode .mobile-app-layout {
+    --page-bg: #f6f7fb;
+    --surface: #ffffff;
+    --input-bg: #f7f8fb;
+    --border-color: #e8eaf0;
+    --text-primary: #172033;
+    --text-secondary: #788195;
+    background: var(--page-bg);
+    color: var(--text-primary);
+  }
+}
