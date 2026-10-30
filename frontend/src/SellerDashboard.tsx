@@ -241,7 +241,7 @@ export function SellerDashboard({ token, onClose }: SellerDashboardProps) {
       <div className="seller-dashboard-layout">
         <aside className={`seller-product-list ${activeTab !== "products" ? "seller-tab-hidden" : ""}`}>
           <div className="seller-list-heading"><h3>Мои товары</h3><button type="button" className="icon-btn" title="Новый товар" onClick={() => setDraft(emptyDraft())}><Plus size={18} /></button></div>
-          {loading ? <p>Загрузка…</p> : products.length ? products.map((product) => <button type="button" className="seller-product-row" key={product.id} onClick={() => setDraft(draftFromProduct(product))}>
+          {loading ? <p>Загрузка…</p> : products.length ? products.map((product) => <button type="button" className="seller-product-row" key={product.id} onClick={() => { setDraft(draftFromProduct(product)); setActiveTab("publish"); }}>
             <img src={product.imageUrl ?? ""} alt="" /><span><b>{product.titleRu || product.titleUz}</b><small>{product.status === "ACTIVE" ? "Опубликован" : product.status === "PENDING_REVIEW" ? "На модерации" : "Черновик"} · {formatUzs(product.priceMinor)}</small>{product.moderationNote && <small className="seller-review-note">Замечание: {product.moderationNote}</small>}</span>
           </button>) : <p className="seller-empty">Пока нет товаров</p>}
         </aside>
