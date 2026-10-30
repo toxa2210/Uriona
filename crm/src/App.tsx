@@ -19,6 +19,7 @@ import {
   Plus,
   Search,
   Settings2,
+  Store,
   Truck,
   Users,
   X,
@@ -34,7 +35,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 const API_URL = (import.meta.env.VITE_API_URL ?? "https://uriona-api.onrender.com/api/v1").replace(/\/$/, "");
 const SESSION_KEY = "uriona.crm.session";
 type User = { id: string; name?: string | null; email?: string | null; role: string };
-type Page = "overview" | "orders" | "customers" | "products" | "finance" | "moderation";
+type Page = "overview" | "orders" | "customers" | "products" | "finance" | "moderation" | "sellers";
 type Order = {
   id: string;
   status: string;
@@ -99,13 +100,13 @@ type ModerationProduct = {
 };
 type PageResult<T> = { items: T[]; total: number; pages: number; page: number };
 
-const navItems: Array<{ id: Page; label: string; icon: typeof LayoutDashboard }> = [
+type SellerApplication = { id: string; storeName: string; logoUrl?: string | null; description: string; categoryIds: string[]; region: string; city: string; address?: string | null; status: string; createdAt: string; user: { id: string; name?: string | null; email?: string | null; phone?: string | null } };\n\nconst navItems: Array<{ id: Page; label: string; icon: typeof LayoutDashboard }> = [
   { id: "overview", label: "Обзор", icon: LayoutDashboard },
   { id: "orders", label: "Заказы", icon: Box },
   { id: "customers", label: "Клиенты", icon: Users },
   { id: "products", label: "Товары", icon: PackageSearch },
   { id: "finance", label: "Финансы", icon: CircleDollarSign },
-  { id: "moderation", label: "Модерация", icon: ClipboardCheck },
+  { id: "moderation", label: "Модерация", icon: ClipboardCheck },\n  { id: "sellers", label: "Заявки продавцов", icon: Store },
 ];
 
 const firebaseConfig = {
@@ -166,7 +167,7 @@ export function App() {
   const [selectedProduct, setSelectedProduct] = useState<ManagedProduct | null>(null);
   const [productStatus, setProductStatus] = useState("");
   const [entries, setEntries] = useState<FinanceEntry[]>([]);
-  const [moderationProducts, setModerationProducts] = useState<ModerationProduct[]>([]);
+  const [moderationProducts, setModerationProducts] = useState<ModerationProduct[]>([]);\n  const [sellerApplications, setSellerApplications] = useState<SellerApplication[]>([]);\n  const [sellerReviewNotes, setSellerReviewNotes] = useState<Record<string, string>>({});
   const [moderationNotes, setModerationNotes] = useState<Record<string, string>>({});
   const [modal, setModal] = useState<"shipping" | "status" | "income" | "expense" | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -207,7 +208,7 @@ export function App() {
         const statusParam = productStatus ? `&status=${encodeURIComponent(productStatus)}` : "";
         const result = await api<PageResult<ManagedProduct>>(`/crm/products?limit=100${query ? `&search=${encodeURIComponent(query)}` : ""}${statusParam}`);
         setProducts(result.items);
-      } else if (activePage === "moderation") {
+      } else if (activePage === "sellers") {\n        const result = await api<SellerApplication[]>("/crm/seller-applications?status=PENDING");\n        setSellerApplications(result);\n      } else if (activePage === "moderation") {
         const result = await api<PageResult<ModerationProduct>>(`/crm/moderation/products?limit=100${query ? `&search=${encodeURIComponent(query)}` : ""}`);
         setModerationProducts(result.items);
       } else {
@@ -282,6 +283,20 @@ export function App() {
     }
   }
 
+
+  async function reviewSeller(id: string, status: "APPROVED" | "REJECTED") {
+    const reviewNote = sellerReviewNotes[id] ?? "";
+    if (status === "REJECTED" && !reviewNote.trim()) { setError("Укажи причину отклонения заявки."); return; }
+    setBusy(true); setError("");
+    try {
+      await api(`/crm/seller-applications/${encodeURIComponent(id)}`, {
+        method: "PATCH", body: JSON.stringify({ status, reviewNote: reviewNote.trim() }),
+      });
+      setNotice(status === "APPROVED" ? "Магазин одобрен. Пользователю выдан доступ продавца." : "Заявка отклонена.");
+      await loadPage("sellers", search);
+    } catch (reason) { setError(getErrorMessage(reason)); }
+    finally { setBusy(false); }
+  }
 
   async function openCustomer(id: string) {
     setCustomerDetailBusy(true);
@@ -470,6 +485,18 @@ export function App() {
           {page === "customers" && <CustomersPage customers={customers} search={search} setSearch={setSearch} onSearch={() => void loadPage(page, search)} busy={busy} date={date} onOpen={(customer) => void openCustomer(customer.id)} />}
           {page === "products" && <ProductsPage products={products} search={search} setSearch={setSearch} onSearch={() => void loadPage("products", search)} busy={busy} status={productStatus} setStatus={setProductStatus} currency={currency} date={date} onStatus={updateManagedProduct} onDelete={deleteManagedProduct} onOpen={setSelectedProduct} /> }
           {page === "finance" && <FinancePage overview={overview} entries={entries} currency={currency} date={date} />}
+          {page === "sellers" && <section className="panel">
+            <div className="panel-header"><div><h2>Заявки продавцов</h2><p>Проверь данные магазина перед выдачей доступа к кабинету продавца.</p></div><button className="secondary-button" onClick={() => void loadPage("sellers", search)} disabled={busy}><RotateCcw size={16} /> Обновить</button></div>
+            {sellerApplications.length === 0 ? <div className="empty-state"><Store size={28} /><h3>Новых заявок нет</h3><p>Здесь появятся заявки пользователей, которые хотят открыть магазин URIONA.</p></div> : <div className="seller-application-list">
+              {sellerApplications.map((application) => <article className="seller-application-card" key={application.id}>
+                <div className="seller-application-head">{application.logoUrl ? <img src={application.logoUrl} alt="" /> : <div className="seller-application-placeholder"><Store size={22} /></div>}<div><h3>{application.storeName}</h3><p>{application.user.name || application.user.email || application.user.phone || application.user.id}</p><small>{date(application.createdAt)}</small></div></div>
+                <p>{application.description}</p>
+                <div className="seller-application-meta"><span><b>Категории:</b> {application.categoryIds.join(", ")}</span><span><b>Регион:</b> {application.region}, {application.city}</span>{application.address && <span><b>Адрес отправки:</b> {application.address}</span>}</div>
+                <label className="seller-review-note">Комментарий / причина отклонения<textarea value={sellerReviewNotes[application.id] ?? ""} onChange={(event) => setSellerReviewNotes((current) => ({ ...current, [application.id]: event.target.value }))} placeholder="При отклонении укажи причину" /></label>
+                <div className="seller-application-actions"><button className="primary-button" disabled={busy} onClick={() => void reviewSeller(application.id, "APPROVED")}><Check size={16} /> Одобрить магазин</button><button className="secondary-button" disabled={busy || !(sellerReviewNotes[application.id] ?? "").trim()} onClick={() => void reviewSeller(application.id, "REJECTED")}><XCircle size={16} /> Отклонить</button></div>
+              </article>)}
+            </div>}
+          </section>}
           {page === "moderation" && <ModerationPage
             products={moderationProducts}
             notes={moderationNotes}
