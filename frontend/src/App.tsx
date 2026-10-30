@@ -1709,7 +1709,7 @@ export function App() {
     for (const product of cartEntryList) {
       const quantity = cartItems[product.id] ?? 0;
       if (product.sellerId) {
-        orderItems.push({ productId: product.id, quantity, productTitle: productTitle(product), imageUrl: product.imageUrl ?? undefined });
+        orderItems.push({ productId: product.id, quantity, productTitle: productTitle(product) || undefined, imageUrl: product.imageUrl ?? undefined });
         continue;
       }
       const quote = shippingQuotes[product.id];
