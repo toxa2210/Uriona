@@ -2779,6 +2779,17 @@ export function App() {
           cartCount={cartCount}
           language={language}
           languageLabel={text.lang}
+          locationLabel={locationPending ? locationMessages[language].locating : locationMessages[language].button}
+          locationPending={locationPending}
+          lightMode={lightMode}
+          themeLabel={lightMode ? text.dark : text.light}
+          homeSort={homeSort}
+          onLocate={locateVisitor}
+          onToggleTheme={() => setLightMode((mode) => !mode)}
+          onHomeSortChange={(sort) => {
+            setHomeSort(sort);
+            setHeroSlide(0);
+          }}
           onSearchChange={setSearch}
           onSearchSubmit={() => {
             rememberCurrentSearch();
