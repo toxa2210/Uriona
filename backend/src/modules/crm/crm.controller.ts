@@ -128,6 +128,38 @@ export class CrmController {
     return this.crm.reviewSellerApplication(id, body.status, admin.id, body.reviewNote);
   }
 
+  @Get("sellers")
+  async sellers(
+    @Headers("authorization") authorization: string | undefined,
+    @Query("search") search?: string,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string
+  ) {
+    await this.requireAdmin(authorization);
+    return this.crm.sellers(search, page, limit);
+  }
+
+  @Patch("sellers/:id/status")
+  async updateSellerStatus(
+    @Headers("authorization") authorization: string | undefined,
+    @Param("id") id: string,
+    @Body() body: UpdateSellerStatusDto
+  ) {
+    await this.requireAdmin(authorization);
+    return this.crm.updateSellerStatus(id, body.status);
+  }
+
+  @Post("sellers/:id/password-reset")
+  async resetSellerPassword(
+    @Headers("authorization") authorization: string | undefined,
+    @Param("id") id: string
+  ) {
+    await this.requireAdmin(authorization);
+    const seller = await this.crm.sellerForPasswordReset(id);
+    const resetLink = await this.auth.generatePasswordResetLink(seller.email);
+    return { email: seller.email, resetLink };
+  }
+
   @Get("overview")
   async overview(@Headers("authorization") authorization?: string) {
     await this.requireAdmin(authorization);
