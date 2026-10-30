@@ -1,0 +1,13 @@
+/* Desktop application boundary. Desktop components are intentionally isolated
+   from the mobile shell so either presentation can evolve independently. */
+.desktop-app-layout {
+  min-width: 0;
+  width: 100%;
+  min-height: 100vh;
+}
+
+@media (max-width: 760px) {
+  .desktop-app-layout {
+    display: none;
+  }
+}
