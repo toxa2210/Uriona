@@ -1,7 +1,8 @@
 import type { KeyboardEvent, ReactNode } from "react";
-import { Home, LayoutGrid, Search, ShoppingBag, UserRound } from "lucide-react";
+import { Home, LayoutGrid, MapPin, Moon, Search, ShoppingBag, Sun, UserRound } from "lucide-react";
 
 type MobileView = "Главная" | "Каталог" | "Корзина" | "Профиль";
+type MobileHomeSort = "deals" | "cheaper" | "popular";
 
 type MobileShellProps = {
   children: ReactNode;
@@ -11,6 +12,14 @@ type MobileShellProps = {
   cartCount: number;
   language: "ru" | "en" | "uz";
   languageLabel: string;
+  locationLabel: string;
+  locationPending: boolean;
+  lightMode: boolean;
+  themeLabel: string;
+  homeSort: MobileHomeSort;
+  onLocate: () => void;
+  onToggleTheme: () => void;
+  onHomeSortChange: (sort: MobileHomeSort) => void;
   onSearchChange: (value: string) => void;
   onSearchSubmit: () => void;
   onNavigate: (view: MobileView) => void;
@@ -68,7 +77,7 @@ export function MobileShell({
             <span className="mobile-brand-mark">U</span>
             <span>URIONA</span>
           </button>
-          <label className="mobile-language">
+          <div className="mobile-header-actions">\n            <button type="button" className="mobile-location" onClick={onLocate} disabled={locationPending} aria-label={locationLabel} title={locationLabel}>\n              <MapPin size={16} />\n            </button>\n            <button type="button" className="mobile-theme" onClick={onToggleTheme} aria-label={themeLabel} title={themeLabel}>\n              {lightMode ? <Moon size={16} /> : <Sun size={16} />}\n            </button>\n          </div>\n          <label className="mobile-language">
             <span className="visually-hidden">{languageLabel}</span>
             <select
               aria-label={languageLabel}
