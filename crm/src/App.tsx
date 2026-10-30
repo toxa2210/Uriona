@@ -87,9 +87,11 @@ type ModerationProduct = {
   titleRu?: string | null;
   titleUz: string;
   descriptionRu?: string | null;
+  descriptionUz?: string | null;
   priceMinor: number;
   currency: string;
   imageUrl?: string | null;
+  imageUrls?: string[];
   sellerCity?: string | null;
   sellerDistrict?: string | null;
   moderationNote?: string | null;
@@ -601,10 +603,10 @@ function ModerationPage({ products, notes, setNote, busy, search, setSearch, onS
       <span className="result-count">{busy ? "Обновляем..." : `${products.length} на модерации`}</span>
     </div>
     {products.length ? <div className="moderation-list">{products.map((product) => <article className="moderation-card" key={product.id}>
-      <div className="moderation-image">{product.imageUrl ? <img src={product.imageUrl} alt="" /> : <PackageSearch size={25} />}</div>
+      <div className="moderation-gallery">{Array.from(new Set([product.imageUrl, ...(Array.isArray(product.imageUrls) ? product.imageUrls : [])].filter((src): src is string => Boolean(src?.trim())))).map((src, index) => <img key={`${src}-${index}`} src={src} alt={`${product.titleRu || product.titleUz} — фото ${index + 1}`} loading={index === 0 ? "eager" : "lazy"} />)}{!product.imageUrl && !(product.imageUrls?.length) ? <div className="moderation-image"><PackageSearch size={25} /></div> : null}</div>
       <div className="moderation-main">
         <div className="moderation-title-row"><div><span className="badge awaiting_payment">На проверке</span><h2>{product.titleRu || product.titleUz}</h2><p>{product.category?.nameRu || product.category?.nameUz || "Категория не указана"} · {formatDate(product.createdAt)}</p></div><strong>{money(product.priceMinor, product.currency || "UZS")}</strong></div>
-        <p className="moderation-description">{product.descriptionRu || "Описание не заполнено"}</p>
+        <p className="moderation-description">{product.descriptionRu || product.descriptionUz || "Описание не заполнено"}</p>
         <div className="moderation-meta"><span><b>Продавец:</b> {product.seller?.name || "Без имени"}</span><span><b>Email:</b> {product.seller?.email || "—"}</span><span><b>Телефон:</b> {product.seller?.phone || "—"}</span><span><b>Город:</b> {product.sellerCity || product.seller?.city || "—"}{product.sellerDistrict ? `, ${product.sellerDistrict}` : ""}</span></div>
         <label className="moderation-note-label">Причина возврата продавцу<textarea rows={2} value={notes[product.id] ?? ""} onChange={(event) => setNote(product.id, event.target.value)} placeholder="Например: добавьте более чёткие фотографии или уточните описание" /></label>
         <div className="moderation-actions"><button className="secondary-button" disabled={busy || !(notes[product.id] ?? "").trim()} onClick={() => onReturn(product.id)}><XCircle size={16} /> Вернуть продавцу</button><button className="primary-button" disabled={busy} onClick={() => onApprove(product.id)}><Check size={16} /> Одобрить и опубликовать</button></div>
