@@ -250,12 +250,10 @@ export class OrdersService {
         throw new BadRequestException("Order total exceeds the supported limit");
       }
       const promoCode = input.promoCode?.trim().toUpperCase() || null;
-      if (promoCode && promoCode !== "SAVE10") {
-        throw new BadRequestException("Promo code is not valid");
+      if (promoCode) {
+        throw new BadRequestException("General promo codes are currently disabled");
       }
-      const discountMinor = promoCode === "SAVE10" && subtotalMinor >= SAVE10_MIN_SUBTOTAL_MINOR
-        ? Math.round(subtotalMinor * 0.1)
-        : 0;
+      const discountMinor = 0;
       const totalMinor = subtotalMinor - discountMinor + deliveryMinor;
 
       return tx.order.create({
