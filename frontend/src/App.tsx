@@ -1169,6 +1169,23 @@ export function App() {
   }, [authToken]);
 
   useEffect(() => {
+    if (!authToken || !profile || profile.role === "SELLER" || profile.role === "ADMIN") return;
+    let active = true;
+    api.seller.application(authToken).then((application) => {
+      if (!active) return;
+      setSellerApplication(application);
+      if (application) setSellerApplicationForm({
+        storeName: application.storeName, logoUrl: application.logoUrl ?? "",
+        description: application.description, categories: application.categoryIds.join(", "),
+        region: application.region, city: application.city, address: application.address ?? "",
+      });
+    }).catch((error: unknown) => {
+      if (active) setSellerApplicationError(error instanceof Error ? error.message : "Не удалось загрузить заявку магазина.");
+    });
+    return () => { active = false; };
+  }, [authToken, profile?.id, profile?.role]);
+
+  useEffect(() => {
     if (!authToken || !profile || profileSection !== "orders") return;
     let active = true;
     setOrdersLoading(true);
@@ -1879,6 +1896,29 @@ export function App() {
     } catch (error) {
       setAuthNotice(firebaseErrorMessage(error));
     } finally { setProfileBusy(false); }
+  };
+
+  const submitSellerApplication = async () => {
+    if (!authToken) { setSellerApplicationError("Войдите в аккаунт, чтобы подать заявку."); return; }
+    const categories = sellerApplicationForm.categories.split(",").map((value) => value.trim()).filter(Boolean);
+    if (!sellerApplicationForm.storeName.trim() || !sellerApplicationForm.description.trim() || !categories.length || !sellerApplicationForm.region.trim() || !sellerApplicationForm.city.trim()) {
+      setSellerApplicationError("Заполните название, описание, категории, регион и город.");
+      return;
+    }
+    setSellerApplicationBusy(true); setSellerApplicationError("");
+    try {
+      const application = await api.seller.submitApplication(authToken, {
+        storeName: sellerApplicationForm.storeName.trim(),
+        ...(sellerApplicationForm.logoUrl.trim() ? { logoUrl: sellerApplicationForm.logoUrl.trim() } : {}),
+        description: sellerApplicationForm.description.trim(), categoryIds: categories,
+        region: sellerApplicationForm.region.trim(), city: sellerApplicationForm.city.trim(),
+        ...(sellerApplicationForm.address.trim() ? { address: sellerApplicationForm.address.trim() } : {}),
+      });
+      setSellerApplication(application);
+      setNotice("Заявка продавца отправлена на проверку администратору.");
+    } catch (error: unknown) {
+      setSellerApplicationError(error instanceof Error ? error.message : "Не удалось отправить заявку.");
+    } finally { setSellerApplicationBusy(false); }
   };
 
   const saveProfile = async () => {
