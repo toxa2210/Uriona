@@ -206,3 +206,7 @@
   .home-promo-tabs { gap: 5px !important; }
   .home-promo-tabs button { font-size: 10px !important; }
 }
+
+.seller-onboarding-card { margin: 18px 0; padding: 20px; border: 1px solid var(--border-color, rgba(130,150,190,.25)); border-radius: 18px; background: var(--surface, rgba(255,255,255,.025)); }
+.seller-application-logo { display: block; width: 88px; height: 88px; object-fit: cover; border-radius: 16px; border: 1px solid rgba(130,150,190,.3); }
+@media (max-width: 640px) { .seller-onboarding-card { padding: 14px; margin: 12px 0; } }
