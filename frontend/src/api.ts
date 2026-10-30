@@ -260,6 +260,7 @@ export const api = {
   seller: {
     application: (token: string) => request<ApiSellerApplication | null>("/seller/application", { headers: bearerHeaders(token) }),
     submitApplication: (token: string, input: { storeName: string; logoUrl?: string; description: string; categoryIds: string[]; region: string; city: string; address?: string }) => request<ApiSellerApplication>("/seller/application", { method: "POST", headers: bearerHeaders(token), body: JSON.stringify(input) }),
+    uploadApplicationImage: async (token: string, file: File) => { const body = new FormData(); body.append("file", await prepareProductImage(file)); return request<{ imageUrl: string }>("/seller/application/image", { method: "POST", headers: bearerHeaders(token), body }); },
     products: (token: string) => request<ApiProduct[]>("/seller/products", { headers: bearerHeaders(token) }),
     billing: (token: string) => request<{ orderItems: number; grossMinor: number; awaitingPaymentMinor: number; confirmedSalesMinor: number; deliveredSalesMinor: number; currency: string }>("/seller/billing", { headers: bearerHeaders(token) }),
     financialActions: (token: string) => request<Array<{ id: string; type: string; status: string; amountMinor: number; currency: string; description: string; reviewNote?: string | null; createdAt: string }>>("/seller/financial-actions", { headers: bearerHeaders(token) }),
