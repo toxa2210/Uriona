@@ -197,8 +197,14 @@ export class SellerCatalogService {
       ? await this.prisma.shippingBranch.findFirst({ where: { id: input.dispatchBranchId, isActive: true, carrier } })
       : null;
     if (input.dispatchBranchId && !dispatchBranch) throw new NotFoundException("Selected shipping branch is not available for this carrier");
-    if (requestingPublication && carrier === ShippingCarrier.EMU_EXPRESS && !dispatchBranch) throw new ForbiddenException("Select an EMU Express dispatch branch before publication");
-    if (requestingPublication && carrier === ShippingCarrier.UZPOST && (!input.dispatchPointName?.trim() || !input.dispatchPointAddress?.trim())) {
+    const isPickup = input.pickupMethod === "PICKUP";
+    if (requestingPublication && isPickup && (!input.dispatchPointName?.trim() || !input.dispatchPointAddress?.trim())) {
+      throw new ForbiddenException("Enter the pickup point name and address before publication");
+    }
+    if (requestingPublication && !isPickup && carrier === ShippingCarrier.EMU_EXPRESS && !dispatchBranch) {
+      throw new ForbiddenException("Select an EMU dispatch branch before publication");
+    }
+    if (requestingPublication && !isPickup && carrier === ShippingCarrier.UZPOST && (!input.dispatchPointName?.trim() || !input.dispatchPointAddress?.trim())) {
       throw new ForbiddenException("Enter the UzPost dispatch office name and address before publication");
     }
 
@@ -238,8 +244,8 @@ export class SellerCatalogService {
       sellerCity: input.sellerCity?.trim() || null, sellerDistrict: input.sellerDistrict?.trim() || null,
       pickupMethod: input.pickupMethod ?? "SELLER_DELIVERY", shippingCarrier: carrier, shippingPayer: payer,
       dispatchBranchId: dispatchBranch?.id ?? null,
-      dispatchPointName: carrier === ShippingCarrier.UZPOST ? input.dispatchPointName?.trim() || null : dispatchBranch?.name ?? null,
-      dispatchPointAddress: carrier === ShippingCarrier.UZPOST ? input.dispatchPointAddress?.trim() || null : dispatchBranch?.address ?? null,
+      dispatchPointName: isPickup || carrier === ShippingCarrier.UZPOST ? input.dispatchPointName?.trim() || null : dispatchBranch?.name ?? null,
+      dispatchPointAddress: isPickup || carrier === ShippingCarrier.UZPOST ? input.dispatchPointAddress?.trim() || null : dispatchBranch?.address ?? null,
       publicationRulesAcceptedAt: input.publicationRulesAccepted ? new Date() : null,
       restrictedGoodsConfirmedAt: input.restrictedGoodsConfirmed ? new Date() : null,
       status: requestingPublication ? "PENDING_REVIEW" as const : input.status ?? "DRAFT" as const,
