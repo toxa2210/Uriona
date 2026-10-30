@@ -69,6 +69,59 @@ export class CrmService {
     });
   }
 
+  async sellers(searchValue?: string, pageValue?: string, limitValue?: string) {
+    const { page, limit, skip } = pagination(pageValue, limitValue);
+    const search = searchValue?.trim();
+    const where = {
+      role: { in: ["SELLER", "CUSTOMER"] as const },
+      sellerApplication: { is: { status: "APPROVED" as const } },
+      ...(search ? { OR: [
+        { name: { contains: search, mode: "insensitive" as const } },
+        { email: { contains: search, mode: "insensitive" as const } },
+        { phone: { contains: search } },
+        { sellerApplication: { is: { storeName: { contains: search, mode: "insensitive" as const } } } },
+      ] } : {}),
+    };
+    const [items, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where, orderBy: { createdAt: "desc" }, skip, take: limit,
+        select: {
+          id: true, name: true, email: true, phone: true, city: true, role: true, createdAt: true,
+          sellerApplication: true,
+          _count: { select: { sellerProducts: true, orders: true } },
+        },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+    return { items, page, limit, total, pages: Math.ceil(total / limit) };
+  }
+
+  async updateSellerStatus(id: string, status: "ACTIVE" | "PAUSED") {
+    const seller = await this.prisma.user.findUnique({
+      where: { id },
+      select: { id: true, role: true, sellerApplication: { select: { status: true } } },
+    });
+    if (!seller || seller.sellerApplication?.status !== "APPROVED") throw new NotFoundException("Approved seller not found");
+    if (seller.role === "ADMIN") throw new ConflictException("Administrator accounts cannot be managed as sellers");
+    return this.prisma.user.update({
+      where: { id },
+      data: { role: status === "ACTIVE" ? "SELLER" : "CUSTOMER" },
+      select: { id: true, role: true },
+    });
+  }
+
+  async sellerForPasswordReset(id: string) {
+    const seller = await this.prisma.user.findUnique({
+      where: { id },
+      select: { id: true, email: true, role: true, sellerApplication: { select: { status: true } } },
+    });
+    if (!seller || seller.sellerApplication?.status !== "APPROVED" || !["SELLER", "CUSTOMER"].includes(seller.role)) {
+      throw new NotFoundException("Approved seller not found");
+    }
+    if (!seller.email) throw new BadRequestException("У продавца не указан email");
+    return { id: seller.id, email: seller.email };
+  }
+
   async overview() {
     const [customers, orders, activeOrders, income, expenses, recentOrders] = await Promise.all([
       this.prisma.user.count({ where: { role: "CUSTOMER" } }),
