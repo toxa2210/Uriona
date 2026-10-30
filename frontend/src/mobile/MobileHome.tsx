@@ -36,7 +36,7 @@ type MobileHomeProps = {
   catalogMoreError: string;
   catalogHasMore: boolean;
   copy: MobileHomeCopy;
-  productTitle: (product: Pick<ApiProduct, "titleRu" | "titleUz">) => string;
+  productTitle: (product: Pick<ApiProduct, "titleRu" | "titleUz">) => string | null | undefined;
   categoryLabel: (category?: ApiCategory | null) => string | undefined;
   categoryPhoto: (category?: ApiCategory | null, index?: number) => string;
   onHeroChange: (index: number) => void;
