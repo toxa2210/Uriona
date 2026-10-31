@@ -3878,3 +3878,11 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
   .catalog-browser .category-card strong { font-size: 14px; }
 }
 
+
+
+/* Google sign-in and account-linking actions. */
+.google-sign-in-btn { display:flex; align-items:center; justify-content:center; gap:12px; width:100%; min-height:50px; margin:0; border:1px solid var(--line); border-radius:14px; font-size:14px; font-weight:700; }
+.google-sign-in-mark { display:inline-grid; place-items:center; width:23px; height:23px; border-radius:50%; background:#fff; color:#4285f4; font:800 17px Arial,sans-serif; }
+.auth-divider { display:flex; align-items:center; gap:12px; margin:2px 0; color:var(--muted); font-size:12px; }
+.auth-divider::before,.auth-divider::after { content:""; height:1px; flex:1; background:var(--line); }
+.light-mode .google-sign-in-btn { background:#fff; color:#202124; border-color:rgba(55,91,162,.2); }

@@ -20,7 +20,7 @@ API base URL: `http://localhost:8000/api/v1`.
 
 The development OTP is returned by `POST /auth/request-otp`. This is intentionally disabled as a production delivery mechanism; production must use an approved OTP provider.
 
-Email/password sign-in is provided by Firebase Authentication. Enable the Email/Password provider in Firebase Console, set `FIREBASE_PROJECT_ID` to that project's ID, and provide the Firebase Web App configuration to the frontend. The API accepts a Firebase ID token at `POST /api/v1/auth/firebase` and rejects sign-in until the Firebase token reports a verified email. Apply database migrations with `npm run prisma:migrate:deploy`; Render runs this command during the backend build.
+Email/password and Google sign-in are provided by Firebase Authentication. Enable both providers in Firebase Console, set `FIREBASE_PROJECT_ID` to that project's ID, and provide the Firebase Web App configuration to the frontend. The API accepts a Firebase ID token at `POST /api/v1/auth/firebase` and resolves the Uriona profile by the stable Firebase UID; email verification is not required. Google sign-in reuses an existing Firebase identity, and the frontend requires the existing Email/Password credential before linking accounts when Firebase reports an account collision. Apply database migrations with `npm run prisma:migrate:deploy`; Render runs this command during the backend build.
 
 AliExpress product detail requests use `GET /api/v1/integrations/aliexpress/product/:productId` and require an app with Dropshipping API access. The endpoint defaults to delivery country `UZ`, currency `USD`, and language `ru_RU`; these can be overridden with `ship_to_country`, `target_currency`, and `target_language` query parameters.
 

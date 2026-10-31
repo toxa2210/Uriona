@@ -50,8 +50,8 @@ export class AuthService {
     }
 
     const email = decoded.email?.trim().toLowerCase();
-    if (!decoded.email_verified || !email) {
-      throw new UnauthorizedException("Verify your email address before signing in");
+    if (!email) {
+      throw new UnauthorizedException("A Firebase account with an email address is required");
     }
 
     const byUid = await this.prisma.user.findUnique({ where: { firebaseUid: decoded.uid } });
