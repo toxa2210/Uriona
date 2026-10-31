@@ -31,7 +31,7 @@ import {
   Sun,
 } from "lucide-react";
 import { createUserWithEmailAndPassword, getIdToken, GoogleAuthProvider, linkWithCredential, sendPasswordResetEmail, signInWithEmailAndPassword, signInWithPopup, signOut } from "@firebase/auth";
-import type { AuthCredential, FirebaseError, User as FirebaseUser } from "@firebase/auth";
+import type { AuthCredential, User as FirebaseUser } from "@firebase/auth";
 import { ApiRequestError, api, formatUzs, type ApiCategory, type ApiOrder, type ApiProduct, type ApiShippingQuote, type ApiSellerApplication, type ApiUser } from "./api";
 import { firebaseAuth, firebaseConfigReady } from "./firebase";
 import { prepareMarketplaceQuery, productPopularity } from "./search";
@@ -1895,10 +1895,10 @@ export function App() {
       const credential = await withTimeout(signInWithPopup(firebaseAuth, provider));
       await establishFirebaseSession(credential.user);
     } catch (error) {
-      const firebaseError = error as FirebaseError;
+      const firebaseError = error as { code?: string; customData?: { email?: string } };
       if (firebaseError.code === "auth/account-exists-with-different-credential") {
         const email = firebaseError.customData?.email;
-        const googleCredential = GoogleAuthProvider.credentialFromError(firebaseError);
+        const googleCredential = GoogleAuthProvider.credentialFromError(error as Parameters<typeof GoogleAuthProvider.credentialFromError>[0]);
         if (typeof email === "string" && googleCredential) {
           setAuthEmail(email);
           setAuthPassword("");
