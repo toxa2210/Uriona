@@ -1912,6 +1912,18 @@ export function App() {
     } finally { setProfileBusy(false); }
   };
 
+  const logout = async () => {
+    localStorage.removeItem("uriona-access-token");
+    setAuthToken("");
+    setProfile(null);
+    if (!firebaseAuth) return;
+    try {
+      await signOut(firebaseAuth);
+    } catch (error) {
+      setNotice(firebaseErrorMessage(error));
+    }
+  };
+
   const submitPasswordReset = async () => {
     if (!firebaseAuth) {
       setAuthNotice("Firebase ещё не настроен. Добавьте параметры веб-приложения Firebase в окружение frontend.");
