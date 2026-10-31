@@ -71,6 +71,9 @@ export class AuthService {
     if (byEmail?.firebaseUid && byEmail.firebaseUid !== decoded.uid) {
       throw new ConflictException("This email is already linked to another Firebase account");
     }
+    if (byEmail && !byUid && !decoded.email_verified) {
+      throw new ConflictException("Verify the email address before linking it to an existing Uriona profile");
+    }
 
     const user = byEmail
       ? await this.prisma.user.update({
