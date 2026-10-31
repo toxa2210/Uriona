@@ -30,8 +30,8 @@ import {
   Moon,
   Sun,
 } from "lucide-react";
-import { createUserWithEmailAndPassword, getIdToken, reload, sendEmailVerification, sendPasswordResetEmail, signInWithEmailAndPassword, signOut } from "@firebase/auth";
-import type { User as FirebaseUser } from "@firebase/auth";
+import { createUserWithEmailAndPassword, getIdToken, GoogleAuthProvider, linkWithCredential, sendPasswordResetEmail, signInWithEmailAndPassword, signInWithPopup, signOut } from "@firebase/auth";
+import type { AuthCredential, User as FirebaseUser } from "@firebase/auth";
 import { ApiRequestError, api, formatUzs, type ApiCategory, type ApiOrder, type ApiProduct, type ApiShippingQuote, type ApiSellerApplication, type ApiUser } from "./api";
 import { firebaseAuth, firebaseConfigReady } from "./firebase";
 import { prepareMarketplaceQuery, productPopularity } from "./search";
@@ -1105,7 +1105,7 @@ export function App() {
   const [authMode, setAuthMode] = useState<"login" | "register" | "reset">("login");
   const [profileSection, setProfileSection] = useState<ProfileSection>(readStoredProfileSection);
   const [profileBusy, setProfileBusy] = useState(false);
-  const [verificationPending, setVerificationPending] = useState(false);
+  const [pendingGoogleCredential, setPendingGoogleCredential] = useState<AuthCredential | null>(null);
   const [authNotice, setAuthNotice] = useState("");
   const [orders, setOrders] = useState<ApiOrder[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
@@ -1848,18 +1848,12 @@ export function App() {
   };
 
   const establishFirebaseSession = async (user: FirebaseUser) => {
-    if (!user.emailVerified) {
-      await sendEmailVerification(user);
-      setVerificationPending(true);
-      setAuthNotice(`Мы отправили ссылку подтверждения на ${user.email ?? authEmail}. Подтвердите адрес и нажмите «Я подтвердил email».`);
-      return;
-    }
     const result = await api.auth.firebase(await getIdToken(user, true));
     localStorage.setItem("uriona-access-token", result.accessToken);
     setAuthToken(result.accessToken);
     setProfile(result.user);
     setProfileForm({ name: result.user.name ?? "", email: result.user.email ?? user.email ?? "", phone: result.user.phone ?? "", city: result.user.city ?? "", address: result.user.address ?? "" });
-    setVerificationPending(false);
+    setPendingGoogleCredential(null);
     setAuthNotice("");
     setNotice("Вход выполнен");
   };
@@ -1872,71 +1866,50 @@ export function App() {
     setProfileBusy(true);
     setAuthNotice("");
     try {
-      if (authMode === "register") {
+      if (pendingGoogleCredential) {
+        const existingAccount = await withTimeout(signInWithEmailAndPassword(firebaseAuth, authEmail.trim(), authPassword));
+        const linkedAccount = await withTimeout(linkWithCredential(existingAccount.user, pendingGoogleCredential));
+        await establishFirebaseSession(linkedAccount.user);
+      } else if (authMode === "register") {
         const credential = await withTimeout(createUserWithEmailAndPassword(firebaseAuth, authEmail.trim(), authPassword));
-        await withTimeout(sendEmailVerification(credential.user));
-        setVerificationPending(true);
-        setAuthNotice(`Аккаунт создан. Подтвердите email по ссылке, отправленной на ${credential.user.email ?? authEmail}. После этого нажмите «Я подтвердил email».`);
+        await establishFirebaseSession(credential.user);
       } else {
         const credential = await withTimeout(signInWithEmailAndPassword(firebaseAuth, authEmail.trim(), authPassword));
-        if (!credential.user.emailVerified) {
-          await sendEmailVerification(credential.user);
-          setVerificationPending(true);
-          setAuthNotice(`Сначала подтвердите email по ссылке, отправленной на ${credential.user.email ?? authEmail}.`);
-        } else {
-          await establishFirebaseSession(credential.user);
+        await establishFirebaseSession(credential.user);
+      }
+    } catch (error) {
+      setAuthNotice(firebaseErrorMessage(error));
+    } finally { setProfileBusy(false); }
+  };
+
+  const signInWithGoogle = async () => {
+    if (!firebaseAuth) {
+      setAuthNotice("Firebase ещё не настроен. Добавьте параметры веб-приложения Firebase в окружение frontend.");
+      return;
+    }
+    setProfileBusy(true);
+    setAuthNotice("");
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+      const credential = await withTimeout(signInWithPopup(firebaseAuth, provider));
+      await establishFirebaseSession(credential.user);
+    } catch (error) {
+      const firebaseError = error as { code?: string; customData?: { email?: string } };
+      if (firebaseError.code === "auth/account-exists-with-different-credential") {
+        const email = firebaseError.customData?.email;
+        const googleCredential = GoogleAuthProvider.credentialFromError(error as Parameters<typeof GoogleAuthProvider.credentialFromError>[0]);
+        if (typeof email === "string" && googleCredential) {
+          setAuthEmail(email);
+          setAuthPassword("");
+          setAuthMode("login");
+          setPendingGoogleCredential(googleCredential);
+          setAuthNotice(`Аккаунт ${email} уже зарегистрирован по email и паролю. Введите пароль от существующего аккаунта, чтобы безопасно привязать Google и открыть прежний профиль.`);
+          return;
         }
       }
-    } catch (error) {
       setAuthNotice(firebaseErrorMessage(error));
     } finally { setProfileBusy(false); }
-  };
-
-  const checkEmailVerification = async () => {
-    if (!firebaseAuth?.currentUser) {
-      setAuthNotice("Войдите снова после подтверждения email.");
-      setVerificationPending(false);
-      return;
-    }
-    setProfileBusy(true);
-    setAuthNotice("");
-    try {
-      await withTimeout(reload(firebaseAuth.currentUser));
-      const user = firebaseAuth.currentUser;
-      if (!user.emailVerified) {
-        setAuthNotice("Подтверждение пока не найдено. Откройте ссылку из письма, затем попробуйте ещё раз.");
-        return;
-      }
-      await establishFirebaseSession(user);
-    } catch (error) {
-      setAuthNotice(firebaseErrorMessage(error));
-    } finally { setProfileBusy(false); }
-  };
-
-  const resendVerificationEmail = async () => {
-    if (!firebaseAuth?.currentUser) {
-      setAuthNotice("Сессия регистрации завершена. Войдите в аккаунт, чтобы запросить письмо ещё раз.");
-      return;
-    }
-    setProfileBusy(true);
-    setAuthNotice("");
-    try {
-      await withTimeout(sendEmailVerification(firebaseAuth.currentUser));
-      setAuthNotice(`Письмо отправлено повторно на ${firebaseAuth.currentUser.email ?? authEmail}.`);
-    } catch (error) {
-      setAuthNotice(firebaseErrorMessage(error));
-    } finally { setProfileBusy(false); }
-  };
-
-  const returnToLogin = async () => {
-    try {
-      if (firebaseAuth) await signOut(firebaseAuth);
-      setVerificationPending(false);
-      setAuthNotice("");
-      setAuthMode("login");
-    } catch (error) {
-      setAuthNotice(firebaseErrorMessage(error));
-    }
   };
 
   const logout = async () => {
@@ -2618,34 +2591,28 @@ export function App() {
         <div className="auth-panel">
           <div className="profile-header">
             <div className="profile-avatar"><LogoMark /></div>
-            <div><small>Личный кабинет</small><h2>{verificationPending ? "Подтвердите email" : authMode === "login" ? "Войти в URIONA" : authMode === "register" ? "Создать аккаунт" : "Сбросить пароль"}</h2></div>
+            <div><small>Личный кабинет</small><h2>{authMode === "login" ? "Войти в URIONA" : authMode === "register" ? "Создать аккаунт" : "Сбросить пароль"}</h2></div>
           </div>
-          {verificationPending ? (
-            <>
-              <p className="profile-intro">Для защиты аккаунта подтвердите адрес электронной почты по ссылке в письме. До подтверждения доступ к профилю и заказам не выдаётся.</p>
-              <div className="profile-actions">
-                <button type="button" className="primary-btn" disabled={profileBusy} onClick={() => void checkEmailVerification()}>Я подтвердил email</button>
-                <button type="button" className="secondary-btn" disabled={profileBusy} onClick={() => void resendVerificationEmail()}>Отправить письмо ещё раз</button>
-                <button type="button" className="secondary-btn" disabled={profileBusy} onClick={() => void returnToLogin()}>Вернуться ко входу</button>
-              </div>
-            </>
-          ) : (
-            <>
-              <p className="profile-intro">{authMode === "login" ? "Войдите, чтобы управлять заказами, адресами и избранным." : authMode === "register" ? "Создайте аккаунт. Для завершения регистрации нужно подтвердить email." : "Укажите email — отправим ссылку для создания нового пароля."}</p>
-              <form className="auth-form" onSubmit={(event) => { event.preventDefault(); void (authMode === "reset" ? submitPasswordReset() : submitAuth()); }}>
-                <label>Email<input type="email" autoComplete="email" required value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder="name@example.com" /></label>
-                {authMode !== "reset" && <label>Пароль<input type="password" autoComplete={authMode === "login" ? "current-password" : "new-password"} minLength={8} required value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder="Минимум 8 символов" /></label>}
-                <div className="profile-actions">
-                  <button type="submit" className="primary-btn" disabled={profileBusy || !firebaseConfigReady || !authEmail || (authMode !== "reset" && authPassword.length < 8)}>{profileBusy ? "Подождите…" : authMode === "login" ? "Войти" : authMode === "register" ? "Зарегистрироваться" : "Отправить ссылку"}</button>
-                  {authMode === "login" && <button type="button" className="secondary-btn" onClick={() => { setAuthMode("register"); setAuthNotice(""); }}>Создать аккаунт</button>}
-                  {authMode === "register" && <button type="button" className="secondary-btn" onClick={() => { setAuthMode("login"); setAuthNotice(""); }}>Уже есть аккаунт</button>}
-                  {authMode === "reset" && <button type="button" className="secondary-btn" onClick={() => { setAuthMode("login"); setAuthNotice(""); }}>Вернуться ко входу</button>}
-                </div>
-              </form>
-              {authMode === "login" && <button type="button" className="auth-link" onClick={() => { setAuthMode("reset"); setAuthNotice(""); }}>Забыли пароль?</button>}
-              {!firebaseConfigReady && <p className="auth-message error" role="alert">Firebase не настроен для этого сайта: кнопки входа временно отключены. Нужны настройки Web App из Firebase Console и включённый метод Email/Password.</p>}
-            </>
+          <p className="profile-intro">{pendingGoogleCredential ? "Чтобы открыть существующий профиль, подтвердите владение ранее зарегистрированным аккаунтом." : authMode === "login" ? "Войдите, чтобы управлять заказами, адресами и избранным." : authMode === "register" ? "Создайте аккаунт Uriona — подтверждать email не нужно." : "Укажите email — отправим ссылку для создания нового пароля."}</p>
+          {authMode === "login" && !pendingGoogleCredential && (
+            <button type="button" className="secondary-btn google-sign-in-btn" disabled={profileBusy || !firebaseConfigReady} onClick={() => void signInWithGoogle()}>
+              <span className="google-sign-in-mark" aria-hidden="true">G</span>
+              {profileBusy ? "Подождите…" : "Продолжить с Google"}
+            </button>
           )}
+          {authMode === "login" && !pendingGoogleCredential && <div className="auth-divider"><span>или войдите по email</span></div>}
+          <form className="auth-form" onSubmit={(event) => { event.preventDefault(); void (authMode === "reset" ? submitPasswordReset() : submitAuth()); }}>
+            <label>Email<input type="email" autoComplete="email" required value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder="name@example.com" /></label>
+            {authMode !== "reset" && <label>Пароль<input type="password" autoComplete={authMode === "login" ? "current-password" : "new-password"} minLength={8} required value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder="Минимум 8 символов" /></label>}
+            <div className="profile-actions">
+              <button type="submit" className="primary-btn" disabled={profileBusy || !firebaseConfigReady || !authEmail || (authMode !== "reset" && authPassword.length < 8)}>{profileBusy ? "Подождите…" : pendingGoogleCredential ? "Подтвердить и связать Google" : authMode === "login" ? "Войти" : authMode === "register" ? "Зарегистрироваться" : "Отправить ссылку"}</button>
+              {authMode === "login" && !pendingGoogleCredential && <button type="button" className="secondary-btn" onClick={() => { setAuthMode("register"); setAuthNotice(""); setPendingGoogleCredential(null); }}>Создать аккаунт</button>}
+              {authMode === "register" && <button type="button" className="secondary-btn" onClick={() => { setAuthMode("login"); setAuthNotice(""); }}>Уже есть аккаунт</button>}
+              {authMode === "reset" && <button type="button" className="secondary-btn" onClick={() => { setAuthMode("login"); setAuthNotice(""); }}>Вернуться ко входу</button>}
+            </div>
+          </form>
+          {authMode === "login" && !pendingGoogleCredential && <button type="button" className="auth-link" onClick={() => { setAuthMode("reset"); setAuthNotice(""); }}>Забыли пароль?</button>}
+          {!firebaseConfigReady && <p className="auth-message error" role="alert">Firebase не настроен для этого сайта: добавьте параметры Web App и включите Email/Password и Google в Firebase Console.</p>}
           {authNotice && <p className="auth-message" role="status">{authNotice}</p>}
         </div>
       ) : (

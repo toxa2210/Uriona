@@ -50,8 +50,8 @@ export class AuthService {
     }
 
     const email = decoded.email?.trim().toLowerCase();
-    if (!decoded.email_verified || !email) {
-      throw new UnauthorizedException("Verify your email address before signing in");
+    if (!email) {
+      throw new UnauthorizedException("A Firebase account with an email address is required");
     }
 
     const byUid = await this.prisma.user.findUnique({ where: { firebaseUid: decoded.uid } });
@@ -70,6 +70,9 @@ export class AuthService {
     const byEmail = byUid ?? await this.prisma.user.findUnique({ where: { email } });
     if (byEmail?.firebaseUid && byEmail.firebaseUid !== decoded.uid) {
       throw new ConflictException("This email is already linked to another Firebase account");
+    }
+    if (byEmail && !byUid && !decoded.email_verified) {
+      throw new ConflictException("Verify the email address before linking it to an existing Uriona profile");
     }
 
     const user = byEmail
