@@ -180,7 +180,7 @@ const uiTranslations: Record<string, Partial<Record<Language, string>>> = Object
   "Войти в URIONA": { en: "Sign in to URIONA", uz: "URIONA’ga kiring" },
   "Создать аккаунт": { en: "Create an account", uz: "Hisob yaratish" },
   "Сбросить пароль": { en: "Reset password", uz: "Parolni tiklash" },
-  "Для защиты аккаунта подтвердите адрес электронной почты по ссылке в письме. До подтверждения доступ к профилю и заказам не выдаётся.": {
+  "Чтобы подтвердить email, откройте письмо от Uriona, перейдите по ссылке «Подтвердить email» и дождитесь сообщения об успешном подтверждении. Просто получить письмо недостаточно — обязательно нажмите на ссылку. До подтверждения доступ к профилю и заказам закрыт.": {
     en: "To protect your account, verify your email using the link we sent. Profile and order access is unavailable until verification.",
     uz: "Hisobingizni himoya qilish uchun xatdagi havola orqali emailingizni tasdiqlang. Tasdiqlamaguningizcha profil va buyurtmalarga kirish yopiq.",
   },
@@ -191,7 +191,7 @@ const uiTranslations: Record<string, Partial<Record<Language, string>>> = Object
     en: "Sign in to manage your orders, addresses, and wishlist.",
     uz: "Buyurtmalar, manzillar va saralangan mahsulotlarni boshqarish uchun kiring.",
   },
-  "Создайте аккаунт. Для завершения регистрации нужно подтвердить email.": {
+  "Создайте аккаунт. После регистрации откройте письмо от Uriona и обязательно перейдите по ссылке подтверждения email.": {
     en: "Create an account. You will need to verify your email to finish registration.",
     uz: "Hisob yarating. Ro‘yxatdan o‘tishni yakunlash uchun emailingizni tasdiqlang.",
   },
@@ -1876,13 +1876,13 @@ export function App() {
         const credential = await withTimeout(createUserWithEmailAndPassword(firebaseAuth, authEmail.trim(), authPassword));
         await withTimeout(sendEmailVerification(credential.user));
         setVerificationPending(true);
-        setAuthNotice(`Аккаунт создан. Подтвердите email по ссылке, отправленной на ${credential.user.email ?? authEmail}. После этого нажмите «Я подтвердил email».`);
+        setAuthNotice(`Аккаунт создан! Чтобы завершить регистрацию, зайдите в почту ${credential.user.email ?? authEmail}, откройте письмо от Uriona и нажмите на ссылку «Подтвердить email». После перехода по ссылке вернитесь на сайт и нажмите «Я подтвердил email». Если письма нет, проверьте папки «Спам» и «Промоакции».`);
       } else {
         const credential = await withTimeout(signInWithEmailAndPassword(firebaseAuth, authEmail.trim(), authPassword));
         if (!credential.user.emailVerified) {
           await sendEmailVerification(credential.user);
           setVerificationPending(true);
-          setAuthNotice(`Сначала подтвердите email по ссылке, отправленной на ${credential.user.email ?? authEmail}.`);
+          setAuthNotice(`Сначала откройте письмо от Uriona на ${credential.user.email ?? authEmail} и нажмите на ссылку «Подтвердить email». Без перехода по ссылке вход не будет завершён. Если письма нет, проверьте папки «Спам» и «Промоакции».`);
         } else {
           await establishFirebaseSession(credential.user);
         }
@@ -1904,7 +1904,7 @@ export function App() {
       await withTimeout(reload(firebaseAuth.currentUser));
       const user = firebaseAuth.currentUser;
       if (!user.emailVerified) {
-        setAuthNotice("Подтверждение пока не найдено. Откройте ссылку из письма, затем попробуйте ещё раз.");
+        setAuthNotice("Мы пока не видим подтверждения. Откройте письмо от Uriona и обязательно нажмите на ссылку «Подтвердить email». Затем вернитесь сюда и нажмите кнопку ещё раз.");
         return;
       }
       await establishFirebaseSession(user);
@@ -1922,7 +1922,7 @@ export function App() {
     setAuthNotice("");
     try {
       await withTimeout(sendEmailVerification(firebaseAuth.currentUser));
-      setAuthNotice(`Письмо отправлено повторно на ${firebaseAuth.currentUser.email ?? authEmail}.`);
+      setAuthNotice(`Письмо с подтверждением отправлено повторно на ${firebaseAuth.currentUser.email ?? authEmail}. Откройте его и нажмите на ссылку «Подтвердить email». Если письма нет, проверьте папки «Спам» и «Промоакции».`);
     } catch (error) {
       setAuthNotice(firebaseErrorMessage(error));
     } finally { setProfileBusy(false); }
