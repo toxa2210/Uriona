@@ -3158,7 +3158,7 @@ export function App() {
                     <ShoppingBag size={17} /> В корзину
                   </button>
                 </div>
-                <div className="product-dialog-meta-line"><span>Артикул</span><code>{detailProduct.id}</code></div>
+                <div className="product-dialog-meta-line"><span>Артикул</span><code>{detailProduct.articleNumber || detailProduct.id}</code></div>
               </div>
             </div>
             {detailLoading && <p className="product-detail-state" role="status">Загружаем данные AliExpress…</p>}

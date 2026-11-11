@@ -229,6 +229,7 @@ model ShippingBranch {
 
 model Product {
   id                String        @id @default(cuid())
+  articleNumber     String        @unique @default(dbgenerated("('UR-'::text || lpad(nextval('uriona_article_number_seq'::regclass)::text, 6, '0'::text))"))
   sellerId          String?
   seller            User?         @relation("SellerProducts", fields: [sellerId], references: [id], onDelete: SetNull)
   categoryId        String?
