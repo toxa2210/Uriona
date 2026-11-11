@@ -269,7 +269,30 @@ export const api = {
   shippingBranches: (carrier?: "EMU_EXPRESS" | "UZPOST") => request<ApiShippingBranch[]>(carrier ? `/shipping-branches?carrier=${encodeURIComponent(carrier)}` : "/shipping-branches"),
   seller: {
     application: (token: string) => request<ApiSellerApplication | null>("/seller/application", { headers: bearerHeaders(token) }),
-    submitApplication: (token: string, input: { storeName: string; logoUrl?: string; description: string; categoryIds: string[]; region: string; city: string; address?: string }) => request<ApiSellerApplication>("/seller/application", { method: "POST", headers: bearerHeaders(token), body: JSON.stringify(input) }),
+    submitApplication: async (token: string, input: { storeName: string; logoUrl?: string; description: string; categoryIds: string[]; region: string; city: string; address?: string }): Promise<ApiSellerApplication> => {
+      try {
+        return await request<ApiSellerApplication>("/seller/application", {
+          method: "POST",
+          headers: bearerHeaders(token),
+          body: JSON.stringify(input),
+        });
+      } catch (error) {
+        // A proxy can occasionally drop the POST response body after the database write.
+        // Verify persistence through the authenticated GET endpoint before reporting failure.
+        if (!(error instanceof ApiRequestError) || error.status !== 200 || !error.message.includes("пустой ответ")) throw error;
+        const saved = await request<ApiSellerApplication | null>("/seller/application", { headers: bearerHeaders(token) });
+        const sameApplication = saved
+          && saved.storeName === input.storeName
+          && saved.description === input.description
+          && saved.region === input.region
+          && saved.city === input.city
+          && saved.categoryIds.length === input.categoryIds.length
+          && input.categoryIds.every((id) => saved.categoryIds.includes(id))
+          && (saved.logoUrl ?? "") === (input.logoUrl ?? "");
+        if (saved && sameApplication) return saved;
+        throw error;
+      }
+    },
     uploadApplicationImage: async (token: string, file: File) => { const body = new FormData(); body.append("file", await prepareProductImage(file)); return request<{ imageUrl: string }>("/seller/application/image", { method: "POST", headers: bearerHeaders(token), body }); },
     products: (token: string) => request<ApiProduct[]>("/seller/products", { headers: bearerHeaders(token) }),
     billing: (token: string) => request<{ orderItems: number; grossMinor: number; awaitingPaymentMinor: number; confirmedSalesMinor: number; deliveredSalesMinor: number; currency: string }>("/seller/billing", { headers: bearerHeaders(token) }),
