@@ -1,0 +1,80 @@
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;800;900&display=swap');
+:root{--stride-black:#090909;--stride-panel:#111;--stride-paper:#eae8e6;--stride-white:#f5f4f0;--stride-orange:#ee4b0a;--stride-lime:#d1df28}
+html,body{background:#090909!important}body{color:#f5f4f0;background:#090909!important;font-family:Inter,Arial,sans-serif}
+.desktop-app-shell{max-width:none!important;width:100%;background:#090909!important;color:#f5f4f0!important;padding-bottom:48px!important}
+.desktop-app-shell .topbar{background:#090909!important;border-bottom:1px solid #292929!important;box-shadow:none!important;backdrop-filter:none!important}
+.desktop-app-shell .topbar:before{content:"URIONA  •  МАРКЕТПЛЕЙС ТОВАРОВ ДЛЯ ТВОЕГО РИТМА";display:flex;align-items:center;justify-content:center;min-height:34px;padding:7px 18px;background:#101010;color:#f5f4f0;font:700 10px/1.2 Inter,sans-serif;letter-spacing:.14em;text-align:center}
+.desktop-app-shell .top-row{max-width:1440px!important;min-height:86px;padding:14px 4.2%!important;gap:18px!important;grid-template-columns:auto auto minmax(180px,1fr) auto auto auto!important}
+.desktop-app-shell .brand{color:#f5f4f0!important;font:400 28px Anton,Impact,sans-serif!important;letter-spacing:.035em!important}
+.desktop-app-shell .brand-mark{filter:grayscale(1) brightness(0) invert(1)}
+.desktop-app-shell .catalog-trigger,.desktop-app-shell .icon-btn,.desktop-app-shell .top-sub-tools button,.desktop-app-shell .top-sub-tools select{color:#f5f4f0!important}
+.desktop-app-shell .catalog-trigger{border:1px solid #3a3a3a!important;border-radius:2px!important;background:#111!important;text-transform:uppercase;font-size:11px!important;letter-spacing:.07em}
+.desktop-app-shell .search-box{border:1px solid #353535!important;border-radius:2px!important;background:#151515!important;box-shadow:none!important}
+.desktop-app-shell .search-box input{color:#f5f4f0!important}.desktop-app-shell .search-box input::placeholder{color:#8e8e8e!important}
+.desktop-app-shell .icon-btn{border-radius:2px!important;background:transparent!important}
+.desktop-app-shell .icon-btn:hover,.desktop-app-shell .top-sub-tools button:hover{color:#ee4b0a!important}
+.desktop-app-shell .top-sub-row{max-width:1440px!important;margin:0 auto;padding:0 4.2% 13px!important;border-top:1px solid #1e1e1e}
+.desktop-app-shell .home-promo-tabs button{color:#b7b7b7!important;border-radius:0!important;border-bottom:2px solid transparent!important;background:transparent!important;text-transform:uppercase;letter-spacing:.08em;font-size:10px!important}
+.desktop-app-shell .home-promo-tabs button.active{color:#ee4b0a!important;border-bottom-color:#ee4b0a!important}
+.desktop-app-shell .home-delivery-chip,.desktop-app-shell .home-language-chip,.desktop-app-shell .home-currency-chip,.desktop-app-shell .home-theme-chip{border-radius:2px!important;border-color:#383838!important;background:#111!important}
+.desktop-app-shell .page{max-width:1440px!important;width:100%;margin:0 auto;padding:0 0 40px!important}
+.desktop-app-shell .home-page{gap:0!important;padding:0 0 28px}
+.desktop-app-shell .promo-stage{position:relative;display:grid!important;grid-template-columns:minmax(0,1fr)!important;min-height:540px;margin:0!important;padding:34px 4.2% 46px!important;gap:0!important;overflow:hidden;border:0!important;border-radius:0!important;background:radial-gradient(ellipse at 78% 48%,rgba(238,75,10,.17),transparent 34%),linear-gradient(105deg,#0a0a0a 0%,#111 54%,#090909 100%)!important;box-shadow:none!important}
+.desktop-app-shell .promo-stage:after{content:"URIONA";position:absolute;right:3.5%;bottom:-68px;color:rgba(245,244,240,.035);font:400 clamp(150px,24vw,340px)/.8 Anton,Impact,sans-serif;pointer-events:none}
+.desktop-app-shell .promo-side-card{display:none!important}
+.desktop-app-shell .promo-feature{position:relative;z-index:1;display:grid!important;grid-template-columns:minmax(0,1.05fr) minmax(320px,.95fr)!important;align-items:center;gap:clamp(24px,5vw,76px)!important;width:100%;max-width:1280px;min-height:460px;margin:0 auto!important;padding:26px 0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
+.desktop-app-shell .promo-feature-copy{position:relative;z-index:2;padding:30px 0!important;color:#f5f4f0!important}
+.desktop-app-shell .promo-feature-kicker{display:inline-flex;margin-bottom:16px!important;color:#d1df28!important;font:800 12px/1.4 Inter,sans-serif!important;letter-spacing:.13em!important;text-transform:uppercase}
+.desktop-app-shell .stride-hero-heading{display:flex;flex-direction:column;gap:0;margin:0 0 18px!important;color:#f5f4f0!important;font:400 clamp(58px,8.4vw,112px)/.88 Anton,Impact,sans-serif!important;letter-spacing:-.025em;text-transform:uppercase}
+.desktop-app-shell .stride-hero-heading em{color:#ee4b0a;font-style:normal}
+.desktop-app-shell .stride-feature-product{max-width:470px;margin:0 0 28px!important;color:#bcbcb8!important;font:500 14px/1.6 Inter,sans-serif!important}
+.desktop-app-shell .stride-feature-product span{color:#ee4b0a}
+.desktop-app-shell .promo-feature-actions{display:flex;align-items:center;gap:22px!important;flex-wrap:wrap}
+.desktop-app-shell .promo-feature-actions strong{color:#f5f4f0!important;font:800 22px/1 Inter,sans-serif!important}
+.desktop-app-shell .promo-feature-actions button{min-height:48px;padding:0 25px!important;border:1px solid #ee4b0a!important;border-radius:2px!important;background:#ee4b0a!important;color:#fff!important;font:800 11px/1 Inter,sans-serif!important;letter-spacing:.08em;text-transform:uppercase}
+.desktop-app-shell .promo-feature-image{position:relative;width:100%!important;min-height:390px;height:min(42vw,460px)!important;overflow:hidden;border:1px solid #282828!important;border-radius:0!important;background:#171717!important;box-shadow:18px 18px 0 rgba(238,75,10,.12)}
+.desktop-app-shell .promo-feature-image img{width:100%;height:100%;object-fit:cover;transition:transform .5s ease}
+.desktop-app-shell .promo-feature-image:hover img{transform:scale(1.035)}
+.desktop-app-shell .promo-carousel-dots{left:0!important;right:auto!important;bottom:-12px!important}
+.desktop-app-shell .promo-carousel-dots button{border-radius:0!important}.desktop-app-shell .promo-carousel-dots button.active{background:#ee4b0a!important}
+.desktop-app-shell .stride-categories{padding:44px 4.2% 48px;background:#eae8e6;color:#0b0c0c}
+.desktop-app-shell .stride-section-heading{display:flex;align-items:end;justify-content:space-between;gap:20px;margin:0 auto 22px;max-width:1280px}
+.desktop-app-shell .stride-section-heading span{display:block;margin-bottom:7px;color:#ee4b0a;font:800 10px/1.3 Inter,sans-serif;letter-spacing:.14em}
+.desktop-app-shell .stride-section-heading h2{margin:0;color:#0b0c0c;font:400 clamp(28px,3vw,40px)/1 Anton,Impact,sans-serif}
+.desktop-app-shell .stride-section-heading button{display:inline-flex;align-items:center;gap:8px;padding:10px 0;border:0;border-bottom:1px solid #0b0c0c;border-radius:0;background:transparent;color:#0b0c0c;font:800 10px/1 Inter,sans-serif;letter-spacing:.06em;text-transform:uppercase}
+.desktop-app-shell .stride-category-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;max-width:1280px;margin:0 auto}
+.desktop-app-shell .stride-category-card{position:relative;display:block;min-width:0;aspect-ratio:1.12/1;overflow:hidden;padding:0;border:0;border-radius:0;background:#151515;text-align:left}
+.desktop-app-shell .stride-category-card img{width:100%;height:100%;object-fit:cover;transition:transform .5s ease}
+.desktop-app-shell .stride-category-card:hover img{transform:scale(1.06)}
+.desktop-app-shell .stride-category-shade{position:absolute;inset:35% 0 0;background:linear-gradient(transparent,rgba(0,0,0,.88))}
+.desktop-app-shell .stride-category-copy{position:absolute;right:18px;bottom:18px;left:18px;display:flex;flex-direction:column;gap:8px;color:#fff}
+.desktop-app-shell .stride-category-copy strong{font:800 clamp(15px,1.5vw,21px)/1.1 Inter,sans-serif;letter-spacing:.015em;text-transform:uppercase}
+.desktop-app-shell .stride-category-copy small{display:inline-flex;align-items:center;gap:7px;color:#ee4b0a;font:800 10px/1 Inter,sans-serif;letter-spacing:.08em}
+.desktop-app-shell .home-products{padding:46px 4.2% 32px;background:#090909}
+.desktop-app-shell .home-products .section-head{max-width:1280px;margin:0 auto 22px!important;align-items:end}
+.desktop-app-shell .home-products .section-head small{color:#d1df28!important;font:800 10px/1.4 Inter,sans-serif!important;letter-spacing:.14em;text-transform:uppercase}
+.desktop-app-shell .home-products .section-head h2{margin:5px 0 0!important;color:#f5f4f0!important;font:400 clamp(28px,3vw,40px)/1 Anton,Impact,sans-serif!important;text-transform:uppercase}
+.desktop-app-shell .home-products .section-head>button{display:inline-flex;align-items:center;gap:8px;border:0;border-bottom:1px solid #eee;border-radius:0;background:transparent;color:#f5f4f0!important;font:800 10px/1 Inter,sans-serif;letter-spacing:.08em;text-transform:uppercase}
+.desktop-app-shell .product-grid.home-product-grid{grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:16px!important;max-width:1280px;margin:0 auto}
+.desktop-app-shell .home-product-card{overflow:hidden;border:1px solid #282828!important;border-radius:0!important;background:#121212!important;box-shadow:none!important}
+.desktop-app-shell .home-product-media{aspect-ratio:1/.98;background:#1c1c1c!important;border-radius:0!important}
+.desktop-app-shell .home-product-media img{transition:transform .4s ease}.desktop-app-shell .home-product-card:hover .home-product-media img{transform:scale(1.04)}
+.desktop-app-shell .home-product-card .product-tag{border-radius:0!important;background:#d1df28!important;color:#111!important;font:800 9px/1 Inter,sans-serif;letter-spacing:.06em;text-transform:uppercase}
+.desktop-app-shell .home-product-card .wish-btn{border:1px solid #484848!important;border-radius:50%!important;background:rgba(0,0,0,.55)!important;color:#fff!important}
+.desktop-app-shell .home-product-body{padding:14px!important}
+.desktop-app-shell .home-product-body .product-category{color:#a5a5a5!important;font:700 9px/1.3 Inter,sans-serif;letter-spacing:.1em;text-transform:uppercase}
+.desktop-app-shell .home-product-title{color:#f5f4f0!important;font:700 12px/1.4 Inter,sans-serif!important}
+.desktop-app-shell .home-product-body .price-row strong{color:#f5f4f0!important;font:800 14px/1.2 Inter,sans-serif!important}
+.desktop-app-shell .home-product-body .mini-cart{border-radius:2px!important;background:#ee4b0a!important;color:#fff!important}
+.desktop-app-shell .catalog-source-note{max-width:1280px;margin:0 auto 16px!important;border-color:#353535!important;border-radius:0!important;color:#aaa!important}
+.desktop-app-shell .catalog-infinite-sentinel,.desktop-app-shell .catalog-loading-label,.desktop-app-shell .catalog-end-label{max-width:1280px;margin-right:auto;margin-left:auto}
+.desktop-app-shell .screen-panel,.desktop-app-shell .product-dialog,.desktop-app-shell .pickup-dialog{border-radius:2px!important}
+.desktop-app-shell .primary-btn,.desktop-app-shell .secondary-btn,.desktop-app-shell .product-details-btn,.desktop-app-shell .mini-cart{border-radius:2px!important}
+@media(max-width:1100px){.desktop-app-shell .promo-feature{grid-template-columns:minmax(0,1fr) minmax(260px,.9fr)!important}.desktop-app-shell .stride-category-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.desktop-app-shell .product-grid.home-product-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important}}
+@media(max-width:760px){.desktop-app-shell .topbar:before{min-height:28px;font-size:8px;letter-spacing:.08em}.desktop-app-shell .top-row{padding:10px 12px!important;grid-template-columns:minmax(0,1fr) auto auto auto!important}.desktop-app-shell .top-sub-row{padding:0 12px 10px!important}.desktop-app-shell .page{padding:0 0 28px!important}.desktop-app-shell .promo-stage{min-height:0;padding:28px 16px 36px!important}.desktop-app-shell .promo-feature{grid-template-columns:minmax(0,1fr)!important;gap:18px!important;min-height:0;padding:0!important}.desktop-app-shell .promo-feature-copy{padding:10px 0 0!important}.desktop-app-shell .stride-hero-heading{font-size:clamp(54px,15vw,82px)!important}.desktop-app-shell .promo-feature-image{min-height:260px;height:72vw!important;max-height:390px}.desktop-app-shell .promo-carousel-dots{bottom:-24px!important}.desktop-app-shell .stride-categories{padding:30px 14px 34px}.desktop-app-shell .stride-category-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.desktop-app-shell .stride-category-card{aspect-ratio:.9/1}.desktop-app-shell .stride-category-copy{right:10px;bottom:12px;left:10px}.desktop-app-shell .stride-category-copy strong{font-size:13px}.desktop-app-shell .home-products{padding:32px 14px 24px}.desktop-app-shell .product-grid.home-product-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}.desktop-app-shell .home-product-body{padding:10px!important}}
+@media(max-width:380px){.desktop-app-shell .stride-section-heading{align-items:start;flex-direction:column;gap:10px}.desktop-app-shell .stride-category-grid{grid-template-columns:minmax(0,1fr)}}
+.mobile-app-shell{background:#090909!important;color:#f5f4f0!important}
+.mobile-app-shell .mobile-page,.mobile-app-shell .mobile-home,.mobile-app-shell .mobile-shell,.mobile-app-shell .mobile-topbar{background-color:#090909!important;color:#f5f4f0!important}
+.mobile-app-shell .mobile-bottom-nav,.mobile-app-shell .mobile-header,.mobile-app-shell .mobile-search,.mobile-app-shell .mobile-home-section,.mobile-app-shell .mobile-product-card{border-color:#292929!important;background-color:#111!important;color:#f5f4f0!important}
+.mobile-app-shell button{border-radius:3px}
+.mobile-app-shell .mobile-home button[class*="primary"],.mobile-app-shell .mobile-bottom-nav button.active{background:#ee4b0a!important;color:#fff!important}

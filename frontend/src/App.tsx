@@ -2043,9 +2043,12 @@ export function App() {
 
             <article className="promo-feature" key={activeHeroProduct.id}>
               <div className="promo-feature-copy">
-                <small className="promo-feature-kicker">URIONA&nbsp; · &nbsp;{text.forYou}</small>
-                <h1>{productTitle(activeHeroProduct)}</h1>
-                <p>{categoryLabel(activeHeroProduct.category) || text.catalog}</p>
+                <small className="promo-feature-kicker">URIONA&nbsp; · &nbsp;{language === "en" ? "DISCOVER YOUR NEXT FAVORITE" : language === "uz" ? "YANGI SEVIMLILARINGIZNI TOPING" : "ОТКРЫВАЙ НОВОЕ КАЖДЫЙ ДЕНЬ"}</small>
+                <h1 className="stride-hero-heading">
+                  <span>{language === "en" ? "BUILT FOR" : language === "uz" ? "SIZ UCHUN" : "ВЫБИРАЙ"}</span>
+                  <em>{language === "en" ? "MOVEMENT" : language === "uz" ? "HARAKAT" : "СВОЁ"}</em>
+                </h1>
+                <p className="stride-feature-product">{productTitle(activeHeroProduct)} <span>·</span> {categoryLabel(activeHeroProduct.category) || text.catalog}</p>
                 <div className="promo-feature-actions">
                   <strong>{formatUzs(activeHeroProduct.priceMinor)}</strong>
                   <button type="button" onClick={() => void openProductDetails(activeHeroProduct)}>
@@ -2097,6 +2100,32 @@ export function App() {
             {catalogError && <button type="button" className="secondary-btn" onClick={retryCatalog}>{text.retry}</button>}
           </div>
         )}
+      </section>
+
+      <section className="stride-categories" aria-label={language === "en" ? "Shop by category" : language === "uz" ? "Toifalar bo‘yicha xarid" : "Покупки по категориям"}>
+        <div className="stride-section-heading">
+          <div>
+            <span>{language === "en" ? "FIND YOUR STYLE" : language === "uz" ? "O‘Z USLUBINGIZNI TOPING" : "ВЫБИРАЙ СВОЁ"}</span>
+            <h2>{language === "en" ? "SHOP BY CATEGORY" : language === "uz" ? "TOIFALAR BO‘YICHA" : "ПОКУПАЙ ПО КАТЕГОРИЯМ"}</h2>
+          </div>
+          <button type="button" onClick={() => goTo("Каталог", text.catalog)}>{text.seeAll}<ChevronRight size={16} /></button>
+        </div>
+        <div className="stride-category-grid">
+          {topLevelCategories.slice(0, 4).map((category, index) => (
+            <button type="button" className="stride-category-card" key={category.id} onClick={() => {
+              setSelectedCat(category.id);
+              setSearch("");
+              goTo("Каталог");
+            }}>
+              <img src={categoryPhoto(category, index)} alt="" loading="lazy" />
+              <span className="stride-category-shade" />
+              <span className="stride-category-copy">
+                <strong>{categoryLabel(category)}</strong>
+                <small>{language === "en" ? "SHOP NOW" : language === "uz" ? "XARID QILISH" : "СМОТРЕТЬ ТОВАРЫ"} <ArrowRight size={14} /></small>
+              </span>
+            </button>
+          ))}
+        </div>
       </section>
 
       <section className="section-block home-products">
