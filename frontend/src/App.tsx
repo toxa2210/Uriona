@@ -1206,6 +1206,8 @@ export function App() {
     document.documentElement.lang = language === "uz" ? "uz" : language;
     document.documentElement.style.colorScheme = lightMode ? "light" : "dark";
     document.body.classList.toggle("light-mode", lightMode);
+    document.documentElement.classList.toggle("dark-mode", !lightMode);
+    document.body.classList.toggle("dark-mode", !lightMode);
   }, [language, lightMode]);
 
   useEffect(() => {
@@ -2833,7 +2835,7 @@ export function App() {
   };
 
   return localizeNode(
-    <div className={`app-shell ${lightMode ? "light-mode" : ""} ${isMobile ? "mobile-app-shell" : "desktop-app-shell"}`}>
+    <div className={`app-shell ${lightMode ? "light-mode" : "dark-mode"} ${isMobile ? "mobile-app-shell" : "desktop-app-shell"}`}>
       {isMobile ? (
         <MobileShell
           activeView={view}
