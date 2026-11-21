@@ -2946,13 +2946,7 @@ export function App() {
               aria-label={text.catalog}
               aria-expanded={catalogMenuOpen}
               aria-haspopup="menu"
-              onClick={() => {
-                setCatalogMenuOpen(false);
-                setSelectedCat("all");
-                setCategoryParentId(null);
-                setCategorySearch("");
-                goTo("Каталог", "Каталог открыт");
-              }}
+              onClick={() => setCatalogMenuOpen((open) => !open)}
             >
               <Store size={18} />
               <span>{text.catalog}</span>
@@ -3007,14 +3001,6 @@ export function App() {
               goTo("Главная");
             }}><Search size={17} /></button>
           </div>
-
-          <button className="icon-btn header-orders" type="button" onClick={() => {
-            setProfileSection("orders");
-            goTo("Профиль", "Заказы открыты");
-          }}>
-            <Package size={20} />
-            <span>Заказы</span>
-          </button>
 
           <button className="icon-btn header-profile" type="button" onClick={() => goTo("Профиль", "Профиль открыт")}>
             <UserRound size={20} />
