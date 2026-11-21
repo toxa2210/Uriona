@@ -22,7 +22,7 @@ export class AppErrorBoundary extends React.Component<Props, State> {
             <strong style={{ color: "#f05a28", letterSpacing: ".12em" }}>URIONA</strong>
             <h1 style={{ margin: "18px 0 8px", fontSize: 24 }}>Возникла ошибка приложения</h1>
             <p style={{ color: "#666", lineHeight: 1.5 }}>Мы зафиксировали сбой интерфейса. Обновите страницу. Если ошибка повторится, отправьте поддержке текст ниже.</p>
-            <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", padding: 12, background: "#f7f5f1", fontSize: 12 }}>{this.state.error.message}</pre>
+            <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", maxHeight: 280, overflow: "auto", padding: 12, background: "#f7f5f1", fontSize: 11 }}>{this.state.error.stack || this.state.error.message}</pre>
             <button onClick={() => window.location.reload()} style={{ border: 0, padding: "12px 18px", background: "#f05a28", color: "#fff", cursor: "pointer", fontWeight: 700 }}>Обновить страницу</button>
           </section>
         </main>
