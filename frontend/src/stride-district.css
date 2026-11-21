@@ -78,3 +78,14 @@ html,body{background:#090909!important}body{color:#f5f4f0;background:#090909!imp
 .mobile-app-shell .mobile-bottom-nav,.mobile-app-shell .mobile-header,.mobile-app-shell .mobile-search,.mobile-app-shell .mobile-home-section,.mobile-app-shell .mobile-product-card{border-color:#292929!important;background-color:#111!important;color:#f5f4f0!important}
 .mobile-app-shell button{border-radius:3px}
 .mobile-app-shell .mobile-home button[class*="primary"],.mobile-app-shell .mobile-bottom-nav button.active{background:#ee4b0a!important;color:#fff!important}
+
+
+/* Uriona fashion-only launch: two core departments, no unrelated marketplace categories. */
+.stride-category-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+.stride-category-card { aspect-ratio: 1.75 / 1 !important; }
+.stride-category-card img { object-position: center 35%; }
+.stride-hero-heading { max-width: 8ch; }
+@media(max-width:760px){
+  .desktop-app-shell .stride-category-grid { grid-template-columns: repeat(2,minmax(0,1fr)) !important; }
+  .desktop-app-shell .stride-category-card { aspect-ratio: .82 / 1 !important; }
+}
