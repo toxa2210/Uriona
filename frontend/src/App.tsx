@@ -1456,7 +1456,19 @@ export function App() {
 
   const visibleProducts = useMemo(() => {
     const term = search.trim().toLowerCase();
+    const isFashionCategory = (categoryId?: string | null) => {
+      if (!categoryId) return false;
+      const visited = new Set<string>();
+      let current = categories.find((item) => item.id === categoryId);
+      while (current && !visited.has(current.id)) {
+        visited.add(current.id);
+        if (fashionCategoryPattern.test(`${current.nameRu} ${current.nameUz}`)) return true;
+        current = current.parentId ? categories.find((item) => item.id === current?.parentId) : undefined;
+      }
+      return false;
+    };
     const filtered = products.filter((product) => {
+      if (!isFashionCategory(product.category?.id)) return false;
       const title = `${product.titleUz ?? ""} ${product.titleRu ?? ""}`.toLowerCase();
       const categoryName = `${product.category?.nameUz ?? ""} ${product.category?.nameRu ?? ""}`.toLowerCase();
       const matchesQuery = !term || title.includes(term) || categoryName.includes(term);
@@ -1474,7 +1486,7 @@ export function App() {
       })
       .sort((first, second) => second.score - first.score || first.index - second.index)
       .map(({ product }) => product);
-  }, [products, search]);
+  }, [products, search, categories]);
   const homeProducts = useMemo(() => {
     if (homeSort === "deals") {
       return visibleProducts
@@ -1543,7 +1555,9 @@ export function App() {
     }
     return byParent;
   }, [categories]);
-  const topLevelCategories = categoryChildren.get("root") ?? categories;
+  const fashionCategoryPattern = /одежд|обув|clothing|footwear|shoes|kiyim|poyabzal/i;
+  const topLevelCategories = (categoryChildren.get("root") ?? categories)
+    .filter((category) => fashionCategoryPattern.test(`${category.nameRu} ${category.nameUz}`));
   const categoryPath = useMemo(() => {
     const path: ApiCategory[] = [];
     const visited = new Set<string>();
@@ -2045,8 +2059,8 @@ export function App() {
               <div className="promo-feature-copy">
                 <small className="promo-feature-kicker">URIONA&nbsp; · &nbsp;{language === "en" ? "DISCOVER YOUR NEXT FAVORITE" : language === "uz" ? "YANGI SEVIMLILARINGIZNI TOPING" : "ОТКРЫВАЙ НОВОЕ КАЖДЫЙ ДЕНЬ"}</small>
                 <h1 className="stride-hero-heading">
-                  <span>{language === "en" ? "BUILT FOR" : language === "uz" ? "SIZ UCHUN" : "ВЫБИРАЙ"}</span>
-                  <em>{language === "en" ? "MOVEMENT" : language === "uz" ? "HARAKAT" : "СВОЁ"}</em>
+                  <span>{language === "en" ? "FASHION FOR" : language === "uz" ? "HAR KUNGI" : "ОДЕЖДА И"}</span>
+                  <em>{language === "en" ? "EVERY YOU" : language === "uz" ? "USLUBINGIZ" : "ОБУВЬ"}</em>
                 </h1>
                 <p className="stride-feature-product">{productTitle(activeHeroProduct)} <span>·</span> {categoryLabel(activeHeroProduct.category) || text.catalog}</p>
                 <div className="promo-feature-actions">
@@ -2111,7 +2125,7 @@ export function App() {
           <button type="button" onClick={() => goTo("Каталог", text.catalog)}>{text.seeAll}<ChevronRight size={16} /></button>
         </div>
         <div className="stride-category-grid">
-          {topLevelCategories.slice(0, 4).map((category, index) => (
+          {topLevelCategories.slice(0, 2).map((category, index) => (
             <button type="button" className="stride-category-card" key={category.id} onClick={() => {
               setSelectedCat(category.id);
               setSearch("");
