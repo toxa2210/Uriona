@@ -812,6 +812,7 @@ const SEARCH_INTERESTS_STORAGE_KEY = "uriona-search-interests";
 const DEMO_PAYMENT_STORAGE_KEY = "uriona-demo-payment";
 const DEMO_PAYMENT_ENABLED = import.meta.env.DEV;
 const MIN_PROMO_SUBTOTAL = 500_000 * 100;
+const FASHION_CATEGORY_PATTERN = /одежд|обув|clothing|footwear|shoes|kiyim|poyabzal/i;
 type DemoPaymentStatus = "PAID" | "DECLINED" | "REFUNDED";
 type DemoPayment = {
   reference: string;
@@ -1464,7 +1465,7 @@ export function App() {
       let current = categories.find((item) => item.id === categoryId);
       while (current && !visited.has(current.id)) {
         visited.add(current.id);
-        if (fashionCategoryPattern.test(`${current.nameRu} ${current.nameUz}`)) return true;
+        if (FASHION_CATEGORY_PATTERN.test(`${current.nameRu} ${current.nameUz}`)) return true;
         current = current.parentId ? categories.find((item) => item.id === current?.parentId) : undefined;
       }
       return false;
@@ -1557,9 +1558,8 @@ export function App() {
     }
     return byParent;
   }, [categories]);
-  const fashionCategoryPattern = /одежд|обув|clothing|footwear|shoes|kiyim|poyabzal/i;
   const topLevelCategories = (categoryChildren.get("root") ?? categories)
-    .filter((category) => fashionCategoryPattern.test(`${category.nameRu} ${category.nameUz}`));
+    .filter((category) => FASHION_CATEGORY_PATTERN.test(`${category.nameRu} ${category.nameUz}`));
   const categoryPath = useMemo(() => {
     const path: ApiCategory[] = [];
     const visited = new Set<string>();
