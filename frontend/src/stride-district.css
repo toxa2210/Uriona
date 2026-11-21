@@ -203,3 +203,113 @@ button{cursor:pointer}
  .desktop-app-shell .icon-btn.header-orders span,.desktop-app-shell .icon-btn.header-profile span{display:none}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+
+/* Uriona dark theme — paired with the light theme toggle */
+html.dark-mode, html.dark-mode body, html.dark-mode #root {
+  background: #101010 !important;
+  color: #f4f1ec !important;
+  color-scheme: dark;
+}
+html.dark-mode body {
+  background: #101010 !important;
+}
+.app-shell.dark-mode {
+  --u-paper: #101010;
+  --u-white: #1b1b1b;
+  --u-line: #34312e;
+  --u-ink: #f4f1ec;
+  --u-black: #f4f1ec;
+  background: #101010 !important;
+  color: #f4f1ec !important;
+}
+.app-shell.dark-mode .topbar,
+.app-shell.dark-mode .mobile-header,
+.app-shell.dark-mode .mobile-topbar,
+.app-shell.dark-mode .desktop-app-shell .topbar {
+  background: #171717 !important;
+  color: #f4f1ec !important;
+  border-color: #34312e !important;
+}
+.app-shell.dark-mode .topbar:before {
+  background: #f05a28 !important;
+  color: #fff !important;
+}
+.app-shell.dark-mode .brand,
+.app-shell.dark-mode .nav-link,
+.app-shell.dark-mode .desktop-nav a,
+.app-shell.dark-mode .page,
+.app-shell.dark-mode .mobile-page,
+.app-shell.dark-mode h1,
+.app-shell.dark-mode h2,
+.app-shell.dark-mode h3,
+.app-shell.dark-mode p,
+.app-shell.dark-mode label,
+.app-shell.dark-mode .home-product-title,
+.app-shell.dark-mode .home-product-body .price-row strong {
+  color: #f4f1ec !important;
+}
+.app-shell.dark-mode .category-card,
+.app-shell.dark-mode .home-category-card,
+.app-shell.dark-mode .home-product-card,
+.app-shell.dark-mode .product-card,
+.app-shell.dark-mode .product-tile,
+.app-shell.dark-mode .catalog-card,
+.app-shell.dark-mode .panel,
+.app-shell.dark-mode .profile-panel,
+.app-shell.dark-mode .settings-panel,
+.app-shell.dark-mode .cart-panel,
+.app-shell.dark-mode .mobile-bottom-nav,
+.app-shell.dark-mode .mobile-nav,
+.app-shell.dark-mode .mobile-search,
+.app-shell.dark-mode .search-box,
+.app-shell.dark-mode .filter-panel,
+.app-shell.dark-mode .modal,
+.app-shell.dark-mode .dialog,
+.app-shell.dark-mode .dropdown-menu {
+  background: #1b1b1b !important;
+  color: #f4f1ec !important;
+  border-color: #34312e !important;
+  box-shadow: none;
+}
+.app-shell.dark-mode .hero,
+.app-shell.dark-mode .hero-section,
+.app-shell.dark-mode .home-hero {
+  background-color: #202020 !important;
+  color: #fff !important;
+}
+.app-shell.dark-mode input,
+.app-shell.dark-mode textarea,
+.app-shell.dark-mode select {
+  background: #242424 !important;
+  color: #f4f1ec !important;
+  border-color: #48433e !important;
+}
+.app-shell.dark-mode input::placeholder,
+.app-shell.dark-mode textarea::placeholder {
+  color: #aaa39a !important;
+}
+.app-shell.dark-mode .category-card *,
+.app-shell.dark-mode .home-category-card *,
+.app-shell.dark-mode .home-product-card *,
+.app-shell.dark-mode .product-card *,
+.app-shell.dark-mode .product-tile * {
+  color: inherit;
+}
+.app-shell.dark-mode .mini-cart,
+.app-shell.dark-mode .primary-btn,
+.app-shell.dark-mode .button-primary {
+  background: #f05a28 !important;
+  color: #fff !important;
+}
+.app-shell.dark-mode .secondary-btn,
+.app-shell.dark-mode .icon-btn,
+.app-shell.dark-mode .home-theme-chip {
+  background: #292929 !important;
+  color: #f4f1ec !important;
+  border-color: #48433e !important;
+}
+.app-shell.dark-mode .divider,
+.app-shell.dark-mode hr {
+  border-color: #34312e !important;
+}
